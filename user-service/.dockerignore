@@ -1,0 +1,22 @@
+# Node modules and build
+node_modules
+dist
+npm-debug.log
+
+# Git & Docker
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+
+# Environment
+.env
+
+# System junk
+.DS_Store
+*.log
+.tmp
+.cache
+
+# Prisma artifacts
+.prisma

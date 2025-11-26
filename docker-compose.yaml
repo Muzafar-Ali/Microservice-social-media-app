@@ -1,0 +1,100 @@
+
+# user service section start
+services:
+  user-db:
+    image: postgres:16
+    # container_name: user_Service_db
+    restart: always
+    env_file:
+      - ./user-service/.env.db
+    ports:
+      - '5433:5432'
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  rabbitmq-broker:
+    image: rabbitmq:4.2.0-management
+    # container_name: rabbitmq_broker
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: appuser
+      RABBITMQ_DEFAULT_PASS: supersecret
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_log:/var/log/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  redis-cache:
+    image: redis:7
+    # container_name: redis_user_service
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+# 👤 User Service API
+  user-service:
+    build: ./user-service
+    # container_name: user_service_api
+    ports:
+      - '4001:4001'
+    depends_on:
+      user-db:
+        condition: service_healthy   # ✅ optional; still keep app retries
+      rabbitmq-broker:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+    env_file:
+      - ./user-service/.env.app
+  
+  prometheus-userService:
+    image: prom/prometheus
+    restart: always
+    ports:
+      - '9090:9090'
+    volumes:
+      - ./user-service/src/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - user-service
+  
+  grafana-userService:
+    image: grafana/grafana-oss
+    restart: always
+    ports:
+      - "5000:3000"
+    depends_on:
+      - prometheus-userService
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  rabbitmq_data:
+  rabbitmq_log:
+  redis_data:
+  user_db_data:
+    driver: local
+  grafana_data:
+    driver: local
+# user service section end

@@ -9,62 +9,32 @@
  *
  * Please import the `PrismaClient` class from the `client.ts` file instead.
  */
-import * as runtime from "@prisma/client/runtime/library";
+import * as runtime from "@prisma/client/runtime/client";
 const config = {
-    "generator": {
-        "name": "client",
-        "provider": {
-            "fromEnvVar": null,
-            "value": "prisma-client"
-        },
-        "output": {
-            "value": "F:\\Microservice\\social media app\\user-service\\src\\generated\\prisma",
-            "fromEnvVar": null
-        },
-        "config": {
-            "engineType": "library"
-        },
-        "binaryTargets": [
-            {
-                "fromEnvVar": null,
-                "value": "windows",
-                "native": true
-            }
-        ],
-        "previewFeatures": [],
-        "sourceFilePath": "F:\\Microservice\\social media app\\user-service\\prisma\\schema.prisma",
-        "isCustomOutput": true
-    },
-    "relativePath": "../../../prisma",
-    "clientVersion": "6.19.0",
-    "engineVersion": "2ba551f319ab1df4bc874a89965d8b3641056773",
-    "datasourceNames": [
-        "db"
-    ],
+    "previewFeatures": [],
+    "clientVersion": "7.0.1",
+    "engineVersion": "f09f2815f091dbba658cdcd2264306d88bb5bda6",
     "activeProvider": "postgresql",
-    "postinstall": false,
-    "inlineDatasources": {
-        "db": {
-            "url": {
-                "fromEnvVar": "DATABASE_URL",
-                "value": null
-            }
-        }
-    },
-    "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  url      = env(\"DATABASE_URL\")\n}\n\nenum Gender {\n  male\n  female\n  other\n}\n\nmodel User {\n  id           Int      @id @default(autoincrement())\n  username     String   @unique\n  name         String\n  email        String   @unique\n  bio          String?  @db.Text\n  profileImage String?\n  gender       Gender?\n  isActive     Boolean? @default(true)\n\n  followersCount Int @default(0)\n  followingCount Int @default(0)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([username])\n}\n",
-    "inlineSchemaHash": "2f625d504c0bfb91fc810885f7407f5282780f66c9d09917d3dbbc4eee105b33",
-    "copyEngine": true,
+    "inlineSchema": "// This is your Prisma schema file,\n// learn more about it in the docs: https://pris.ly/d/prisma-schema\n\n// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?\n// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init\n\ngenerator client {\n  provider = \"prisma-client\"\n  output   = \"../src/generated/prisma\"\n}\n\ndatasource db {\n  provider = \"postgresql\"\n  // url      = env(\"DATABASE_URL\")\n}\n\nenum Gender {\n  male\n  female\n  other\n}\n\nenum Status {\n  ACTIVE\n  SUSPENDED\n  UNBLOCKED\n  BLOCKED\n}\n\nmodel User {\n  id           Int     @id @default(autoincrement())\n  username     String  @unique\n  name         String\n  email        String  @unique\n  password     String\n  bio          String? @db.Text\n  profileImage String?\n  gender       Gender?\n  status       Status? @default(ACTIVE)\n\n  followersCount Int @default(0)\n  followingCount Int @default(0)\n\n  createdAt DateTime @default(now())\n  updatedAt DateTime @updatedAt\n\n  @@index([username])\n}\n",
     "runtimeDataModel": {
         "models": {},
         "enums": {},
         "types": {}
-    },
-    "dirname": ""
+    }
 };
-config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"dbName\":null,\"schema\":null,\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":true,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"Int\",\"nativeType\":null,\"default\":{\"name\":\"autoincrement\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"username\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":true,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"nativeType\":null,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"name\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"nativeType\":null,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"email\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":true,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"nativeType\":null,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"bio\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":false,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"nativeType\":[\"Text\",[]],\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"profileImage\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":false,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"nativeType\":null,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"gender\",\"kind\":\"enum\",\"isList\":false,\"isRequired\":false,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"Gender\",\"nativeType\":null,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"isActive\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":false,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"Boolean\",\"nativeType\":null,\"default\":true,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"followersCount\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"Int\",\"nativeType\":null,\"default\":0,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"followingCount\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"Int\",\"nativeType\":null,\"default\":0,\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"DateTime\",\"nativeType\":null,\"default\":{\"name\":\"now\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"DateTime\",\"nativeType\":null,\"isGenerated\":false,\"isUpdatedAt\":true}],\"primaryKey\":null,\"uniqueFields\":[],\"uniqueIndexes\":[],\"isGenerated\":false}},\"enums\":{\"Gender\":{\"values\":[{\"name\":\"male\",\"dbName\":null},{\"name\":\"female\",\"dbName\":null},{\"name\":\"other\",\"dbName\":null}],\"dbName\":null}},\"types\":{}}");
-config.engineWasm = undefined;
-config.compilerWasm = undefined;
-export function getPrismaClientClass(dirname) {
-    config.dirname = dirname;
+config.runtimeDataModel = JSON.parse("{\"models\":{\"User\":{\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"username\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"name\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"email\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"password\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"bio\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"profileImage\",\"kind\":\"scalar\",\"type\":\"String\"},{\"name\":\"gender\",\"kind\":\"enum\",\"type\":\"Gender\"},{\"name\":\"status\",\"kind\":\"enum\",\"type\":\"Status\"},{\"name\":\"followersCount\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"followingCount\",\"kind\":\"scalar\",\"type\":\"Int\"},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"},{\"name\":\"updatedAt\",\"kind\":\"scalar\",\"type\":\"DateTime\"}],\"dbName\":null}},\"enums\":{},\"types\":{}}");
+async function decodeBase64AsWasm(wasmBase64) {
+    const { Buffer } = await import('node:buffer');
+    const wasmArray = Buffer.from(wasmBase64, 'base64');
+    return new WebAssembly.Module(wasmArray);
+}
+config.compilerWasm = {
+    getRuntime: async () => await import("@prisma/client/runtime/query_compiler_bg.postgresql.mjs"),
+    getQueryCompilerWasmModule: async () => {
+        const { wasm } = await import("@prisma/client/runtime/query_compiler_bg.postgresql.wasm-base64.mjs");
+        return await decodeBase64AsWasm(wasm);
+    }
+};
+export function getPrismaClientClass() {
     return runtime.getPrismaClient(config);
 }

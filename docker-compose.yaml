@@ -1,26 +1,9 @@
-
-# user service section start
 services:
-  user-db:
-    image: postgres:16
-    # container_name: user_Service_db
-    restart: always
-    env_file:
-      - ./user-service/.env.db
-    ports:
-      - '5433:5432'
-    volumes:
-      - user_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-
+  # =================================================================
+  #                   🧱 Infra / Shared Components
+  # =================================================================
   rabbitmq-broker:
     image: rabbitmq:4.2.0-management
-    # container_name: rabbitmq_broker
     restart: always
     ports:
       - "5672:5672"
@@ -39,7 +22,6 @@ services:
   
   redis-cache:
     image: redis:7
-    # container_name: redis_user_service
     restart: always
     ports:
       - "6379:6379"
@@ -51,15 +33,71 @@ services:
       timeout: 3s
       retries: 5
 
-# 👤 User Service API
+  prometheus:
+    image: prom/prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - user-service
+      - auth-service
+
+  grafana:
+    image: grafana/grafana-oss
+    restart: always
+    ports:
+      - "5000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana 
+  
+  # =================================================================
+  #                         🗄 Databases
+  # =================================================================
+  user-db:
+    image: postgres:16
+    restart: always
+    env_file:
+      - ./user-service/.env.db
+    ports:
+      - "5433:5432"
+    volumes:
+      - user_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  auth-db:
+    image: postgres:16
+    restart: always
+    env_file:
+      - ./auth-service/.env.db
+    ports:
+      - "5434:5432"
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+  # =================================================================
+  #                       👤 Business Services
+  # =================================================================
   user-service:
     build: ./user-service
-    # container_name: user_service_api
     ports:
-      - '4001:4001'
+      - "4001:4001"
     depends_on:
       user-db:
-        condition: service_healthy   # ✅ optional; still keep app retries
+        condition: service_healthy
       rabbitmq-broker:
         condition: service_healthy
       redis-cache:
@@ -68,26 +106,22 @@ services:
       sh -c "npx prisma migrate deploy && node dist/server.js"
     env_file:
       - ./user-service/.env.app
-  
-  prometheus-userService:
-    image: prom/prometheus
-    restart: always
+
+  auth-service:
+    build: ./auth-service
     ports:
-      - '9090:9090'
-    volumes:
-      - ./user-service/src/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - "4002:4002"
     depends_on:
-      - user-service
-  
-  grafana-userService:
-    image: grafana/grafana-oss
-    restart: always
-    ports:
-      - "5000:3000"
-    depends_on:
-      - prometheus-userService
-    volumes:
-      - grafana_data:/var/lib/grafana
+      auth-db:
+        condition: service_healthy
+      rabbitmq-broker:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+    env_file:
+      - ./auth-service/.env.app
 
 volumes:
   rabbitmq_data:
@@ -95,6 +129,7 @@ volumes:
   redis_data:
   user_db_data:
     driver: local
+  auth_db_data:
+    driver: local
   grafana_data:
     driver: local
-# user service section end

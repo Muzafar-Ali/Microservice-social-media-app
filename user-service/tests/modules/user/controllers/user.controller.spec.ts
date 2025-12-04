@@ -1,4 +1,4 @@
-import { UserController } from '../../src/controllers/user.controllers';
+import { UserController } from '../../../../src/controllers/user.controllers';
 import { UserService } from '../../src/services/user.service';
 import { Request, Response, NextFunction } from 'express';
 

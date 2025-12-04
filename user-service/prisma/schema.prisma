@@ -11,7 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // url      = env("DATABASE_URL")
 }
 
 enum Gender {
@@ -20,15 +20,23 @@ enum Gender {
   other
 }
 
+enum Status {
+  ACTIVE
+  SUSPENDED
+  UNBLOCKED
+  BLOCKED
+}
+
 model User {
   id              Int       @id @default(autoincrement())
   username        String    @unique
   name            String
   email           String    @unique
+  password        String
   bio             String?   @db.Text
   profileImage    String?
   gender          Gender?
-  isActive        Boolean?  @default(true)
+  status           Status?    @default(ACTIVE)
 
   followersCount  Int       @default(0)
   followingCount  Int       @default(0)

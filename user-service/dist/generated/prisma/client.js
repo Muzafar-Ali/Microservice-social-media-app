@@ -8,7 +8,6 @@
  *
  * 🟢 You can import this file directly.
  */
-import * as process from 'node:process';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 globalThis['__dirname'] = path.dirname(fileURLToPath(import.meta.url));
@@ -29,8 +28,5 @@ export * from "./enums.js";
  *
  * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
  */
-export const PrismaClient = $Class.getPrismaClientClass(__dirname);
+export const PrismaClient = $Class.getPrismaClientClass();
 export { Prisma };
-// file annotations for bundling tools to include these files
-path.join(__dirname, "query_engine-windows.dll.node");
-path.join(process.cwd(), "src/generated/prisma/query_engine-windows.dll.node");

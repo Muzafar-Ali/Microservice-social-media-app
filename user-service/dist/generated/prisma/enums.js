@@ -12,3 +12,9 @@ export const Gender = {
     female: 'female',
     other: 'other'
 };
+export const Status = {
+    ACTIVE: 'ACTIVE',
+    SUSPENDED: 'SUSPENDED',
+    UNBLOCKED: 'UNBLOCKED',
+    BLOCKED: 'BLOCKED'
+};

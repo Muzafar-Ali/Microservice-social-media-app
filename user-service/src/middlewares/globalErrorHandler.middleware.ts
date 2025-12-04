@@ -1,18 +1,32 @@
-import { NextFunction, Request, Response } from "express";
-import ApiErrorHandler from "../utils/apiErrorHanlderClass.js";
-import config from "../config/config.js";
+import { NextFunction, Request, Response } from 'express';
+import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import logger from '../utils/logger.js';
+import config from '../config/config.js';
 
-const globalErrorHandler = async(err: ApiErrorHandler, req: Request, res: Response, next: NextFunction) => {
+const globalErrorHandler = ( err: ApiErrorHandler, req: Request, res: Response, next: NextFunction ) => {
   
-  err.message = err.message || "internal service error"
-  err.statusCode = err.statusCode || 500
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "internal service error";
 
-  res.status(err.statusCode).json({
+  logger.error(
+    {
+      statusCode,
+      message,
+      stack: err.stack,
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+    },
+    "Unhandled error"
+  );
+
+  res.status(statusCode).json({
     success: false,
-    message: err.message,
-    statusCode: err.statusCode,
-    stack: config.env === 'development' ? err.stack : null
-  })
-}
+    message,
+    statusCode,
+    stack: config.env === "development" ? err.stack : null,
+  });
+};
 
 export default globalErrorHandler;

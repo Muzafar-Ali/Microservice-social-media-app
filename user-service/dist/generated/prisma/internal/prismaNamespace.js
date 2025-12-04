@@ -13,7 +13,7 @@
  * If you are looking for your Models, Enums, and Input Types, please import them from the respective
  * model files in the `model` directory!
  */
-import * as runtime from "@prisma/client/runtime/library";
+import * as runtime from "@prisma/client/runtime/client";
 /**
  * Prisma Errors
  */
@@ -36,36 +36,36 @@ export const Sql = runtime.Sql;
 export const Decimal = runtime.Decimal;
 export const getExtensionContext = runtime.Extensions.getExtensionContext;
 /**
- * Prisma Client JS version: 6.19.0
- * Query Engine version: 2ba551f319ab1df4bc874a89965d8b3641056773
+ * Prisma Client JS version: 7.0.1
+ * Query Engine version: f09f2815f091dbba658cdcd2264306d88bb5bda6
  */
 export const prismaVersion = {
-    client: "6.19.0",
-    engine: "2ba551f319ab1df4bc874a89965d8b3641056773"
+    client: "7.0.1",
+    engine: "f09f2815f091dbba658cdcd2264306d88bb5bda6"
 };
 export const NullTypes = {
-    DbNull: runtime.objectEnumValues.classes.DbNull,
-    JsonNull: runtime.objectEnumValues.classes.JsonNull,
-    AnyNull: runtime.objectEnumValues.classes.AnyNull,
+    DbNull: runtime.NullTypes.DbNull,
+    JsonNull: runtime.NullTypes.JsonNull,
+    AnyNull: runtime.NullTypes.AnyNull,
 };
 /**
  * Helper for filtering JSON entries that have `null` on the database (empty on the db)
  *
  * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
  */
-export const DbNull = runtime.objectEnumValues.instances.DbNull;
+export const DbNull = runtime.DbNull;
 /**
  * Helper for filtering JSON entries that have JSON `null` values (not empty on the db)
  *
  * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
  */
-export const JsonNull = runtime.objectEnumValues.instances.JsonNull;
+export const JsonNull = runtime.JsonNull;
 /**
  * Helper for filtering JSON entries that are `Prisma.DbNull` or `Prisma.JsonNull`
  *
  * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
  */
-export const AnyNull = runtime.objectEnumValues.instances.AnyNull;
+export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     User: 'User'
 };
@@ -83,10 +83,11 @@ export const UserScalarFieldEnum = {
     username: 'username',
     name: 'name',
     email: 'email',
+    password: 'password',
     bio: 'bio',
     profileImage: 'profileImage',
     gender: 'gender',
-    isActive: 'isActive',
+    status: 'status',
     followersCount: 'followersCount',
     followingCount: 'followingCount',
     createdAt: 'createdAt',

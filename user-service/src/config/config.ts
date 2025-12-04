@@ -3,9 +3,15 @@ import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
-export default {
-  env: process.env.NODE_ENV,
-  port: process.env.PORT,
+const config = {
+  env: process.env.NODE_ENV, 
+  port: process.env.PORT || 4002,
+  jwtSecret: process.env.JWT_SECRET,
+  jwtExpiry: "1hour",
+  dataBaseUrl: process.env.DATABASE_URL,
+  // pino logging
+  serviceName: process.env.SERVICE_NAME,
+  logLevel: process.env.LOG_LEVEL,
   db: {
     client: 'postgresql',
     connection: {
@@ -19,3 +25,9 @@ export default {
   // rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost:5672"
   rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost"
 };
+
+if (!config.jwtSecret) {
+  throw new Error("JWT_SECRET is not set in environment variables");
+}
+
+export default config;

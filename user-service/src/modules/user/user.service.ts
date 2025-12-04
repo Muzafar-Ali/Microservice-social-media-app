@@ -1,15 +1,19 @@
-import { redis } from '../config/redisClient.js';
-import { PrismaClient, User, Prisma } from '../generated/prisma/client.js';
-import { UserRepository } from "../repositories/user.repository.js";
-import { CreateUserDto } from '../schema/user.schema.js';
-import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
-import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../utils/cache/userCacheKeys.js';
-import { publishUserEvent } from '../utils/rabbitmq.js';
+import { redis } from '../../config/redisClient.js';
+import { Prisma, User } from '../../generated/prisma/client.js';
+import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../utils/cache/userCacheKeys.js';
+import { publishUserEvent } from '../../utils/rabbitmq.js';
+import { UserRepository } from './user.repository.js';
+import { CreateUserDto } from './user.schema.js';
+import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
+import { UserEventPublisher } from '../../events/producers.js';
 
 
 export class UserService {
 
-  constructor(private userRepository: UserRepository) {}
+  constructor(
+    private userRepository: UserRepository,
+    private userEventPublisher: UserEventPublisher
+  ) {}
 
   async createUser(dto: CreateUserDto): Promise<User> {
 
@@ -17,6 +21,7 @@ export class UserService {
       username: dto.username,
       name: dto.name,
       email: dto.email,
+      password: dto.password,
       bio: dto.bio,
       profileImage: dto.profileImage,
       gender: dto.gender as any,
@@ -40,14 +45,23 @@ export class UserService {
       })
     ])
 
-    // Publish event for other services (notification, search, etc.)
-    await publishUserEvent("user.created", {
+    // Publish user created event for other services (notification, search, etc.)
+    await this.userEventPublisher.publishUserCreated({
       id: user.id,
-      username: user.username,
+      email: user.email,
       name: user.name,
-      createdAt: user.createdAt,
-    });
+      username: user.username,
+      createdAt: user.createdAt
+    })
 
+    // If user uploaded a profile image at signup → send to media-service
+    if(dto.profileImage) {
+      await this.userEventPublisher.publishProfileImageUploadRequested({
+        userId: user.id,
+        rawImage: dto.profileImage
+      })
+    }
+    
     return user
   }
 

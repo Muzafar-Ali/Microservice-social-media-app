@@ -1,12 +1,12 @@
 import { UserService } from '../../src/services/user.service';
 import { UserRepository } from '../../src/repositories/user.repository';
-import { redis } from '../../src/config/redisClient'; // Import the mocked redis
-import * as rabbitmq from '../../src/utils/rabbitmq';
+import { redis } from '../../../../src/config/redisClient'; // Import the mocked redis
+import * as rabbitmq from '../../../../src/utils/rabbitmq';
 import { CreateUserDto } from '../../src/schema/user.schema';
-import ApiErrorHandler from '../../src/utils/apiErrorHanlderClass';
+import ApiErrorHandler from '../../../../src/utils/apiErrorHanlderClass';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { User } from '../../src/generated/prisma/client';
-import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../src/utils/cache/userCacheKeys';
+import { User } from '../../../../src/generated/prisma/client';
+import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../../../src/utils/cache/userCacheKeys';
 
 // Tell Jest to use the manual mock we created in src/config/__mocks__/redisClient.ts
 jest.mock('../../src/config/redisClient');

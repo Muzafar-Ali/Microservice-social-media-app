@@ -16,49 +16,50 @@
 import * as runtime from "@prisma/client/runtime/index-browser";
 export const Decimal = runtime.Decimal;
 export const NullTypes = {
-    DbNull: runtime.objectEnumValues.classes.DbNull,
-    JsonNull: runtime.objectEnumValues.classes.JsonNull,
-    AnyNull: runtime.objectEnumValues.classes.AnyNull,
+    DbNull: runtime.NullTypes.DbNull,
+    JsonNull: runtime.NullTypes.JsonNull,
+    AnyNull: runtime.NullTypes.AnyNull,
 };
 /**
  * Helper for filtering JSON entries that have `null` on the database (empty on the db)
  *
  * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
  */
-export const DbNull = runtime.objectEnumValues.instances.DbNull;
+export const DbNull = runtime.DbNull;
 /**
  * Helper for filtering JSON entries that have JSON `null` values (not empty on the db)
  *
  * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
  */
-export const JsonNull = runtime.objectEnumValues.instances.JsonNull;
+export const JsonNull = runtime.JsonNull;
 /**
  * Helper for filtering JSON entries that are `Prisma.DbNull` or `Prisma.JsonNull`
  *
  * @see https://www.prisma.io/docs/concepts/components/prisma-client/working-with-fields/working-with-json-fields#filtering-on-a-json-field
  */
-export const AnyNull = runtime.objectEnumValues.instances.AnyNull;
+export const AnyNull = runtime.AnyNull;
 export const ModelName = {
     User: 'User'
 };
 /*
  * Enums
  */
-export const TransactionIsolationLevel = runtime.makeStrictEnum({
+export const TransactionIsolationLevel = {
     ReadUncommitted: 'ReadUncommitted',
     ReadCommitted: 'ReadCommitted',
     RepeatableRead: 'RepeatableRead',
     Serializable: 'Serializable'
-});
+};
 export const UserScalarFieldEnum = {
     id: 'id',
     username: 'username',
     name: 'name',
     email: 'email',
+    password: 'password',
     bio: 'bio',
     profileImage: 'profileImage',
     gender: 'gender',
-    isActive: 'isActive',
+    status: 'status',
     followersCount: 'followersCount',
     followingCount: 'followingCount',
     createdAt: 'createdAt',

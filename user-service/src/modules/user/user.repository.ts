@@ -1,10 +1,6 @@
 // src/repositories/user.repository.ts
-import { PrismaClient, User, Prisma } from '../generated/prisma/client.js';
+import { PrismaClient, User, Prisma } from '../../generated/prisma/client.js';
 
-// export interface ListUsersResult {
-//   users: User[];
-//   total: number;
-// }
 
 export class UserRepository {
   private prisma: PrismaClient;

@@ -42,6 +42,15 @@ export const createUserSchema = z.object({
     z.email({ error: "Invalid email format" })
   ),
 
+  password: z
+    .string()
+    .min(1, {error: "password is required"})
+    .max(128, "passsword is too long")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/\d/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+
   bio: z
     .string()
     .trim()

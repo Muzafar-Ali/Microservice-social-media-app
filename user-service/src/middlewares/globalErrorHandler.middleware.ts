@@ -25,7 +25,7 @@ const globalErrorHandler = ( err: ApiErrorHandler, req: Request, res: Response, 
     success: false,
     message,
     statusCode,
-    stack: config.env === "development" ? err.stack : null,
+    stack: config.environment === "development" ? err.stack : null,
   });
 };
 

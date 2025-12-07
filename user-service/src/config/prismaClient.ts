@@ -1,10 +1,11 @@
 // import { PrismaClient } from "@prisma/client";
-import { PrismaClient } from "../generated/prisma/client.js";
+
+import { PrismaClient } from "@prisma/client";
 import config from "./config.js";
 
   const prisma = new PrismaClient({
     datasourceUrl: config.dataBaseUrl,
-    log: config.env === "development" ? ["query", "info", "warn", "info"] : ["error"]
+    log: config.environment === "development" ? ["query", "info", "warn", "info"] : ["error"]
   });
 
   // handle gracefull shutdown

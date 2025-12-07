@@ -1,9 +1,17 @@
 import { Request, Response, NextFunction } from "express";
 import { UserService } from "./user.service.js";
-import { CreateUserDto, createUserSchema, GetUserByIdDto, getUserByIdSchema, GetUserByUsernameDTO, getUserByUsernameSchema } from "./user.schema.js";
+import { 
+  CreateUserDto, 
+  createUserSchema, 
+  GetUserByIdDto, 
+  getUserByIdSchema, 
+  GetUserByUsernameDto, 
+  getUserByUsernameSchema, 
+  UpdateProfileImageDto, 
+  updateProfileImageSchema, 
+} from "./user.schema.js";
 import ApiErrorHandler from "../../utils/apiErrorHanlderClass.js";
 import formatZodError from "../../utils/formatZodError.js";
-import { publishUserCreated } from "../../events/producers.js";
 
 
 export class UserController {
@@ -20,12 +28,6 @@ export class UserController {
       }
       
       const user = await this.userService.createUser(parsedData.data)
-
-      await publishUserCreated({
-        id: user.id,
-        email: user.email,
-        username: user.username
-      });
 
       res.status(201).json({
         success: true,
@@ -60,7 +62,7 @@ export class UserController {
     }
   }
 
-  getProfileByUsername = async (req: Request<GetUserByUsernameDTO>, res: Response, next: NextFunction) => {
+  getProfileByUsername = async (req: Request<GetUserByUsernameDto>, res: Response, next: NextFunction) => {
     try {
       const parsedData = getUserByUsernameSchema.safeParse(req.params);
 
@@ -77,6 +79,27 @@ export class UserController {
       res.status(200).json({
         success: true,
         data: profile
+      })
+
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  updateProfileImage = async (req: Request<{}, {}, UpdateProfileImageDto>, res: Response, next: NextFunction) => {
+    try {
+      const parsedData = updateProfileImageSchema.safeParse(req.body);
+      const userId = req.userId;
+
+      if(!parsedData.success) {
+        throw new ApiErrorHandler(400, formatZodError(parsedData.error))
+      }
+     
+      await this.userService.updateUserProfileImage(parsedData.data, Number(userId));
+
+      res.status(201).json({
+        success: true,
+        message: "Profile image updated successfully"
       })
 
     } catch (error) {

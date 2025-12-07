@@ -1,11 +1,11 @@
 import { redis } from '../../config/redisClient.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
 import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../utils/cache/userCacheKeys.js';
-import { publishUserEvent } from '../../utils/rabbitmq.js';
 import { UserRepository } from './user.repository.js';
-import { CreateUserDto } from './user.schema.js';
+import { CreateUserDto, UpdateProfileImageDto } from './user.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
 import { UserEventPublisher } from '../../events/producers.js';
+import { log } from 'console';
 
 
 export class UserService {
@@ -123,6 +123,36 @@ export class UserService {
     return user;
   }
 
+  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: number) => {
+    const updatedUser = await this.userRepository.updateProfileImage(dto.secureUrl, dto.publicId, userId);
+
+    const { password, ...safeUser } = updatedUser;
+    
+    return safeUser;
+  } 
+
+  // updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: number) => {
+  //   try {
+  //     const updatedUser = await this.userRepository.updateProfileImage(dto.secureUrl, dto.publicId, userId);
+      
+  //     if(!updatedUser) {
+  //       throw new ApiErrorHandler(404, "user not found");
+  //     }
+
+  //     const { password, ...safeUser } = updatedUser;
+      
+  //     return safeUser;
+
+  //   } catch (error: any) {
+  //     if (error.code === "P2025") {
+  //       thorw new ApiErrorHandler(404, "user not found");
+  //     }
+
+  //     console.error("updateUserProfileImage error:", error);
+  //     throw new ApiErrorHandler(500, "something went wrong while updating profile image");
+  //   }
+  // } 
+
   // async updateUser(id: string, rawData: unknown): Promise<User> {
   //   const parsed = updateUserSchema.parse(rawData);
 
@@ -131,7 +161,6 @@ export class UserService {
   //     bio: parsed.bio ?? undefined,
   //     profileImage: parsed.profileImage ?? undefined,
   //     gender: parsed.gender ?? undefined,
-  //     isPrivate: parsed.isPrivate ?? undefined,
   //   };
 
   //   const user = await this.userRepository.updateUser(id, prismaData);

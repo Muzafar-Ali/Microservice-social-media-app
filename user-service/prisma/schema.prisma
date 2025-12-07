@@ -34,7 +34,7 @@ model User {
   email           String    @unique
   password        String
   bio             String?   @db.Text
-  profileImage    String?
+  profileImage    Json?
   gender          Gender?
   status           Status?    @default(ACTIVE)
 

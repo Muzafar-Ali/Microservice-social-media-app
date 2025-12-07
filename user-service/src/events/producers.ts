@@ -1,9 +1,5 @@
 import { Producer } from "kafkajs";
-import kafka from "../config/kafkaClient.js";
 import { KAFKA_TOPICS } from "./topics.js";
-import { getKafkaProducer } from "../utils/getKafkaProducer.js";
-
-
 
 type UserCreatedPayload = {
   id: number;

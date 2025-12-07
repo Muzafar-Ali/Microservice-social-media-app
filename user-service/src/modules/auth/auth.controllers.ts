@@ -10,7 +10,7 @@ export class AuthController {
 
   constructor(private authService: AuthService) {}
 
-  loginHandler = async (req: Request, res: Response, next: NextFunction) => {
+  loginHandler = async (req: Request<{}, {}, UserLoginDto>, res: Response, next: NextFunction) => {
     try {
       const parsedData = userLoginSchema.safeParse(req.body)
 

@@ -36,10 +36,18 @@ export class UserRepository {
     });
   }
 
-  deactivateUser = async (id: number): Promise<User> => {
+  updateProfileImage = async (secureUrl: string, publicId: string, userId: number) => {
     return this.prisma.user.update({
-      where: { id },
-      data: { isActive: false },
+      where: {
+        id: userId,
+      },
+      data: {
+        profileImage: {
+          secureUrl,
+          publicId,
+        },
+      },
     });
-  }
+  };
+
 }

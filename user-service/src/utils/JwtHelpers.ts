@@ -19,9 +19,9 @@ export const generateJwtTokenAndSaveCookies = (payload: UserTokenPayload, res: R
   
   const token = generateJwtToken(payload);
 
-  const isProduction = config.env === "production";
+  const isProduction = config.environment === "production";
 
-  res.cookie("token", token, {
+  res.cookie("auth_token", token, {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",

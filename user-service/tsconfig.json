@@ -13,6 +13,7 @@
     "node_modules",
     "tests",
     "jest.config.ts",
-    "coverage"
+    "coverage",
+    "prisma.config.ts"
   ]
 }

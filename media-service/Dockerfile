@@ -10,10 +10,10 @@ COPY . .
 
 # 2. Copy Prisma schema and generate client for Debian
 # COPY prisma ./prisma
-RUN npx prisma generate
+# RUN npx prisma generate
 
 # 4. Build TypeScript → JS
-RUN npm run build
+# RUN npm run build
 
 ENV NODE_ENV=production
 EXPOSE 4002

@@ -1,19 +1,4 @@
 import { z } from "zod";
-// export const createUserSchema = z.object({
-//   // auth-service or gateway will send this (optional if you want auth to choose id)
-//   id: z.string().cuid().optional(),
-//   username: z
-//     .string()
-//     .min(3)
-//     .max(30)
-//     .regex(/^[a-zA-Z0-9_\.]+$/, "Username can only contain letters, numbers, _, .")
-//     .transform((value) => value.toLowerCase().trim()),
-//   name: z.string().min(1).max(100).transform((value) => value.trim()),
-//   bio: z.string().max(500).optional().transform((value) => v?.trim() || undefined),
-//   profileImage: z.string().url().optional(),
-//   gender: z.enum(["male", "female", "other"]).optional(),
-//   isPrivate: z.boolean().optional(),
-// });
 export const createUserSchema = z.object({
     // DB will generate id, so no `id` here
     // auth-service or gateway will send this (optional if you want auth to choose id)
@@ -93,4 +78,11 @@ export const bulkUserLookupSchema = z.object({
     ids: z
         .array(z.string().cuid())
         .nonempty(),
+});
+export const updateProfileImageSchema = z.object({
+    secureUrl: z
+        .url({ error: "secure url is required" }),
+    publicId: z
+        .string()
+        .min(1, { error: " public Id is not provided" })
 });

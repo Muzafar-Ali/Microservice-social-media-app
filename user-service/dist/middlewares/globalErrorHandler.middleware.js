@@ -16,7 +16,7 @@ const globalErrorHandler = (err, req, res, next) => {
         success: false,
         message,
         statusCode,
-        stack: config.env === "development" ? err.stack : null,
+        stack: config.environment === "development" ? err.stack : null,
     });
 };
 export default globalErrorHandler;

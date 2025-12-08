@@ -1,27 +1,36 @@
-// import { PrismaClient } from "@prisma/client";
+import 'dotenv/config';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client.js';
+import config from './config.js';
 
-import { PrismaClient } from "@prisma/client";
-import config from "./config.js";
+// 1. Get the connection string from env (docker/local both use DATABASE_URL)
+const connectionString = process.env.DATABASE_URL ?? config.dataBaseUrl;
 
-  const prisma = new PrismaClient({
-    datasourceUrl: config.dataBaseUrl,
-    log: config.environment === "development" ? ["query", "info", "warn", "info"] : ["error"]
-  });
+// 2. Create the adapter
+const adapter = new PrismaPg({ connectionString });
 
-  // handle gracefull shutdown
+// 3. Instantiate PrismaClient with the adapter
+const prisma = new PrismaClient({
+  adapter,
+  log:
+    config.environment === 'development'
+      ? ['query', 'info', 'warn']
+      : ['error'],
+});
 
-  process.on("beforeExit", async () => {
-    await prisma.$disconnect();
-  })
+// 4. Graceful shutdown
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
 
-  process.on("SIGINT", async () => {
-    await prisma.$disconnect();
-    process.exit(0);
-  })
+process.on('SIGINT', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
 
-  process.on("SIGTERM", async() => {
-    await prisma.$disconnect();
-    process.exit(0);
-  })
+process.on('SIGTERM', async () => {
+  await prisma.$disconnect();
+  process.exit(0);
+});
 
-  export default prisma;
+export default prisma;

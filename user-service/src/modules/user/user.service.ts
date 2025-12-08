@@ -5,8 +5,8 @@ import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateProfileImageDto } from './user.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
 import { UserEventPublisher } from '../../events/producers.js';
-import { log } from 'console';
-
+import bcrypt from "bcrypt"
+import config from '../../config/config.js';
 
 export class UserService {
 
@@ -17,11 +17,13 @@ export class UserService {
 
   async createUser(dto: CreateUserDto): Promise<User> {
 
+    const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds)
+
     const prismaData: Prisma.UserCreateInput = {
       username: dto.username,
       name: dto.name,
       email: dto.email,
-      password: dto.password,
+      password: hashedPassword,
       bio: dto.bio,
       profileImage: dto.profileImage,
       gender: dto.gender as any,

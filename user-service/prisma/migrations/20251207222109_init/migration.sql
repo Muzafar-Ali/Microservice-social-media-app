@@ -1,16 +1,20 @@
 -- CreateEnum
 CREATE TYPE "Gender" AS ENUM ('male', 'female', 'other');
 
+-- CreateEnum
+CREATE TYPE "Status" AS ENUM ('ACTIVE', 'SUSPENDED', 'UNBLOCKED', 'BLOCKED');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
     "username" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
     "bio" TEXT,
-    "profileImage" TEXT,
+    "profileImage" JSONB,
     "gender" "Gender",
-    "isActive" BOOLEAN,
+    "status" "Status" DEFAULT 'ACTIVE',
     "followersCount" INTEGER NOT NULL DEFAULT 0,
     "followingCount" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

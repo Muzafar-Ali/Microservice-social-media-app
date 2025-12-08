@@ -2,24 +2,56 @@ services:
   # =================================================================
   #                   🧱 Infra / Shared Components
   # =================================================================
-  rabbitmq-broker:
-    image: rabbitmq:4.2.0-management
+  kafka:
+    image: confluentinc/cp-kafka:latest
     restart: always
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "9092:9092"
     environment:
-      RABBITMQ_DEFAULT_USER: appuser
-      RABBITMQ_DEFAULT_PASS: supersecret
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: 'broker,controller'
+      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092'
+      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:9093'
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://kafka:9093'
+      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      CLUSTER_ID: 'ciWo7IWazngRchmNCqG12w'
     volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-      - rabbitmq_log:/var/log/rabbitmq
+      - kafka_data:/var/lib/kafka/data
+      - kafka_secrets:/etc/kafka/secrets
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
-      interval: 5s
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
       timeout: 5s
       retries: 5
-  
+
+  # ---------------------------------------------------------------
+  #                 🔎 Kafka UI: Redpanda Console
+  # ---------------------------------------------------------------
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_BROKERS: "kafka:9092"
+    depends_on:
+      - kafka
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    restart: always
+    ports:
+      - "19000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:9092"
+    depends_on:
+      - kafka
+
   redis-cache:
     image: redis:7
     restart: always
@@ -40,9 +72,10 @@ services:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus # volume
     depends_on:
       - user-service
-      - auth-service
+      - media-service
 
   grafana:
     image: grafana/grafana-oss
@@ -52,8 +85,8 @@ services:
     depends_on:
       - prometheus
     volumes:
-      - grafana_data:/var/lib/grafana 
-  
+      - grafana_data:/var/lib/grafana
+
   # =================================================================
   #                         🗄 Databases
   # =================================================================
@@ -73,21 +106,6 @@ services:
       retries: 5
       start_period: 30s
 
-  auth-db:
-    image: postgres:16
-    restart: always
-    env_file:
-      - ./auth-service/.env.db
-    ports:
-      - "5434:5432"
-    volumes:
-      - auth_db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
   # =================================================================
   #                       👤 Business Services
   # =================================================================
@@ -98,7 +116,7 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
-      rabbitmq-broker:
+      kafka:
         condition: service_healthy
       redis-cache:
         condition: service_healthy
@@ -107,29 +125,163 @@ services:
     env_file:
       - ./user-service/.env.app
 
-  auth-service:
-    build: ./auth-service
+  media-service:
+    build: ./media-service
     ports:
-      - "4002:4002"
+      - "4003:4003"
     depends_on:
-      auth-db:
-        condition: service_healthy
-      rabbitmq-broker:
-        condition: service_healthy
-      redis-cache:
+      kafka:
         condition: service_healthy
     command: >
-      sh -c "npx prisma migrate deploy && node dist/server.js"
+      sh -c "node dist/server.js"
     env_file:
-      - ./auth-service/.env.app
+      - ./media-service/.env.app
 
 volumes:
-  rabbitmq_data:
-  rabbitmq_log:
   redis_data:
   user_db_data:
     driver: local
-  auth_db_data:
-    driver: local
   grafana_data:
     driver: local
+  kafka_data:
+    driver: local
+  kafka_secrets:
+    driver: local
+  prometheus_data:
+
+
+# services:
+#   # =================================================================
+#   #                   🧱 Infra / Shared Components
+#   # =================================================================
+#   rabbitmq-broker:
+#     image: rabbitmq:4.2.0-management
+#     restart: always
+#     ports:
+#       - "5672:5672"
+#       - "15672:15672"
+#     environment:
+#       RABBITMQ_DEFAULT_USER: appuser
+#       RABBITMQ_DEFAULT_PASS: supersecret
+#     volumes:
+#       - rabbitmq_data:/var/lib/rabbitmq
+#       - rabbitmq_log:/var/log/rabbitmq
+#     healthcheck:
+#       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+#       interval: 5s
+#       timeout: 5s
+#       retries: 5
+  
+#   redis-cache:
+#     image: redis:7
+#     restart: always
+#     ports:
+#       - "6379:6379"
+#     volumes:
+#       - redis_data:/data
+#     healthcheck:
+#       test: ["CMD", "redis-cli", "ping"]
+#       interval: 3s
+#       timeout: 3s
+#       retries: 5
+
+#   prometheus:
+#     image: prom/prometheus
+#     restart: always
+#     ports:
+#       - "9090:9090"
+#     volumes:
+#       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+#     depends_on:
+#       - user-service
+#       - auth-service
+
+#   grafana:
+#     image: grafana/grafana-oss
+#     restart: always
+#     ports:
+#       - "5000:3000"
+#     depends_on:
+#       - prometheus
+#     volumes:
+#       - grafana_data:/var/lib/grafana 
+  
+#   # =================================================================
+#   #                         🗄 Databases
+#   # =================================================================
+#   user-db:
+#     image: postgres:16
+#     restart: always
+#     env_file:
+#       - ./user-service/.env.db
+#     ports:
+#       - "5433:5432"
+#     volumes:
+#       - user_db_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+
+#   auth-db:
+#     image: postgres:16
+#     restart: always
+#     env_file:
+#       - ./auth-service/.env.db
+#     ports:
+#       - "5434:5432"
+#     volumes:
+#       - auth_db_data:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#   # =================================================================
+#   #                       👤 Business Services
+#   # =================================================================
+#   user-service:
+#     build: ./user-service
+#     ports:
+#       - "4001:4001"
+#     depends_on:
+#       user-db:
+#         condition: service_healthy
+#       rabbitmq-broker:
+#         condition: service_healthy
+#       redis-cache:
+#         condition: service_healthy
+#     command: >
+#       sh -c "npx prisma migrate deploy && node dist/server.js"
+#     env_file:
+#       - ./user-service/.env.app
+
+#   auth-service:
+#     build: ./auth-service
+#     ports:
+#       - "4002:4002"
+#     depends_on:
+#       auth-db:
+#         condition: service_healthy
+#       rabbitmq-broker:
+#         condition: service_healthy
+#       redis-cache:
+#         condition: service_healthy
+#     command: >
+#       sh -c "npx prisma migrate deploy && node dist/server.js"
+#     env_file:
+#       - ./auth-service/.env.app
+
+# volumes:
+#   rabbitmq_data:
+#   rabbitmq_log:
+#   redis_data:
+#   user_db_data:
+#     driver: local
+#   auth_db_data:
+#     driver: local
+#   grafana_data:
+#     driver: local

@@ -1,11 +1,12 @@
 import { redis } from '../../config/redisClient.js';
 import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../utils/cache/userCacheKeys.js';
-import { publishUserEvent } from '../../utils/rabbitmq.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
 export class UserService {
     userRepository;
-    constructor(userRepository) {
+    userEventPublisher;
+    constructor(userRepository, userEventPublisher) {
         this.userRepository = userRepository;
+        this.userEventPublisher = userEventPublisher;
     }
     async createUser(dto) {
         const prismaData = {
@@ -33,13 +34,21 @@ export class UserService {
                 EX: USER_CACHE_TTL_SECONDS,
             })
         ]);
-        // Publish event for other services (notification, search, etc.)
-        await publishUserEvent("user.created", {
+        // Publish user created event for other services (notification, search, etc.)
+        await this.userEventPublisher.publishUserCreated({
             id: user.id,
-            username: user.username,
+            email: user.email,
             name: user.name,
-            createdAt: user.createdAt,
+            username: user.username,
+            createdAt: user.createdAt
         });
+        // If user uploaded a profile image at signup → send to media-service
+        if (dto.profileImage) {
+            await this.userEventPublisher.publishProfileImageUploadRequested({
+                userId: user.id,
+                rawImage: dto.profileImage
+            });
+        }
         return user;
     }
     async getUserByUsername(username) {
@@ -93,4 +102,9 @@ export class UserService {
         ]);
         return user;
     }
+    updateUserProfileImage = async (dto, userId) => {
+        const updatedUser = await this.userRepository.updateProfileImage(dto.secureUrl, dto.publicId, userId);
+        const { password, ...safeUser } = updatedUser;
+        return safeUser;
+    };
 }

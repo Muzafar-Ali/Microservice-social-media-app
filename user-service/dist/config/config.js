@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 const config = {
-    env: process.env.NODE_ENV,
+    environment: process.env.NODE_ENV,
     port: process.env.PORT || 4002,
     jwtSecret: process.env.JWT_SECRET,
     jwtExpiry: "1hour",

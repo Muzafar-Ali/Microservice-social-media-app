@@ -1,21 +1,21 @@
 import pino from 'pino';
 import config from "../config/config.js";
-const isProduction = config.env === "production";
-const logger = isProduction ?
-    pino({
-        level: config.logLevel || "info",
-        base: { service: config.serviceName || "auth-service" },
-        redact: ["req.headers.authorization", "*.password"],
-    }) :
-    pino({
-        level: "debug",
-        transport: {
-            target: "pino-pretty",
-            options: {
-                colorize: true,
-                translateTime: "SYS:dd-mm-yyyy HH:MM:ss",
-                ignore: "pid,hostname",
-            },
+const isProduction = config.environment === "production";
+const productionLogger = pino({
+    level: config.logLevel || "info",
+    base: { service: config.serviceName || "user-service" },
+    redact: ["req.headers.authorization", "*.password"],
+});
+const developmentLogger = pino({
+    level: "debug",
+    transport: {
+        target: "pino-pretty",
+        options: {
+            colorize: true,
+            translateTime: "SYS:dd-mm-yyyy HH:MM:ss",
+            ignore: "pid,hostname",
         },
-    });
+    },
+});
+const logger = isProduction ? productionLogger : developmentLogger;
 export default logger;

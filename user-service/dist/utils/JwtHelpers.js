@@ -7,8 +7,8 @@ export const generateJwtToken = (payload) => {
 };
 export const generateJwtTokenAndSaveCookies = (payload, res) => {
     const token = generateJwtToken(payload);
-    const isProduction = config.env === "production";
-    res.cookie("token", token, {
+    const isProduction = config.environment === "production";
+    res.cookie("auth_token", token, {
         httpOnly: true,
         secure: isProduction,
         sameSite: isProduction ? "none" : "lax",

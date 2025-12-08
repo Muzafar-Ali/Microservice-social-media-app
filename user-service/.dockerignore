@@ -10,7 +10,7 @@ Dockerfile
 docker-compose.yml
 
 # Environment
-.env
+# .env
 
 # System junk
 .DS_Store

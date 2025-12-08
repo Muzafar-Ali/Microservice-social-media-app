@@ -1,4 +1,4 @@
-import { createUserSchema, getUserByIdSchema, getUserByUsernameSchema } from "./user.schema.js";
+import { createUserSchema, getUserByIdSchema, getUserByUsernameSchema, updateProfileImageSchema, } from "./user.schema.js";
 import ApiErrorHandler from "../../utils/apiErrorHanlderClass.js";
 import formatZodError from "../../utils/formatZodError.js";
 export class UserController {
@@ -55,6 +55,23 @@ export class UserController {
             res.status(200).json({
                 success: true,
                 data: profile
+            });
+        }
+        catch (error) {
+            next(error);
+        }
+    };
+    updateProfileImage = async (req, res, next) => {
+        try {
+            const parsedData = updateProfileImageSchema.safeParse(req.body);
+            const userId = req.userId;
+            if (!parsedData.success) {
+                throw new ApiErrorHandler(400, formatZodError(parsedData.error));
+            }
+            await this.userService.updateUserProfileImage(parsedData.data, Number(userId));
+            res.status(201).json({
+                success: true,
+                message: "Profile image updated successfully"
             });
         }
         catch (error) {

@@ -2,7 +2,9 @@ import config from "../config/config.js";
 import ApiErrorHandler from "../utils/apiErrorHanlderClass.js";
 import { NextFunction, Request, Response } from "express"
 import { StatusCodes } from "http-status-codes";
-import { JsonWebTokenError, JwtPayload, TokenExpiredError, verify } from "jsonwebtoken";
+import jwt,  { JwtPayload } from "jsonwebtoken";
+
+const { JsonWebTokenError, TokenExpiredError, verify } = jwt;
 
 declare global {
   namespace Express {
@@ -21,10 +23,10 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
   try {
     let token;
 
-    if(req.cookies.auth_token) {
-      token = req.cookies.token;
+    if (req.cookies?.auth_token) {
+      token = req.cookies.auth_token;
     }
-
+    
     if(req.headers.authorization) {
       const authHeader = req.headers.authorization;
       if(authHeader.startsWith("Bearer ")) {

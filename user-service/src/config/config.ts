@@ -8,6 +8,7 @@ const config = {
   port: process.env.PORT || 4002,
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiry: "1hour",
+  saltRounds: 10,
   dataBaseUrl: process.env.DATABASE_URL,
   // pino logging
   serviceName: process.env.SERVICE_NAME,
@@ -23,7 +24,9 @@ const config = {
   },
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
   // rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost:5672"
-  rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost"
+  rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost",
+  kafkaBrokers: ["kafka:9092"]
+  // kafkaBorjers: ['localhost:9092']
 };
 
 if (!config.jwtSecret) {

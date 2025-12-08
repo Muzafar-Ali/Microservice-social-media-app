@@ -1,6 +1,6 @@
-import config from "@/config/config";
-import ApiErrorHandler from "@/utils/apiErrorHandlerClass";
-import logger from "@/utils/logger";
+import config from "../config/config";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass";
+import logger from "../utils/logger";
 import { NextFunction, Request, Response } from "express";
 
 const globalErrorHandler = (err: ApiErrorHandler, req: Request, res: Response, next: NextFunction) => {

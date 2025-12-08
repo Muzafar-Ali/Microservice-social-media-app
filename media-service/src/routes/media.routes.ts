@@ -1,4 +1,4 @@
-import MediaController from "@/controllers/media.controller";
+import MediaController from "../controllers/media.controller";
 import { Router } from "express";
 
 

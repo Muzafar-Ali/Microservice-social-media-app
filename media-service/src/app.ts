@@ -8,6 +8,7 @@ import notFoundHandler from "./middlewares/notFoundHandler.middleware";
 import MediaController from "./controllers/media.controller";
 import MediaService from "./services/media.service";
 import MediaRespository from "./respositories/media.respository";
+import config from "./config/config";
 
 export async function createApp() {
 
@@ -18,20 +19,20 @@ export async function createApp() {
   const mediaService = new MediaService(mediaRepository);
   const mediaController = new MediaController(mediaService);
 
-  const allowedOrigins = ["localhost:4001"]
+  const allowedOrigins = ["http://localhost:3000"]; 
 
   app.use(helmet());
   app.use(cors({
     origin: allowedOrigins,
     credentials: true
   }))
-
+  console.log("logs", config.cloudinaryApiKey, config.cloudinaryApiSecret, config.cloudinaryCloudName);
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true, limit: "10mb" }))
 
   app.use(cookieParser());
 
-  app.use("/media", mediaRouter(mediaController));
+  app.use("/api/media", mediaRouter(mediaController));
 
   app.use(notFoundHandler);
   app.use(globalErrorHandler);

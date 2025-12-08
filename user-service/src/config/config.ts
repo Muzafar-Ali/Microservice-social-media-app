@@ -6,9 +6,10 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 const config = {
   environment: process.env.NODE_ENV, 
   port: process.env.PORT || 4002,
+  // JWT
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiry: "1hour",
-  saltRounds: 10,
+  saltRounds: process.env.SALT_ROUNDS,
   dataBaseUrl: process.env.DATABASE_URL,
   // pino logging
   serviceName: process.env.SERVICE_NAME,
@@ -23,10 +24,10 @@ const config = {
     },
   },
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
+  kafkaBrokers: ["kafka:9092"],
+  // kafkaBrokers: ['localhost:9092']
   // rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost:5672"
-  rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost",
-  kafkaBrokers: ["kafka:9092"]
-  // kafkaBorjers: ['localhost:9092']
+  // rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost",
 };
 
 if (!config.jwtSecret) {

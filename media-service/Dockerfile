@@ -13,7 +13,7 @@ COPY . .
 # RUN npx prisma generate
 
 # 4. Build TypeScript → JS
-# RUN npm run build
+RUN npm run build
 
 ENV NODE_ENV=production
 EXPOSE 4002

@@ -1,6 +1,10 @@
 FROM node:24
 WORKDIR /app
 
+# 0. Build-time DB URL (from docker-compose build args)
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 # 1. Install dependencies first (cached)
 COPY package*.json ./
 RUN npm ci

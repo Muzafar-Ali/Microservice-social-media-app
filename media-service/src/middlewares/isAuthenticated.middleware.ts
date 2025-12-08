@@ -1,5 +1,5 @@
-import config from "@/config/config";
-import ApiErrorHandler from "@/utils/apiErrorHandlerClass";
+import config from "../config/config";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass";
 import { NextFunction, Request, Response } from "express"
 import { StatusCodes } from "http-status-codes";
 import { JsonWebTokenError, JwtPayload, TokenExpiredError, verify } from "jsonwebtoken";

@@ -1,12 +1,13 @@
 import config from "../config/config.js";
 import ApiErrorHandler from "../utils/apiErrorHanlderClass.js";
 import { StatusCodes } from "http-status-codes";
-import { JsonWebTokenError, TokenExpiredError, verify } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+const { JsonWebTokenError, TokenExpiredError, verify } = jwt;
 const isAuthenticated = async (req, res, next) => {
     try {
         let token;
-        if (req.cookies.auth_token) {
-            token = req.cookies.token;
+        if (req.cookies?.auth_token) {
+            token = req.cookies.auth_token;
         }
         if (req.headers.authorization) {
             const authHeader = req.headers.authorization;

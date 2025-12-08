@@ -1,0 +1,16 @@
+
+PORT=4002
+NODE_ENV=development 
+
+# cloudinary
+CLOUDINARY_CLOUD_NAME=dbg1k9c3m
+CLOUDINARY_API_KEY=736355335457179
+CLOUDINARY_API_SECRET=CqR_wrtHXo4YM1tRCpxdHdRBneQ
+
+# jwt
+JWT_SECRET= "this is my media service secret."
+SALT_ROUNDS=10
+
+# pino logging 
+SERVICE_NAME="media-service"
+LOG_LEVEL="info"

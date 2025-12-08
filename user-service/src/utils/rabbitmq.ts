@@ -1,40 +1,40 @@
-import amqp, { Channel, Connection } from 'amqplib';
-import config from '../config/config.js';
+// import amqp, { Channel, Connection } from 'amqplib';
+// import config from '../config/config.js';
 
-let channel: Channel | null = null;
+// let channel: Channel | null = null;
 
-export const connectRabbitMQ = async () => {
-  if (channel) {
-    return {  channel };
-  }
+// export const connectRabbitMQ = async () => {
+//   if (channel) {
+//     return {  channel };
+//   }
 
-  try {
-    const connection = await amqp.connect(config.rabbitmqUrl);
-    channel = await connection.createChannel();
-    console.log("✅ RabbitMQ connected (user-service)");
+//   try {
+//     const connection = await amqp.connect(config.rabbitmqUrl);
+//     channel = await connection.createChannel();
+//     console.log("✅ RabbitMQ connected (user-service)");
 
-    return { channel, connection };
+//     return { channel, connection };
     
-  } catch (error) {
-    console.error("Error connecting to RabbitMQ:", error);
-    throw error;
-  }
-};
+//   } catch (error) {
+//     console.error("Error connecting to RabbitMQ:", error);
+//     throw error;
+//   }
+// };
 
-export const publishUserEvent = async<T> (routingKey: string, payload: T) => {
+// export const publishUserEvent = async<T> (routingKey: string, payload: T) => {
   
-  if (!channel) throw new Error("RabbitMQ channel not initialized");
+//   if (!channel) throw new Error("RabbitMQ channel not initialized");
 
-  const exchange = "user.events"; // topic exchange name for user-service
-  await channel.assertExchange(exchange, "topic", { durable: true });
+//   const exchange = "user.events"; // topic exchange name for user-service
+//   await channel.assertExchange(exchange, "topic", { durable: true });
 
-  const messageBuffer = Buffer.from(JSON.stringify(payload));
+//   const messageBuffer = Buffer.from(JSON.stringify(payload));
 
-  channel.publish(exchange, routingKey, messageBuffer, {
-    contentType: "application/json",
-    persistent: true,
-  });
-}
+//   channel.publish(exchange, routingKey, messageBuffer, {
+//     contentType: "application/json",
+//     persistent: true,
+//   });
+// }
 
 
 // import { connect, Channel } from "amqplib";

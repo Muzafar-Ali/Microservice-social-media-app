@@ -110,7 +110,10 @@ services:
   #                       👤 Business Services
   # =================================================================
   user-service:
-    build: ./user-service
+    build: 
+      context: ./user-service
+      args:
+        DATABASE_URL: ${DATABASE_URL}
     ports:
       - "4001:4001"
     depends_on:

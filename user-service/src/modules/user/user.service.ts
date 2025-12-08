@@ -17,7 +17,7 @@ export class UserService {
 
   async createUser(dto: CreateUserDto): Promise<User> {
 
-    const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds)
+    const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds!)
 
     const prismaData: Prisma.UserCreateInput = {
       username: dto.username,

@@ -1,6 +1,8 @@
 import { redis } from '../../config/redisClient.js';
 import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../utils/cache/userCacheKeys.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
+import bcrypt from "bcrypt";
+import config from '../../config/config.js';
 export class UserService {
     userRepository;
     userEventPublisher;
@@ -9,11 +11,12 @@ export class UserService {
         this.userEventPublisher = userEventPublisher;
     }
     async createUser(dto) {
+        const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds);
         const prismaData = {
             username: dto.username,
             name: dto.name,
             email: dto.email,
-            password: dto.password,
+            password: hashedPassword,
             bio: dto.bio,
             profileImage: dto.profileImage,
             gender: dto.gender,

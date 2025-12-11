@@ -10,27 +10,48 @@ import { UserController } from "./modules/user/user.controllers.js";
 import userRoutes from "./modules/user/user.routes.js";
 import { metricsHandler, metricsMiddleware } from "./monitoring/metrics.js";
 import prisma from "./config/prismaClient.js";
-import { getKafkaProducer } from "./utils/getKafkaProducer.js";
+import getKafkaProducer from "./utils/getKafkaProducer.js";
 import { UserEventPublisher } from "./events/producers.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import { AuthRepository } from "./modules/auth/auth.repository.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { AuthController } from "./modules/auth/auth.controllers.js";
+import getKafkaConsumer from "./utils/getKafkaConsumer.js";
+import UserEventConsumer from "./events/consumers.js";
+import logger from "./utils/logger.js";
 
 export async function createApp() {
   
-  // Get the singleton Kafka producer (connects only once)
+  // Initialize Kafka producer & consumer (singletons)
   const producer = await getKafkaProducer();
-  // Initialize event publisher by injecting the singleton Kafka producer
+  const consumer = await getKafkaConsumer();
+
+   // Initialize event consumer (inject singleton Kafka producer)
   const userEventPublisher = new UserEventPublisher(producer);
 
-  // Create repository with injected Prisma
+  // Initialize repositories with injected Prisma
   const userRepository = new UserRepository(prisma);
   const authRepository = new AuthRepository(prisma);
-  // Create service with injected repo
+  
+  //  Initialize services
   const userService = new UserService(userRepository, userEventPublisher);
   const authService = new AuthService(authRepository);
-  // Create controller with injected service
+
+  // Initialize event consumer (inject Kafka consumer + userService)
+  const userEventConsumer = new UserEventConsumer(consumer, userService);
+  // Start Kafka consumer for inbound events
+  try {
+    await userEventConsumer.start();
+    logger.info("[Kafka] UserEventConsumer started successfully");
+  } catch (error) {
+    logger.error(
+      { error },
+      "[Kafka] Failed to start UserEventConsumer"
+    );
+    // Optionally: process.exit(1);
+  }
+
+  // Initialize controllers
   const userController = new UserController(userService);
   const authControllers = new AuthController(authService);
 

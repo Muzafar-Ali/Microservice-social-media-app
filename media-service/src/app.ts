@@ -9,14 +9,17 @@ import MediaController from "./controllers/media.controller";
 import MediaService from "./services/media.service";
 import MediaRespository from "./respositories/media.respository";
 import config from "./config/config";
+import getKafkaProducer from "./utils/getKafkaProducer";
+import MediaServiceEventPublisher from "./config/events/producer";
 
 export async function createApp() {
 
   const app = express();
 
-  // const producer = await getKafkaProducer();
+  const producer = await getKafkaProducer();
+  const mediaServiceEventPublisher = new MediaServiceEventPublisher(producer);
   const mediaRepository = new MediaRespository();
-  const mediaService = new MediaService(mediaRepository);
+  const mediaService = new MediaService(mediaRepository, mediaServiceEventPublisher);
   const mediaController = new MediaController(mediaService);
 
   const allowedOrigins = ["http://localhost:3000"]; 

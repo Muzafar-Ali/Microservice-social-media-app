@@ -98,8 +98,7 @@ export const bulkUserLookupSchema = z.object({
 });
 
 export const updateProfileImageSchema = z.object({
-  secureUrl: z
-    .url({error: "secure url is required"}),
+  secureUrl: z.url({error: "secure url is required"}),
   publicId: z
     .string()
     .min(1, {error: " public Id is not provided"})

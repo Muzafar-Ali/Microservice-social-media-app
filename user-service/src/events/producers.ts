@@ -65,22 +65,4 @@ export class UserEventPublisher  {
     }
   }
 
-  publishProfileImageUpdated = async (payload: ProfileImageUpdatedPayload) => {
-    try {
-      await this.producer.send({
-        topic: KAFKA_TOPICS.PROFILE_IMAGE_UPDATED,
-        messages: [
-          {
-            key: String(payload.userId),
-            value: JSON.stringify(payload),
-          },
-        ],
-      });
-  
-      console.log(`Published ${KAFKA_TOPICS.PROFILE_IMAGE_UPDATED} event for userId: ${payload.userId}`);
-      
-    } catch (error) {
-      console.error(`Failed to publish ${KAFKA_TOPICS.PROFILE_IMAGE_UPDATED} event:`, error);
-    }
-  }
 }

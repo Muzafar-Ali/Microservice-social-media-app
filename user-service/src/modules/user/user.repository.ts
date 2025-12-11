@@ -36,7 +36,7 @@ export class UserRepository {
     });
   }
 
-  updateProfileImage = async (secureUrl: string, publicId: string, userId: number) => {
+  updateProfileImageById = async (secureUrl: string, publicId: string, userId: number) => {
     return this.prisma.user.update({
       where: {
         id: userId,

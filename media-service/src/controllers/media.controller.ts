@@ -1,13 +1,19 @@
+import { ProfileImageUpdateDto, profileImageUpdateSchema } from "src/schema/media.schema";
 import { cloudinary } from "../config/cloudinaryClient";
 import config from "../config/config";
-import MediaService from "../services/media.service";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import ApiErrorHandler from "src/utils/apiErrorHandlerClass";
+import formatZodError from "src/utils/formatZodError";
+import MediaServiceEventPublisher from "src/config/events/producer";
+import MediaService from "src/services/media.service";
+
 
 class MediaController {
-  constructor(private mediaService: MediaService ) {}
   
-  profileUploadSignature = async (req: Request, res: Response, next: NextFunction) => {
+  constructor(private mediaService: MediaService) {}
+  
+  profileUploadSignatureHanlder = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const timestamp = Math.round(Date.now() / 1000);
   
@@ -15,9 +21,6 @@ class MediaController {
         timestamp,
         folder: "social-media-app/profile-images",
       };
-      console.log("secret", config.cloudinaryApiSecret)
-      console.log("Key", config.cloudinaryApiKey)
-      console.log("cloud", config.cloudinaryCloudName)
       const signature = cloudinary.utils.api_sign_request(
         paramsToSign,
         config.cloudinaryApiSecret
@@ -40,6 +43,42 @@ class MediaController {
       next(error);
     }
   }
+
+  profileImageUploadHandler = async (
+    req: Request<{}, {}, ProfileImageUpdateDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
+  
+    try {
+    const { userId } = req
+
+    const parsedData = profileImageUpdateSchema.safeParse(req.body);
+    if (!parsedData.success) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(parsedData.error));
+    }
+
+    if(!userId) {
+      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
+    }
+
+    // Publihs event for user service
+    await this.mediaService.profileImageUploaded({
+      userId,
+      secureUrl: parsedData.data.secureUrl,
+      publicId: parsedData.data.publicId,
+    });
+
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Profile image event published successfully",
+    });
+    
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 }
 

@@ -126,7 +126,11 @@ export class UserService {
   }
 
   updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: number) => {
-    const updatedUser = await this.userRepository.updateProfileImage(dto.secureUrl, dto.publicId, userId);
+    const updatedUser = await this.userRepository.updateProfileImageById(
+      dto.secureUrl, 
+      dto.publicId, 
+      userId
+    );
 
     const { password, ...safeUser } = updatedUser;
     

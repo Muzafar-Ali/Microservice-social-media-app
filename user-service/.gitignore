@@ -3,8 +3,7 @@ node_modules/
 
 # Environment variables
 .env*
-.env.app
-.env.db
+.env.*
 
 # Build output
 dist/

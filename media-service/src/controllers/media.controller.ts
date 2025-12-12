@@ -1,12 +1,11 @@
-import { ProfileImageUpdateDto, profileImageUpdateSchema } from "src/schema/media.schema";
+import { ProfileImageUpdateDto, profileImageUpdateSchema } from "../schema/media.schema";
 import { cloudinary } from "../config/cloudinaryClient";
 import config from "../config/config";
 import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import ApiErrorHandler from "src/utils/apiErrorHandlerClass";
-import formatZodError from "src/utils/formatZodError";
-import MediaServiceEventPublisher from "src/config/events/producer";
-import MediaService from "src/services/media.service";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass";
+import formatZodError from "../utils/formatZodError";
+import MediaService from "../services/media.service";
 
 
 class MediaController {
@@ -63,17 +62,17 @@ class MediaController {
     }
 
     // Publihs event for user service
-    await this.mediaService.profileImageUploaded({
+    await this.mediaService.profileImageUploaded(
       userId,
-      secureUrl: parsedData.data.secureUrl,
-      publicId: parsedData.data.publicId,
-    });
+      parsedData.data.secureUrl,
+      parsedData.data.publicId,
+    );
 
     res.status(StatusCodes.CREATED).json({
       success: true,
       message: "Profile image event published successfully",
     });
-    
+
   } catch (error) {
     next(error);
   }

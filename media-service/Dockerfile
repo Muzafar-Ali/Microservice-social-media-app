@@ -1,4 +1,4 @@
-FROM node:24
+FROM node:22
 WORKDIR /app
 
 # 1. Install dependencies first (cached)

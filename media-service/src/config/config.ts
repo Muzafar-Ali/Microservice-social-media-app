@@ -7,6 +7,7 @@ const config = {
   logLevel: process.env.LOG_LEVEL,
   serviceName: process.env.SERVICE_NAME,
   kafkaBrokers: ["kafka:9092"],
+
   // cloudinary
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME!,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY!,

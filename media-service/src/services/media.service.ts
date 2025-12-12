@@ -1,5 +1,5 @@
-import MediaServiceEventPublisher from "src/config/events/producer";
-import MediaRespository from "src/respositories/media.respository";
+import MediaServiceEventPublisher from "../events/producer";
+import MediaRespository from "../respositories/media.respository";
 
 // media.service.ts
 class MediaService {

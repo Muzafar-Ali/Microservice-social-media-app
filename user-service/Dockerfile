@@ -1,4 +1,4 @@
-FROM node:24
+FROM node:22
 WORKDIR /app
 
 # 0. Build-time DB URL (from docker-compose build args)

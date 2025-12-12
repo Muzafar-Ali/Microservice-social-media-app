@@ -10,7 +10,7 @@ import MediaService from "./services/media.service";
 import MediaRespository from "./respositories/media.respository";
 import config from "./config/config";
 import getKafkaProducer from "./utils/getKafkaProducer";
-import MediaServiceEventPublisher from "./config/events/producer";
+import MediaServiceEventPublisher from "./events/producer";
 
 export async function createApp() {
 

@@ -1,4 +1,5 @@
-import isAuthenticated from "src/middlewares/isAuthenticated.middleware";
+
+import isAuthenticated from "../middlewares/isAuthenticated.middleware";
 import MediaController from "../controllers/media.controller";
 import { Router } from "express";
 

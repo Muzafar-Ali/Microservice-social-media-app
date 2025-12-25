@@ -12,10 +12,7 @@ const adapter = new PrismaPg({ connectionString });
 // 3. Instantiate PrismaClient with the adapter
 const prisma = new PrismaClient({
   adapter,
-  log:
-    config.environment === 'development'
-      ? ['query', 'info', 'warn']
-      : ['error'],
+  // log: config.environment === 'development' ? ['query', 'info', 'warn'] : ['error'],
 });
 
 // 4. Graceful shutdown

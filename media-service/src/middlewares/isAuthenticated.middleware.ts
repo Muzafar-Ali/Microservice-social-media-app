@@ -22,8 +22,8 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
   try {
     let token;
 
-    if(req.cookies.token) {
-      token = req.cookies.token;
+    if(req.cookies.auth_token) {
+      token = req.cookies.auth_token;
     }
 
     if(req.headers.authorization) {

@@ -9,11 +9,11 @@ type UserCreatedPayload = {
   createdAt: Date;
 };
 
-type ProfileImageUpdatedPayload = {
-  userId: number;
-  profileImageUrl: string;
-  updatedAt: Date;
-};
+// type ProfileImageUpdatedPayload = {
+//   userId: number;
+//   profileImageUrl: string;
+//   updatedAt: Date;
+// };
 
 export class UserEventPublisher  {
 
@@ -39,30 +39,30 @@ export class UserEventPublisher  {
     }
   }
 
-  publishProfileImageUploadRequested = async (payload: {
-    userId: number,
-    rawImage: string
-  }) => {
-    try {
-      await this.producer.send({
-        topic: KAFKA_TOPICS.PROFILE_IMAGE_UPLOAD_REQUESTED,
-        messages: [
-          {
-            key: String(payload.userId),
-            value: JSON.stringify({
-              userId: payload.userId,
-              rawImage: payload.rawImage,
-              requestedAt: new Date().toISOString()
-            })
-          }
-        ]
-      })
+  // publishProfileImageUploadRequested = async (payload: {
+  //   userId: number,
+  //   rawImage: string
+  // }) => {
+  //   try {
+  //     await this.producer.send({
+  //       topic: KAFKA_TOPICS.PROFILE_IMAGE_UPLOAD_REQUESTED,
+  //       messages: [
+  //         {
+  //           key: String(payload.userId),
+  //           value: JSON.stringify({
+  //             userId: payload.userId,
+  //             rawImage: payload.rawImage,
+  //             requestedAt: new Date().toISOString()
+  //           })
+  //         }
+  //       ]
+  //     })
 
-      console.log(`Published ${KAFKA_TOPICS.PROFILE_IMAGE_UPLOAD_REQUESTED} event for user: ${payload.userId}`);
-    } catch (error) {
-      console.error(`Failed to publish ${KAFKA_TOPICS.PROFILE_IMAGE_UPLOAD_REQUESTED} event:`, error);
+  //     console.log(`Published ${KAFKA_TOPICS.PROFILE_IMAGE_UPLOAD_REQUESTED} event for user: ${payload.userId}`);
+  //   } catch (error) {
+  //     console.error(`Failed to publish ${KAFKA_TOPICS.PROFILE_IMAGE_UPLOAD_REQUESTED} event:`, error);
       
-    }
-  }
+  //   }
+  // }
 
 }

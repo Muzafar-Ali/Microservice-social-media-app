@@ -131,7 +131,7 @@ services:
   media-service:
     build: ./media-service
     ports:
-      - "4003:4003"
+      - "4002:4002"
     depends_on:
       kafka:
         condition: service_healthy

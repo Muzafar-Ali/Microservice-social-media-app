@@ -5,11 +5,11 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 const config = {
   environment: process.env.NODE_ENV, 
-  port: process.env.PORT || 4002,
+  port: process.env.PORT || 4001,
   // JWT
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiry: "1hour",
-  saltRounds: process.env.SALT_ROUNDS,
+  saltRounds: Number(process.env.SALT_ROUNDS),
   dataBaseUrl: process.env.DATABASE_URL,
   // pino logging
   serviceName: process.env.SERVICE_NAME,

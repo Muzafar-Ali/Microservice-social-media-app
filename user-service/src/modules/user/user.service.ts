@@ -38,13 +38,17 @@ export class UserService {
     const user = await this.userRepository.createUser(prismaData);
 
     await Promise.all([
-      redis.set(userCacheKeyById(user.id), JSON.stringify(user), {
-        EX: USER_CACHE_TTL_SECONDS,
-      }),
+      redis.set(
+        userCacheKeyById(user.id), 
+        JSON.stringify(user), 
+        { EX: USER_CACHE_TTL_SECONDS }
+      ),
 
-      redis.set(userCacheKeyByUsername(user.username), JSON.stringify(user), {
-        EX: USER_CACHE_TTL_SECONDS,
-      })
+      redis.set(
+        userCacheKeyByUsername(user.username), 
+        JSON.stringify(user), 
+        { EX: USER_CACHE_TTL_SECONDS }
+      )
     ])
 
     // Publish user created event for other services (notification, search, etc.)
@@ -56,13 +60,13 @@ export class UserService {
       createdAt: user.createdAt
     })
 
-    // If user uploaded a profile image at signup → send to media-service
-    if(dto.profileImage) {
-      await this.userEventPublisher.publishProfileImageUploadRequested({
-        userId: user.id,
-        rawImage: dto.profileImage
-      })
-    }
+    // // If user uploaded a profile image at signup → send to media-service
+    // if(dto.profileImage) {
+    //   await this.userEventPublisher.publishProfileImageUploadRequested({
+    //     userId: user.id,
+    //     rawImage: dto.profileImage
+    //   })
+    // }
     
     return user
   }

@@ -32,7 +32,12 @@ class UserEventConsumer {
     // });
 
     await this.consumer.run({
+      /* Disable auto-commit so Kafka does NOT mark message as consumed
+       * unless we explicitly say so.
+       */
+      autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
+
         if (!message.value) {
           logger.warn("[Kafka] Received empty message value");
           return;
@@ -41,6 +46,7 @@ class UserEventConsumer {
         const rawValue = message.value.toString();
 
         try {
+
           switch (topic) {
             case KAFKA_TOPICS.PROFILE_IMAGE_UPDATED:
               await this.handleProfileImageUpdated(rawValue, partition);
@@ -52,8 +58,25 @@ class UserEventConsumer {
 
             default:
               logger.warn(`[Kafka] Received message for unknown topic: ${topic}`);
+              return;
           }
+
+          /**
+           * ✅ COMMIT OFFSET ONLY AFTER SUCCESS
+           * Kafka expects "next offset", not current one
+           */
+          await this.consumer.commitOffsets([
+            {
+              topic,
+              partition,
+              offset: (Number(message.offset) + 1).toString()
+            }
+          ]);
+
+          logger.info( `[Kafka] Offset committed for topic=${topic}, partition=${partition}, offset=${message.offset}`);
+
         } catch (error) {
+
           logger.error(
             {
               error,
@@ -63,6 +86,7 @@ class UserEventConsumer {
             },
             `[Kafka] Failed to process message`
           );
+
         }
       },
     });
@@ -96,6 +120,7 @@ class UserEventConsumer {
       logger.info(`[Kafka] PROFILE_IMAGE_UPDATED for userId=${payload.userId}, partition=${partition}`);
     } catch (error) {
       logger.error({ error }, `[Kafka] PROFILE_IMAGE_UPDATED Failed to update image for userId=${payload.userId}, partition=${partition}`)
+      throw error;
     }
 
   }

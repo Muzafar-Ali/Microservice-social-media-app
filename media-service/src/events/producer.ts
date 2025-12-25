@@ -1,5 +1,6 @@
 import { Producer } from "kafkajs";
 import logger from "../utils/logger";
+import { KAFKA_TOPICS } from "./topics";
 
 
 class MediaServiceEventPublisher {

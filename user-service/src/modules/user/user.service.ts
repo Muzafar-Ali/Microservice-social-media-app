@@ -1,8 +1,8 @@
 import { redis } from '../../config/redisClient.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
-import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../utils/cache/userCacheKeys.js';
+import { getUserCacheKeyById, getUserCacheKeyByUsername, USER_CACHE_TTL_SECONDS } from '../../utils/cache/userCacheKeys.js';
 import { UserRepository } from './user.repository.js';
-import { CreateUserDto, UpdateProfileImageDto } from './user.schema.js';
+import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
 import { UserEventPublisher } from '../../events/producers.js';
 import bcrypt from "bcrypt"
@@ -36,17 +36,18 @@ export class UserService {
     }
 
     const user = await this.userRepository.createUser(prismaData);
+    const { password, ...safeUser } = user
 
     await Promise.all([
       redis.set(
-        userCacheKeyById(user.id), 
-        JSON.stringify(user), 
+        getUserCacheKeyById(user.id), 
+        JSON.stringify(safeUser), 
         { EX: USER_CACHE_TTL_SECONDS }
       ),
 
       redis.set(
-        userCacheKeyByUsername(user.username), 
-        JSON.stringify(user), 
+        getUserCacheKeyByUsername(user.username), 
+        JSON.stringify(safeUser), 
         { EX: USER_CACHE_TTL_SECONDS }
       )
     ])
@@ -73,7 +74,7 @@ export class UserService {
 
   async getUserByUsername(username: string): Promise<User | null> {
     // Check if user is cached already by username
-    const cacheKey = userCacheKeyByUsername(username);
+    const cacheKey = getUserCacheKeyByUsername(username);
     const cached = await redis.get(cacheKey);
     if(cached) {
       const parsed = JSON.parse(cached);
@@ -87,15 +88,21 @@ export class UserService {
      // Otherwise get from database
     const user = await this.userRepository.findByUsername(username);
     if(!user) return null;
+    const { password, ...safeUser } = user
 
     // Cache the user
     await Promise.all([
-      redis.set(userCacheKeyById(user.id), JSON.stringify(user), {
-        EX: USER_CACHE_TTL_SECONDS,
-      }),
-      redis.set(userCacheKeyByUsername(user.username), JSON.stringify(user), {
-        EX: USER_CACHE_TTL_SECONDS,
-      }),
+      redis.set(
+        getUserCacheKeyById(user.id), 
+        JSON.stringify(safeUser ), 
+        { EX: USER_CACHE_TTL_SECONDS }
+      ),
+
+      redis.set(
+        getUserCacheKeyByUsername(user.username), 
+        JSON.stringify(safeUser ), 
+        { EX: USER_CACHE_TTL_SECONDS }
+      ),
     ]);
 
     return user;
@@ -103,7 +110,7 @@ export class UserService {
 
   async getUserById(id: number): Promise<User | null> {
     
-    const cacheKey = userCacheKeyById(id);
+    const cacheKey = getUserCacheKeyById(id);
     const cached = await redis.get(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -116,12 +123,17 @@ export class UserService {
 
     const user = await this.userRepository.findById(id);
     if (!user) return null;
+    const { password, ...safeUser } = user
 
     await Promise.all([
-      redis.set(userCacheKeyById(user.id), JSON.stringify(user), {
+      redis.set(
+        getUserCacheKeyById(safeUser.id), 
+        JSON.stringify(user), {
         EX: USER_CACHE_TTL_SECONDS,
       }),
-      redis.set(userCacheKeyByUsername(user.username), JSON.stringify(user), {
+      redis.set(
+        getUserCacheKeyByUsername(safeUser.username), 
+        JSON.stringify(user), {
         EX: USER_CACHE_TTL_SECONDS,
       }),
     ]);
@@ -205,4 +217,59 @@ export class UserService {
   //     EX: USER_CACHE_TTL_SECONDS,
   //   });
   // }
+
+    async updateMyProfile(authenticatedUserId: number, updatePayload: UpdateMyProfileDto) {
+
+    const existingUser = await this.userRepository.findById(authenticatedUserId);
+    
+    if (!existingUser) {
+      throw new ApiErrorHandler(404, "user not found");
+    }
+
+    // If username is being changed, ensure it is unique
+  const isUsernameChanging = typeof updatePayload.username === "string" && updatePayload.username.length > 0 && updatePayload.username !== existingUser.username;
+
+    if (isUsernameChanging) {
+      const usernameAlreadyUsed = await this.userRepository.findByUsername(updatePayload.username!);
+
+      if (usernameAlreadyUsed) {
+        throw new ApiErrorHandler(409, "username already taken");
+      }
+    }
+
+    const updatedUser = await this.userRepository.updateUser(authenticatedUserId, updatePayload);
+    const { password, ...safeUser} = updatedUser
+
+    // Cache invalidation strategy
+    const userIdCacheKey = getUserCacheKeyById(updatedUser.id);
+
+    const keysToDelete: string[] = [userIdCacheKey];
+    const oldUsernameCacheKey = getUserCacheKeyByUsername(existingUser.username);
+    const newUsernameCacheKey = getUserCacheKeyByUsername(updatedUser.username);
+    
+    if (isUsernameChanging) {
+      keysToDelete.push(oldUsernameCacheKey);
+      keysToDelete.push(newUsernameCacheKey)
+    } 
+    
+    // delete user from cacche
+    await redis.del(keysToDelete);
+    
+    await Promise.all([
+      redis.set(
+        getUserCacheKeyById(safeUser.id), 
+        JSON.stringify(safeUser), 
+        { EX: USER_CACHE_TTL_SECONDS }
+      ),
+
+      redis.set(
+        getUserCacheKeyByUsername(safeUser.username), 
+        JSON.stringify(safeUser), 
+        { EX: USER_CACHE_TTL_SECONDS }
+      )
+    ])
+
+    
+    return updatedUser;
+  }
 }

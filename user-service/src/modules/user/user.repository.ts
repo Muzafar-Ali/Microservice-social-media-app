@@ -1,5 +1,6 @@
 // src/repositories/user.repository.ts
 import { PrismaClient, User, Prisma } from '../../generated/prisma/client.js';
+import { UpdateMyProfileDto } from './user.schema.js';
 
 
 export class UserRepository {
@@ -29,7 +30,7 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { username } });
   }
 
-  updateUser = async (id: number, data: Prisma.UserUpdateInput): Promise<User> => {
+  updateUser = async (id: number, data: UpdateMyProfileDto): Promise<User> => {
     return this.prisma.user.update({
       where: { id },
       data,

@@ -10,7 +10,7 @@ const userRoutes = (userController: UserController) => {
   router.route("/").post(userController.createUser);
   router.route("/profile/id/:id").get(userController.getProfileById)
   router.route("/profile/username/:username").get(userController.getProfileByUsername)
-  router.route("/profile/profile-image").post(isAuthenticated, userController.updateProfileImage)
+  router.route("/profile/profile-image").patch(isAuthenticated, userController.updateProfileImage)
   return router;
 }
 

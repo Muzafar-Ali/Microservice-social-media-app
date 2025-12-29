@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Post {
+  id         String      @id @default(cuid()) // or uuid(), your choice later
+  content    String      @default("")
+  media      Json?       // or String[] if you only store URLs
+  authorId   String      // userId from User Service (no FK)
+
+  likes      PostLike[]
+  comments   PostComment[]
+
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([authorId])
+  @@index([createdAt])
+}
+
+model PostLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])  // ensures 1 like per user per post
+  @@index([userId])       // helps "all likes by a user"
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String   // userId from User Service (no FK)
+  content   String   @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([authorId])
+}

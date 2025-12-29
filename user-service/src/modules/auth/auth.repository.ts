@@ -24,4 +24,10 @@ export class AuthRepository {
 
     return user;
   };
+
+  // getUserById = async (id: number) => {
+  //   updatedUser = await this.prisma.user.findUnique({
+  //     where: {id}
+  //   })
+  // }
 }

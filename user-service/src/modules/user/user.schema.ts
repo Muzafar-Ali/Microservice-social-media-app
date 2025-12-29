@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { optional, z } from "zod";
 
 
 export const createUserSchema = z.object({
@@ -29,7 +29,7 @@ export const createUserSchema = z.object({
   password: z
     .string()
     .min(1, {error: "password is required"})
-    .max(128, "passsword is too long")
+    .max(128, "password is too long")
     .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
     .regex(/[a-z]/, "Password must contain at least one lowercase letter")
     .regex(/\d/, "Password must contain at least one number")
@@ -52,7 +52,15 @@ export const createUserSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-export const updateUserSchema = z.object({
+export const updateMyProfileSchema = z.object({
+  username: z
+    .string()
+    .trim()
+    .min(3)
+    .max(30)
+    .regex(/^[a-zA-Z0-9_\.]+$/, "Username can only contain letters, numbers, _, .")
+    .toLowerCase()
+    .optional(),
   name: z
     .string()
     .trim()
@@ -107,5 +115,5 @@ export const updateProfileImageSchema = z.object({
 export type CreateUserDto = z.infer<typeof createUserSchema>;
 export type GetUserByIdDto = z.infer<typeof getUserByIdSchema>;
 export type GetUserByUsernameDto = z.infer<typeof getUserByUsernameSchema>;
-export type UpdateUserDto = z.infer<typeof updateUserSchema>;
+export type UpdateMyProfileDto = z.infer<typeof updateMyProfileSchema>;
 export type UpdateProfileImageDto = z.infer<typeof updateProfileImageSchema>;

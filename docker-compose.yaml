@@ -105,6 +105,22 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+  
+  post-db:
+    image: postgres:16
+    restart: always
+    env_file:
+      - ./post-service/.env.db
+    ports:
+      - "5434:5432"
+    volumes:
+      - post_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
 
   # =================================================================
   #                       👤 Business Services
@@ -113,7 +129,7 @@ services:
     build: 
       context: ./user-service
       args:
-        DATABASE_URL: ${DATABASE_URL}
+        DATABASE_URL: ${DATABASE_URL_USER}
     ports:
       - "4001:4001"
     depends_on:
@@ -140,9 +156,29 @@ services:
     env_file:
       - ./media-service/.env.app
 
+  post-service:
+    build: 
+      context: ./post-service
+      args:
+        DATABASE_URL: ${DATABASE_URL_POST}
+    ports:
+      - "4003:4003"
+    depends_on:
+      post-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+    env_file:
+      - ./post-service/.env.app
+
 volumes:
-  redis_data:
   user_db_data:
+    driver: local
+  post_db_data:
     driver: local
   grafana_data:
     driver: local
@@ -151,6 +187,7 @@ volumes:
   kafka_secrets:
     driver: local
   prometheus_data:
+  redis_data:
 
 
 # services:

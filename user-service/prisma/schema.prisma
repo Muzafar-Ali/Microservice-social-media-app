@@ -35,7 +35,8 @@ model User {
   bio             String?   @db.Text
   profileImage    Json?
   gender          Gender?
-  status           Status?    @default(ACTIVE)
+  status          Status?    @default(ACTIVE)
+  isPrivate       Boolean    @default(false)
 
   followersCount  Int       @default(0)
   followingCount  Int       @default(0)

@@ -14,7 +14,7 @@ export class AuthService {
 
   userLogin = async (dto: UserLoginDto, context: TLoginContext) => {
     
-    // Check if user is currently locked
+    // Check if user is locked due to repeated failed attempts
     if( await isLoginLocked(context.identifier) ) {
       logger.warn(
         {

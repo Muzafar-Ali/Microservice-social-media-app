@@ -1,33 +1,34 @@
-import { string, z } from 'zod';
+import { z } from 'zod';
+
+
+export const postMediaItemSchema = z.object({
+  type: z.enum(["image", "video"]),
+  url: z.url(),
+  thumbnailUrl: z.url().optional(),
+  duration: z.number().int().positive().optional(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
+});
 
 export const createPostSchema = z.object({
   body: z.object({
-    title: z.string().trim().min(3, 'Title must be at least 3 characters long'),
-    content: z.string().trim().min(10, 'Content must be at least 10 characters long'),
-    // media: z.array(z.string()).optional(),
-  }),
-});
+    content: z.string().max(2200).optional().default(""),
+    media: z.array(postMediaItemSchema).optional().default([]),
+  }).refine(
+    (data) => (data.content?.trim()?.length ?? 0) > 0 || (data.media?.length ?? 0) > 0,
+    { message: "Post must include either content text or at least one media item." }
+  )    
+})
 
 export const updatePostSchema = z.object({
   body: z.object({
-    postId: z.string().trim().min(1, "postId is required").optional(),
-    secureUrl: z.url().trim().optional(),
-    publicId: z.string().trim().min(1, "publicId is required").optional(),
-    mediaType: z.string().trim().min(1, "media type is required").optional(),
-    title: z.string().trim().min(3, 'Title must be at least 3 characters long').optional(),
-    content: z.string().trim().min(10, 'Content must be at least 10 characters long').optional(),
-    media: z.array(
-      z.object({
-        type: z.enum(['image', 'video']),
-        url: z.url(),
-        thumbnailUrl: z.string().url().optional(),
-        duration: z.number().optional(), // seconds (video)
-        width: z.number().optional(),
-        height: z.number().optional(),
-      })
-    ).optional(),
-  }),
-});
+    postId: z.string().min(1),
+    content: z.string().max(2200).optional(), // IG caption limit is ~2200 chars
+  }).refine((data) => data.content !== undefined, {
+    message: "At least one field must be provided to update",
+  })
+})
 
 export const uploadPostMediaSchema = z.object({
   body: z.object({
@@ -39,7 +40,5 @@ export const uploadPostMediaSchema = z.object({
   })
 })
 
-
 export type CreatePostDto = z.infer<typeof createPostSchema>["body"];
 export type UpdatePostDto = z.infer<typeof updatePostSchema>["body"];
-export type UploadPOstMediaDto = z.infer<typeof uploadPostMediaSchema>;

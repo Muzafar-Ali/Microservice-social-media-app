@@ -10,20 +10,46 @@ datasource db {
   provider = "postgresql"
 }
 
+
 model Post {
-  id         String      @id @default(cuid()) // or uuid(), your choice later
-  content    String      @default("")
-  media      Json?       // or String[] if you only store URLs
-  authorId   String      // userId from User Service (no FK)
+  id        String      @id @default(cuid())
+  authorId  String
+  content   String      @default("") @db.Text
 
-  likes      PostLike[]
-  comments   PostComment[]
+  editedAt  DateTime?
+  isEdited  Boolean     @default(false)
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  media     PostMedia[] // carousel
+  likes     PostLike[]
+  comments  PostComment[]
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
   @@index([authorId])
   @@index([createdAt])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model PostMedia {
+  id           String    @id @default(cuid())
+  postId       String
+  type         MediaType
+  url          String
+  thumbnailUrl String?
+  duration     Int?      // video only
+  width        Int?
+  height       Int?
+  order        Int       // 0,1,2,...
+
+  post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, order])
+  @@index([postId])
 }
 
 model PostLike {

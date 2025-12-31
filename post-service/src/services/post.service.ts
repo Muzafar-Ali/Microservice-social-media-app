@@ -1,5 +1,5 @@
 import { PostRepository } from '../repositories/post.repository.js';
-import { CreatePostInput, UpdatePostInput } from '../schema/post.schema.js';
+import { CreatePostDto, UpdatePostDto } from '../schema/post.schema.js';
 import { Producer } from 'kafkajs';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
@@ -11,13 +11,9 @@ export class PostService {
     private producer: Producer
   ) {}
 
-  async createPost(input: CreatePostInput, userId: string) {
-    const userIdNumber = parseInt(userId, 10);
-    if (isNaN(userIdNumber)) {
-      throw new ApiErrorHandler(400, 'Invalid user ID');
-    }
+  async createPost(input: CreatePostDto, userId: string) {
 
-    const post = await this.postRepository.create({ ...input, userId: userIdNumber });
+    const post = await this.postRepository.create({ ...input, authorId: userId });
 
     postCreatedCounter.inc(); // Increment the counter
 
@@ -55,27 +51,18 @@ export class PostService {
     return this.postRepository.findAll();
   }
 
-  async updatePost(id: string, input: UpdatePostInput, userId: string) {
-    const postId = parseInt(id, 10);
-    if (isNaN(postId)) {
-      throw new ApiErrorHandler(400, 'Invalid post ID');
-    }
+  async updatePost(input: UpdatePostDto, authorId: string) {
 
-    const userIdNumber = parseInt(userId, 10);
-    if (isNaN(userIdNumber)) {
-      throw new ApiErrorHandler(400, 'Invalid user ID');
-    }
-
-    const existingPost = await this.postRepository.findById(postId);
+    const existingPost = await this.postRepository.findById(input.postId!);
     if (!existingPost) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
 
-    if (existingPost.userId !== userIdNumber) {
+    if (existingPost.authorId !== authorId) {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    const post = await this.postRepository.update(postId, input);
+    const post = await this.postRepository.update(input.postId!, input);
 
     postUpdatedCounter.inc();
 

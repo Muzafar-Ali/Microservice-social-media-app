@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
-import { CreatePostInput, createPostSchema, UpdatePostInput, updatePostSchema } from '../schema/post.schema.js';
+import { CreatePostDto, createPostSchema, UpdatePostDto, updatePostSchema } from '../schema/post.schema.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
@@ -8,9 +8,9 @@ import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 export class PostController {
   constructor(private postService: PostService) {}
 
-  async createPostHandler(req: Request<{}, {}, CreatePostInput>, res: Response, next: NextFunction) {
+  async createPostHandler(req: Request<{}, {}, CreatePostDto>, res: Response, next: NextFunction) {
     try {
-      const validationResult = createPostSchema.safeParse(req);
+      const validationResult = createPostSchema.safeParse(req.body);
       if (!validationResult.success) {
         const errorMessage = formatZodError(validationResult.error);
         throw new ApiErrorHandler(400, errorMessage)
@@ -22,9 +22,10 @@ export class PostController {
       const post = await this.postService.createPost(validationResult.data.body, userId);
 
       res.status(201).json({ 
-        success: true, 
-        data: post 
+        success: true,
+        postId: post.id 
       });
+
     } catch (error) {
       logger.error(error, 'Error in createPostHandler');
       next(error);
@@ -54,7 +55,7 @@ export class PostController {
     }
   }
 
-  async updatePostHandler(req: Request<{ id: string }, {}, UpdatePostInput>, res: Response, next: NextFunction) {
+  async updatePostHandler(req: Request<{ id: string }, {}, UpdatePostDto["body"]>, res: Response, next: NextFunction) {
     try {
       const validationResult = updatePostSchema.safeParse(req);
       if (!validationResult.success) {

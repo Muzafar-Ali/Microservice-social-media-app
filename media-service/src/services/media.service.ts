@@ -1,7 +1,6 @@
 import MediaServiceEventPublisher from "../events/producer";
 import MediaRespository from "../respositories/media.respository";
 
-// media.service.ts
 class MediaService {
   constructor(
     private mediaRepository: MediaRespository,
@@ -14,11 +13,29 @@ class MediaService {
     publicId: string
   ) => {
     
-    await this.mediaServiceEventPublisher.publishProfileImageUpdated(
+    await this.mediaServiceEventPublisher.publishProfileImageUpdatedEvent(
       secureUrl,
       publicId,
-      Number(userId)
+      userId
     );
+  }
+
+  postMediaUpload = async (
+    userId: string,
+    postId: string,
+    secureUrl: string,
+    publicId: string,
+    mediType: string,
+  ) => {
+    
+    await this.mediaServiceEventPublisher.publishPostMediaUploadedEvent(
+      userId, 
+      postId, 
+      mediType, 
+      secureUrl, 
+      publicId
+    );
+    
   }
 }
 

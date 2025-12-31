@@ -5,13 +5,13 @@ import { CreatePostInput, UpdatePostInput } from '../schema/post.schema.js';
 export class PostRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: CreatePostInput & { userId: number }) {
+  async create(data: CreatePostInput & { authorId: number }) {
     return this.prisma.post.create({
       data,
     });
   }
 
-  async findById(id: number) {
+  async findById(id: string) {
     return this.prisma.post.findUnique({
       where: { id },
     });
@@ -25,7 +25,7 @@ export class PostRepository {
     });
   }
 
-  async update(id: number, data: UpdatePostInput) {
+  async update(id: string, data: UpdatePostInput) {
     return this.prisma.post.update({
       where: { id },
       data,

@@ -1,4 +1,4 @@
-import { ProfileImageUpdateDto, profileImageUpdateSchema } from "../schema/media.schema";
+import { postVideoOrImageUpladSchema, PostVideoOrImageUploadDto, ProfileImageUpdateDto, profileImageUpdateSchema } from "../schema/media.schema";
 import { cloudinary } from "../config/cloudinaryClient";
 import config from "../config/config";
 import { NextFunction, Request, Response } from "express";
@@ -43,42 +43,67 @@ class MediaController {
     }
   }
 
-  profileImageUploadHandler = async (
-    req: Request<{}, {}, ProfileImageUpdateDto>, 
-    res: Response, 
-    next: NextFunction
-  ) => {
-  
+  profileImageUploadHandler = async ( req: Request<{}, {}, ProfileImageUpdateDto>, res: Response, next: NextFunction ) => {
     try {
-    const { userId } = req
+      const { userId } = req
 
-    const parsedData = profileImageUpdateSchema.safeParse(req.body);
-    if (!parsedData.success) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(parsedData.error));
+      const validationResult = profileImageUpdateSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(validationResult.error));
+      }
+
+      if(!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
+      }
+
+      // Publihs event for user service
+      await this.mediaService.profileImageUploaded(
+        userId,
+        validationResult.data.body.secureUrl,
+        validationResult.data.body.publicId,
+      );
+
+      res.status(StatusCodes.CREATED).json({
+        success: true,
+        message: "Profile image event published successfully",
+      });
+
+    } catch (error) {
+      next(error);
     }
+  };
 
-    if(!userId) {
-      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
+  postVideoOrImageUploadHandler = async ( req: Request<{}, {}, PostVideoOrImageUploadDto["body"]>, res: Response, next: NextFunction ) => {
+    try {
+      const { userId } = req
+
+      const validationResult = postVideoOrImageUpladSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(validationResult.error));
+      }
+
+      if(!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
+      }
+
+      // Publihs event for user service
+      await this.mediaService.postMediaUpload(
+        userId,
+        validationResult.data.body.postId,
+        validationResult.data.body.secureUrl,
+        validationResult.data.body.publicId,
+        validationResult.data.body.mediaType,
+      );
+
+      res.status(StatusCodes.CREATED).json({
+        success: true,
+        message: "Media uplad evenet published successfuly",
+      });
+
+    } catch (error) {
+      next(error);
     }
-
-    // Publihs event for user service
-    await this.mediaService.profileImageUploaded(
-      userId,
-      parsedData.data.secureUrl,
-      parsedData.data.publicId,
-    );
-
-    res.status(StatusCodes.CREATED).json({
-      success: true,
-      message: "Profile image event published successfully",
-    });
-
-  } catch (error) {
-    next(error);
-  }
-};
-
-
+  };
 }
 
 export default MediaController;

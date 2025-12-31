@@ -17,7 +17,10 @@ type ProfileImageUpdatedEvent = {
 
 class UserEventConsumer {
 
-  constructor( private readonly consumer: Consumer, private readonly userService: UserService) {}
+  constructor( 
+    private readonly consumer: Consumer, 
+    private readonly userService: UserService
+  ) {}
 
   start = async () => {
     // Subscribe only to topics this service actually handles

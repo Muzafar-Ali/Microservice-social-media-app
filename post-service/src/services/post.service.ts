@@ -4,46 +4,27 @@ import { Producer } from 'kafkajs';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter, postUpdatedCounter, postDeletedCounter } from "../monitoring/metrics.js";
+import { PostEventPublisher } from '../events/producer.js';
 
 export class PostService {
   constructor(
     private postRepository: PostRepository,
-    private producer: Producer
+    private postEventPublisher: PostEventPublisher
   ) {}
 
   async createPost(input: CreatePostDto, userId: string) {
 
-    const post = await this.postRepository.create({ ...input, authorId: userId });
+    const post = await this.postRepository.create(input, userId);
 
     postCreatedCounter.inc(); // Increment the counter
 
-    // In a real application, you would have more robust event publishing
-    // with proper topics, schemas, and error handling.
-    try {
-      await this.producer.send({
-        topic: 'post-events',
-        messages: [
-          {
-            key: 'post-created',
-            value: JSON.stringify(post),
-          },
-        ],
-      });
-      logger.info('Post created event sent to Kafka');
-    } catch (error) {
-      logger.error({error},'Failed to send post created event to Kafka');
-      // Depending on the business requirements, you might want to handle this failure.
-      // For example, retry sending the event, or log it for later processing.
-    }
+    // Publish the event post created
+    await this.postEventPublisher.publishPostCreatedEvent(post);
 
     return post;
   }
 
-  async getPostById(id: string) {
-    const postId = parseInt(id, 10);
-    if (isNaN(postId)) {
-      throw new ApiErrorHandler(400, 'Invalid post ID');
-    }
+  async getPostById(postId: string) {
     return this.postRepository.findById(postId);
   }
 
@@ -51,9 +32,9 @@ export class PostService {
     return this.postRepository.findAll();
   }
 
-  async updatePost(input: UpdatePostDto, authorId: string) {
+  async updatePost(input: UpdatePostDto, postId: string, authorId: string) {
 
-    const existingPost = await this.postRepository.findById(input.postId!);
+    const existingPost = await this.postRepository.findById(postId);
     if (!existingPost) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
@@ -62,24 +43,28 @@ export class PostService {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    const post = await this.postRepository.update(input.postId!, input);
+    const post = await this.postRepository.update(postId, { 
+      content: input.content,
+      editedAt: new Date(),
+      isEdited: true 
+    });
 
     postUpdatedCounter.inc();
 
-    try {
-      await this.producer.send({
-        topic: 'post-events',
-        messages: [
-          {
-            key: 'post-updated',
-            value: JSON.stringify(post),
-          },
-        ],
-      });
-      logger.info('Post updated event sent to Kafka');
-    } catch (error) {
-      logger.error({error},'Failed to send post updated event to Kafka');
-    }
+    // try {
+    //   await this.producer.send({
+    //     topic: 'post-events',
+    //     messages: [
+    //       {
+    //         key: 'post-updated',
+    //         value: JSON.stringify(post),
+    //       },
+    //     ],
+    //   });
+    //   logger.info('Post updated event sent to Kafka');
+    // } catch (error) {
+    //   logger.error({error},'Failed to send post updated event to Kafka');
+    // }
 
     return post;
   }

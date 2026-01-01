@@ -1,13 +1,35 @@
 
-import { PrismaClient } from '../generated/prisma/client.js';
-import { CreatePostInput, UpdatePostInput } from '../schema/post.schema.js';
+import { MediaType, PrismaClient } from '../generated/prisma/client.js';
+import { CreatePostDto } from '../schema/post.schema.js';
+
+type PostUpdate = {
+  content?: string;
+  editedAt?: Date;
+  isEdited?: boolean;
+}
 
 export class PostRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async create(data: CreatePostInput & { authorId: number }) {
+  async create(input: CreatePostDto, authorId: string) {
     return this.prisma.post.create({
-      data,
+      data: {
+        authorId,
+        content: input.content ?? "",
+        media: input.media.length ? {
+          create: input.media.map((item, index) => ({
+            type: item.type === "image" ? MediaType.IMAGE : MediaType.VIDEO,
+            url: item.url,
+            thumbnailUrl: item.thumbnailUrl ?? null,
+            duration: item.duration ?? null,
+            width: item.width ?? null,
+            height: item.height ?? null,
+
+            // your prisma field is `order`
+            order: item.order ?? index,
+          })),
+        } : undefined
+      }
     });
   }
 
@@ -25,14 +47,14 @@ export class PostRepository {
     });
   }
 
-  async update(id: string, data: UpdatePostInput) {
+  async update(postId: string, data: PostUpdate) {
     return this.prisma.post.update({
-      where: { id },
+      where: { id: postId },
       data,
     });
   }
 
-  async delete(id: number) {
+  async delete(id: string) {
     return this.prisma.post.delete({
       where: { id },
     });

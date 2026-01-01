@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
-import { CreatePostDto, createPostSchema, UpdatePostDto, updatePostSchema } from '../schema/post.schema.js';
+import { CreatePostDto, createPostSchema, postIdDto, postIdSchema, UpdatePostDto, updatePostSchema } from '../schema/post.schema.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
@@ -10,19 +10,16 @@ export class PostController {
 
   async createPostHandler(req: Request<{}, {}, CreatePostDto>, res: Response, next: NextFunction) {
     try {
-      const validationResult = createPostSchema.safeParse(req.body);
-      if (!validationResult.success) {
-        const errorMessage = formatZodError(validationResult.error);
-        throw new ApiErrorHandler(400, errorMessage)
-      }
-
+      const data = req.body;
       const { userId } = req;
+      
       if (!userId) throw new ApiErrorHandler(401, 'Unauthorized')
 
-      const post = await this.postService.createPost(validationResult.data.body, userId);
+      const post = await this.postService.createPost(data, userId);
 
       res.status(201).json({ 
         success: true,
+        message: "post created successfuly",
         postId: post.id 
       });
 
@@ -55,19 +52,24 @@ export class PostController {
     }
   }
 
-  async updatePostHandler(req: Request<{ id: string }, {}, UpdatePostDto["body"]>, res: Response, next: NextFunction) {
+  async updatePostHandler(req: Request<postIdDto, {}, UpdatePostDto>, res: Response, next: NextFunction) {
     try {
-      const validationResult = updatePostSchema.safeParse(req);
+      const data = req.body;
+      const { userId } = req;
+      
+      const validationResult = postIdSchema.safeParse(req.params);
+      
       if (!validationResult.success) {
         throw new ApiErrorHandler(400, formatZodError(validationResult.error));
       }
-
-      const { userId } = req;
+      
       if (!userId) {
         throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
-      const post = await this.postService.updatePost(req.params.id, req.body, userId);
+      // const post = await this.postService.updatePost(req.params.id, req.body, userId);
+
+      const post = await this.postService.updatePost(data, validationResult.data.postId, userId);
       
       res.status(200).json({ 
         success: true, 

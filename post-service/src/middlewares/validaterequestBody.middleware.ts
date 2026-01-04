@@ -10,8 +10,8 @@ const validateRequestBody = (schema: z.ZodObject<any>) => {
       const result = schema.safeParse(req.body);
 
       if (!result.success) {
-        const errorMessage = formatZodError(result.error);
-        throw new ApiErrorHandler(400, errorMessage)
+        const errorMessages = formatZodError(result.error);
+        throw new ApiErrorHandler(400, errorMessages)
       }
 
       req.body = result.data.body;

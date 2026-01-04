@@ -9,7 +9,7 @@ const mediaRoutes = (mediaController: MediaController) => {
 
   router.post("/upload/profile-image/signature", mediaController.profileUploadSignatureHanlder);
   router.post("/upload/profile-image/update", isAuthenticated, mediaController.profileImageUploadHandler);
-  router.post("/upload/post-video", isAuthenticated, mediaController.postVideoOrImageUploadHandler);
+  // router.post("/upload/post-video", isAuthenticated, mediaController.postVideoOrImageUploadHandler);
 
   return router;
 }

@@ -73,37 +73,37 @@ class MediaController {
     }
   };
 
-  postVideoOrImageUploadHandler = async ( req: Request<{}, {}, PostVideoOrImageUploadDto["body"]>, res: Response, next: NextFunction ) => {
-    try {
-      const { userId } = req
+  // postVideoOrImageUploadHandler = async ( req: Request<{}, {}, PostVideoOrImageUploadDto["body"]>, res: Response, next: NextFunction ) => {
+  //   try {
+  //     const { userId } = req
 
-      const validationResult = postVideoOrImageUpladSchema.safeParse(req.body);
-      if (!validationResult.success) {
-        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(validationResult.error));
-      }
+  //     const validationResult = postVideoOrImageUpladSchema.safeParse(req.body);
+  //     if (!validationResult.success) {
+  //       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(validationResult.error));
+  //     }
 
-      if(!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
-      }
+  //     if(!userId) {
+  //       throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
+  //     }
 
-      // Publihs event for user service
-      await this.mediaService.postMediaUpload(
-        userId,
-        validationResult.data.body.postId,
-        validationResult.data.body.secureUrl,
-        validationResult.data.body.publicId,
-        validationResult.data.body.mediaType,
-      );
+  //     // Publihs event for user service
+  //     await this.mediaService.postMediaUpload(
+  //       userId,
+  //       validationResult.data.body.postId,
+  //       validationResult.data.body.secureUrl,
+  //       validationResult.data.body.publicId,
+  //       validationResult.data.body.mediaType,
+  //     );
 
-      res.status(StatusCodes.CREATED).json({
-        success: true,
-        message: "Media uplad evenet published successfuly",
-      });
+  //     res.status(StatusCodes.CREATED).json({
+  //       success: true,
+  //       message: "Media uplad evenet published successfuly",
+  //     });
 
-    } catch (error) {
-      next(error);
-    }
-  };
+  //   } catch (error) {
+  //     next(error);
+  //   }
+  // };
 }
 
 export default MediaController;

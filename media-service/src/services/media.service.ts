@@ -20,23 +20,23 @@ class MediaService {
     );
   }
 
-  postMediaUpload = async (
-    userId: string,
-    postId: string,
-    secureUrl: string,
-    publicId: string,
-    mediType: string,
-  ) => {
+  // postMediaUpload = async (
+  //   userId: string,
+  //   postId: string,
+  //   secureUrl: string,
+  //   publicId: string,
+  //   mediType: string,
+  // ) => {
     
-    await this.mediaServiceEventPublisher.publishPostMediaUploadedEvent(
-      userId, 
-      postId, 
-      mediType, 
-      secureUrl, 
-      publicId
-    );
+  //   await this.mediaServiceEventPublisher.publishPostMediaUploadedEvent(
+  //     userId, 
+  //     postId, 
+  //     mediType, 
+  //     secureUrl, 
+  //     publicId
+  //   );
     
-  }
+  // }
 }
 
 export default MediaService;

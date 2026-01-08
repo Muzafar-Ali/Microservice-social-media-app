@@ -28,7 +28,7 @@ export const updatePostSchema = z.object({
 })
 
 export const postIdSchema = z.object({
-  postId: z.string().trim().min(1, "postId param is required")
+  postId: z.string().trim().min(1, "post id param is required").max(64, "invalid post id")
 })
 
 export const queryPaginationSchema = z.object({

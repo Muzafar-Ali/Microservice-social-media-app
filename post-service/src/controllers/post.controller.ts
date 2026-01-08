@@ -33,9 +33,16 @@ export class PostController {
     }
   }
 
-  async getPostByIdHandler(req: Request, res: Response, next: NextFunction) {
+  async getPostByIdHandler(req: Request<postIdDto>, res: Response, next: NextFunction) {
     try {
-      const post = await this.postService.getPostById(req.params.id);
+      const safeParams = postIdSchema.safeParse(req.params);
+
+      if(!safeParams.success) {
+        const erroMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, erroMessages);
+      }
+      const post = await this.postService.getPostById(safeParams.data.postId);
+      
       if (!post) {
         throw new ApiErrorHandler(404, 'Post not found');
       }

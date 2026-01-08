@@ -55,8 +55,8 @@ export class PostService {
 
     const post = await this.postRepository.update(postId, { 
       content: input.content,
-      editedAt: new Date(),
-      isEdited: true 
+        editedAt: new Date(),
+        isEdited: true 
     });
 
     // postUpdatedCounter.inc();

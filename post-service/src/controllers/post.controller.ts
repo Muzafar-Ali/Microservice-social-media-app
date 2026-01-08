@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
-import { CreatePostDto, createPostSchema, postIdDto, postIdSchema, UpdatePostDto, updatePostSchema } from '../schema/post.schema.js';
+import { CreatePostDto, createPostSchema, postIdDto, postIdSchema, QuerryPaginationDto, queryPaginationSchema, UpdatePostDto, updatePostSchema } from '../schema/post.schema.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
@@ -8,7 +8,11 @@ import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 export class PostController {
   constructor(private postService: PostService) {}
 
-  async createPostHandler(req: Request<{}, {}, CreatePostDto>, res: Response, next: NextFunction) {
+  async createPostHandler(
+    req: Request<Record<string, never>, any, CreatePostDto>, 
+    res: Response, 
+    next: NextFunction
+  ) {
     try {
       const data = req.body;
       const { userId } = req;
@@ -42,11 +46,30 @@ export class PostController {
     }
   }
 
-  async getAllPostsHandler(req: Request, res: Response, next: NextFunction) {
+  async getAllPostsHandler(
+    req: Request<Record<string, never>, any, Record<string, never>, QuerryPaginationDto>, 
+    res: Response, 
+    next: NextFunction
+  ) {
     try {
-      const posts = await this.postService.getAllPosts();
+      const safeQuery = queryPaginationSchema.safeParse(req.query);
+
+      if(!safeQuery.success) {
+        const errorMessagge = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessagge);
+      }
+
+      const { page, limit } = safeQuery.data
+      const skip = (page - 1) * limit;
       
-      res.status(200).json({ success: true, data: posts });
+      const { posts, meta } = await this.postService.getAllPosts(page, limit, skip);
+      
+      res.status(200).json({ 
+        success: true, 
+        data: posts,
+        meta
+      });
+
     } catch (error) {
       logger.error(error, 'Error in getAllPostsHandler');
       next(error);

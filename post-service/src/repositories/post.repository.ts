@@ -47,6 +47,26 @@ export class PostRepository {
     });
   }
 
+  async findAllPaginated(skip: number, limit: number) {
+    
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        skip: skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      
+      this.prisma.post.count()
+    ])
+
+    return {
+      posts, 
+      total
+    }
+  }
+
   async update(postId: string, data: PostUpdate) {
     return this.prisma.post.update({
       where: { id: postId },

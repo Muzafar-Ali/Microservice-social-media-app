@@ -27,11 +27,16 @@ export const updatePostSchema = z.object({
   path:["content"]
 })
 
-
 export const postIdSchema = z.object({
   postId: z.string().trim().min(1, "postId param is required")
+})
+
+export const queryPaginationSchema = z.object({
+  page: z.coerce.number().int("page must be an integer").min(1,"Page must be at least 1").default(1),
+  limit: z.coerce.number().int("limit must be an integer").min(1, "Limit must be at least 1").max(100, "Limit cannot exceed 100").default(50)
 })
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
 export type postIdDto = z.infer<typeof postIdSchema>
+export type QuerryPaginationDto = z.infer<typeof queryPaginationSchema>

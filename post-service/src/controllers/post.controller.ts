@@ -45,6 +45,7 @@ export class PostController {
   async getAllPostsHandler(req: Request, res: Response, next: NextFunction) {
     try {
       const posts = await this.postService.getAllPosts();
+      
       res.status(200).json({ success: true, data: posts });
     } catch (error) {
       logger.error(error, 'Error in getAllPostsHandler');

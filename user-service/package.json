@@ -5,14 +5,14 @@
   "main": "dist/server.js",
   "type": "module",
   "scripts": {
-    "test": "jest --config jest.config.ts",
-    "test:controllers": "jest --config jest.config.ts tests/controllers",
-    "test:services": "jest --config jest.config.ts tests/services",
-    "test:schema": "jest --config jest.config.ts tests/schema",
     "start": "node dist/server.js",
     "dev": "nodemon dist/server.js",
     "build": "tsc",
     "watch": "tsc -w",
+    "test": "jest --config jest.config.ts",
+    "test:controllers": "jest --config jest.config.ts tests/controllers",
+    "test:services": "jest --config jest.config.ts tests/unit/modules",
+    "test:schema": "jest --config jest.config.ts tests/schema",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:generate": "prisma generate"

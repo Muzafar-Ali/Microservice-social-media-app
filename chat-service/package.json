@@ -1,0 +1,27 @@
+{
+  "name": "chat-service",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Muzafar Ali",
+  "license": "ISC",
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "mongodb": "^7.0.0",
+    "mongoose": "^9.1.5"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "typescript": "^5.9.3"
+  }
+}

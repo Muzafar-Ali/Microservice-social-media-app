@@ -8,7 +8,7 @@ type UserTokenPayload = {
   username: string
 }
 
-const JWT_SECRET = config.jwtSecret as string; 
+const JWT_SECRET = config .jwtSecret as string; 
 
 export const generateJwtToken = (payload: UserTokenPayload) => {
   const token = JWT.sign(payload, JWT_SECRET);

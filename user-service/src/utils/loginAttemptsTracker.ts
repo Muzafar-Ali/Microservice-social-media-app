@@ -1,7 +1,7 @@
 import { redis } from "../config/redisClient.js";
 import { TLoginContext } from "../modules/auth/auth.types.js";
 import logger from "./logger.js";
-import { failedLoginAttemptsCacheKey, loginLockoutCacheKey } from "./cache/authCacheKeys.js";
+import { failedLoginAttemptsCacheKey, loginLockoutCacheKey } from "./cacheKeys/authCacheKeys.js";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_TTL_SECONDS = 15 * 60; // 15 minutes
@@ -31,7 +31,7 @@ export const recordFailedLoginAttempt = async (context: TLoginContext) => {
   // Lock the user temporarily after 5 failed login attempts
   if( newCount >= MAX_FAILED_ATTEMPTS ) {
     const lockKey = loginLockoutCacheKey(context.identifier);
-    await redis.set( lockKey, "1", { EX: LOCKOUT_TTL_SECONDS} );
+    await redis.set( lockKey, "1", { EX: LOCKOUT_TTL_SECONDS } );
     
     logger.warn(
       {

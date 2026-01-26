@@ -5,7 +5,8 @@ const authRoutes = (authController: AuthController) => {
 
   const router = Router();
 
-  router.route("/login").post(authController.loginHandler);
+  router.route("/web/login").post(authController.webLoginHandler);
+  router.route("/mobile/login").post(authController.mobileLoginHandler);
   
   return router;
 }

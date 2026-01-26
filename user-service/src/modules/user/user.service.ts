@@ -1,6 +1,6 @@
 import { redis } from '../../config/redisClient.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
-import { getUserCacheKeyById, getUserCacheKeyByUsername, USER_CACHE_TTL_SECONDS } from '../../utils/cache/userCacheKeys.js';
+import { getUserCacheKeyById, getUserCacheKeyByUsername, USER_CACHE_TTL_SECONDS } from '../../utils/cacheKeys/userCacheKeys.js';
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';

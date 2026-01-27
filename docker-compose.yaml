@@ -175,6 +175,23 @@ services:
     env_file:
       - ./post-service/.env.app
 
+  # =================================================================
+  #                   🚪 API Gateways (routing-only)
+  # =================================================================
+  web-gateway:
+    build: ./web-gateway
+    ports:
+      - "8088:8088"
+    environment:
+      PORT: 8088
+      USER_SERVICE_URL: "http://user-service:4001"
+      MEDIA_SERVICE_URL: "http://media-service:4002"
+      POST_SERVICE_URL: "http://post-service:4003"
+    depends_on:
+      - user-service
+      - media-service
+      - post-service
+
 volumes:
   user_db_data:
     driver: local

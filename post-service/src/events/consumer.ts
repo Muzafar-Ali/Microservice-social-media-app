@@ -56,14 +56,14 @@ class postEventConsumer {
 
   // --- Handlers per topic -----------------------------------------
   private handlePostMediaUpdate = async (rawData: string, partition: number) => {
-    const data: PostMediaUpload  = JSON.parse(rawData);
+    // const data: PostMediaUpload  = JSON.parse(rawData);
 
-    const typeOfMedia = data.mediaType === "image"
+    // const typeOfMedia = data.mediaType === "image"
     
-    try {
-      await this.postService.updatePost(data.postId, data)
-    } catch (error) {
+    // try {
+    //   await this.postService.updatePost(data.postId, data)
+    // } catch (error) {
       
-    }
+    // }
   }
 }

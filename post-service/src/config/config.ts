@@ -9,7 +9,8 @@ const config = {
   dataBaseUrl: process.env.DATABASE_URL,
   serviceName: process.env.SERVICE_NAME || 'post-service',
   logLevel: process.env.LOG_LEVEL || 'info',
-  kafkaBrokers: process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ["localhost:9092"],
+  // kafkaBrokers: process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ["localhost:9092"],
+  kafkaBrokers: ["kafka:9092"],
   jwtSecret: process.env.JWT_SECRET,
 };
 

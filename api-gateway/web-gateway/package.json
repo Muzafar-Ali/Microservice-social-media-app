@@ -2,9 +2,14 @@
   "name": "web-gateway",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/app.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/app.js",
+    "dev": "nodemon dist/app.js",
+    "build": "tsc",
+    "watch": "tsc -w"
   },
   "author": "Muzafar Ali",
   "license": "ISC",
@@ -13,6 +18,8 @@
     "http-proxy-middleware": "^3.0.5"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6"
+    "@types/express": "^5.0.6",
+    "nodemon": "^3.1.11",
+    "typescript": "^5.9.3"
   }
 }

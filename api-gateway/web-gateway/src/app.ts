@@ -11,7 +11,7 @@ const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL ?? "http://chat-service:40
 app.get("/health", (_req, res) => {
   res.json({
     ok: true,
-    service: "mobile-gateway"
+    service: "web-gateway"
   })
 })
 
@@ -19,14 +19,19 @@ app.get("/health", (_req, res) => {
 app.use("/api/user", createProxyMiddleware({
   target: USER_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: { "^/api/users": "" },
 }));
+
+// Route: /api/auth/* -> user-service/*
+app.use("/api/auth", createProxyMiddleware({
+  target: USER_SERVICE_URL,
+  changeOrigin: true,
+}));
+
 
 // Route: /api/media/* -> media-service/*
 app.use("/api/media", createProxyMiddleware({
     target: MEDIA_SERVICE_URL,
     changeOrigin: true,
-    pathRewrite: { "^/api/media": "" },
   })
 );
 
@@ -34,7 +39,6 @@ app.use("/api/media", createProxyMiddleware({
 app.use("/api/posts", createProxyMiddleware({
     target: POST_SERVICE_URL,
     changeOrigin: true,
-    pathRewrite: { "^/api/posts": "" },
   })
 );
 
@@ -42,14 +46,14 @@ app.use("/api/posts", createProxyMiddleware({
 app.use("/api/chat", createProxyMiddleware({
     target: CHAT_SERVICE_URL,
     changeOrigin: true,
-    pathRewrite: { "^/api/chat": "" },
   })
 );
 
 const port = Number(process.env.PORT ?? 8088);
 app.listen(port, () => {
   console.log(`[${"web-gateway"}] listening on http://localhost:${port}`);
-  console.log(`  /api/users -> ${USER_SERVICE_URL}`);
+  console.log(`  /api/auth -> ${USER_SERVICE_URL}`);
+  console.log(`  /api/user -> ${USER_SERVICE_URL}`);
   console.log(`  /api/media -> ${MEDIA_SERVICE_URL}`);
   console.log(`  /api/posts -> ${POST_SERVICE_URL}`);
   console.log(`  /api/chat  -> ${CHAT_SERVICE_URL}`);

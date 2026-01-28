@@ -6,12 +6,12 @@ import globalErrorHandler from "./middlewares/globalErrorHandler.middleware.js";
 import notFoundHandler from "./middlewares/notFoundHandler.middleware.js";
 import { metricsHandler, metricsMiddleware } from "./monitoring/metrics.js"; // Monitoring needs to be added later
 import getKafkaProducer from "./utils/getKafkaProducer.js";
-import logger from "./utils/logger.js";
 import postRoutes from "./routes/post.routes.js";
 import { PostRepository } from "./repositories/post.repository.js";
 import { PostService } from "./services/post.service.js";
 import { PostController } from "./controllers/post.controller.js";
 import prisma from "./config/prismaClient.js";
+import { PostEventPublisher } from "./events/producer.js";
 
 export async function createApp() {
   const producer = await getKafkaProducer();
@@ -19,8 +19,11 @@ export async function createApp() {
   // Initialize repositories with injected Prisma
   const postRepository = new PostRepository(prisma);
   
+   // Initialize event consumer (inject singleton Kafka producer)
+  const postEventPublisher = new PostEventPublisher(producer);
+  
   //  Initialize services
-  const postService = new PostService(postRepository, producer); // Producer might be used in service for events
+  const postService = new PostService(postRepository, postEventPublisher); // Producer might be used in service for events
 
   // Initialize controllers
   const postController = new PostController(postService);

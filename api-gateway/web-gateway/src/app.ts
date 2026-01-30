@@ -15,16 +15,20 @@ app.get("/health", (_req, res) => {
   })
 })
 
-// Route: /api/users/* -> user-service/*
+// Route: /api/user/* -> user-service/*
 app.use("/api/user", createProxyMiddleware({
   target: USER_SERVICE_URL,
   changeOrigin: true,
+  pathRewrite: (path, _req) => `/api/user${path}`,  // ✅ adds prefix back
 }));
+
 
 // Route: /api/auth/* -> user-service/*
 app.use("/api/auth", createProxyMiddleware({
   target: USER_SERVICE_URL,
   changeOrigin: true,
+  pathRewrite: (path, _req) => `/api/auth${path}`,  // ✅ adds prefix back
+
 }));
 
 
@@ -32,6 +36,7 @@ app.use("/api/auth", createProxyMiddleware({
 app.use("/api/media", createProxyMiddleware({
     target: MEDIA_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: (path, _req) => `/api/media${path}`,  // ✅ adds prefix back
   })
 );
 
@@ -39,6 +44,7 @@ app.use("/api/media", createProxyMiddleware({
 app.use("/api/posts", createProxyMiddleware({
     target: POST_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: (path, _req) => `/api/posts${path}`,  // ✅ adds prefix back
   })
 );
 
@@ -46,6 +52,7 @@ app.use("/api/posts", createProxyMiddleware({
 app.use("/api/chat", createProxyMiddleware({
     target: CHAT_SERVICE_URL,
     changeOrigin: true,
+    pathRewrite: (path, _req) => `/api/chat${path}`,  // ✅ adds prefix back
   })
 );
 

@@ -31,7 +31,6 @@ app.use("/api/auth", createProxyMiddleware({
 
 }));
 
-
 // Route: /api/media/* -> media-service/*
 app.use("/api/media", createProxyMiddleware({
     target: MEDIA_SERVICE_URL,
@@ -57,11 +56,34 @@ app.use("/api/chat", createProxyMiddleware({
 );
 
 const port = Number(process.env.PORT ?? 8088);
-app.listen(port, () => {
-  console.log(`[${"web-gateway"}] listening on http://localhost:${port}`);
-  console.log(`  /api/auth -> ${USER_SERVICE_URL}`);
-  console.log(`  /api/user -> ${USER_SERVICE_URL}`);
+
+
+const server = app.listen(port, () => {
+  console.log(`[web-gateway] listening on http://localhost:${port}`);
+  console.log(`  /api/auth  -> ${USER_SERVICE_URL}`);
+  console.log(`  /api/user  -> ${USER_SERVICE_URL}`);
   console.log(`  /api/media -> ${MEDIA_SERVICE_URL}`);
   console.log(`  /api/posts -> ${POST_SERVICE_URL}`);
   console.log(`  /api/chat  -> ${CHAT_SERVICE_URL}`);
 });
+
+// Graceful shutdown
+function gracefulShutdown(signal: string) {
+  console.log(`[web-gateway] ${signal} received. Shutting down gracefully...`);
+
+  // Stop accepting new connections, finish in-flight requests
+  server.close(() => {
+    console.log("[web-gateway] All connections closed. Exiting.");
+    process.exit(0);
+  });
+
+  // Force exit if something is stuck
+  setTimeout(() => {
+    console.error("[web-gateway] Force shutdown after timeout");
+    process.exit(1);
+  }, 10_000).unref();
+}
+
+// Handle Kubernetes + local shutdown signals
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM")); // Kubernetes / docker stop
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));   // Ctrl+C

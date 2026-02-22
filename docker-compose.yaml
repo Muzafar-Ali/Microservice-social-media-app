@@ -1,3 +1,7 @@
+networks:
+  backend-network:
+    driver: bridge
+
 services:
   # =================================================================
   #                   🧱 Infra / Shared Components
@@ -29,6 +33,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - backend-network
 
   # ---------------------------------------------------------------
   #                 🔎 Kafka UI: Redpanda Console
@@ -42,6 +48,9 @@ services:
       KAFKA_BROKERS: "kafka:9092"
     depends_on:
       - kafka
+    networks:
+      - backend-network
+
   kafdrop:
     image: obsidiandynamics/kafdrop
     restart: always
@@ -51,6 +60,8 @@ services:
       KAFKA_BROKERCONNECT: "kafka:9092"
     depends_on:
       - kafka
+    networks:
+      - backend-network
 
   redis-cache:
     image: redis:7
@@ -64,6 +75,8 @@ services:
       interval: 3s
       timeout: 3s
       retries: 5
+    networks:
+      - backend-network
 
   prometheus:
     image: prom/prometheus
@@ -76,6 +89,8 @@ services:
     depends_on:
       - user-service
       - media-service
+    networks:
+      - backend-network
 
   grafana:
     image: grafana/grafana-oss
@@ -86,6 +101,8 @@ services:
       - prometheus
     volumes:
       - grafana_data:/var/lib/grafana
+    networks:
+      - backend-network
 
   # =================================================================
   #                         🗄 Databases
@@ -105,6 +122,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    networks:
+      - backend-network
   
   post-db:
     image: postgres:16
@@ -121,6 +140,8 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+    networks:
+      - backend-network
 
   # =================================================================
   #                       👤 Business Services
@@ -143,6 +164,8 @@ services:
       sh -c "npx prisma migrate deploy && node dist/server.js"
     env_file:
       - ./user-service/.env.docker
+    networks:
+      - backend-network
 
   media-service:
     build: ./media-service
@@ -155,6 +178,8 @@ services:
       sh -c "node dist/server.js"
     env_file:
       - ./media-service/.env.docker
+    networks:
+      - backend-network
 
   post-service:
     build: 
@@ -174,6 +199,8 @@ services:
       sh -c "npx prisma migrate deploy && node dist/server.js"
     env_file:
       - ./post-service/.env.docker
+    networks:
+      - backend-network
 
   # =================================================================
   #                   🚪 API Gateways (routing-only)
@@ -191,6 +218,8 @@ services:
       - user-service
       - media-service
       - post-service
+    networks:
+      - backend-network
 
 volumes:
   user_db_data:

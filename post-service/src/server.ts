@@ -1,11 +1,12 @@
 import { createApp } from "./app.js";
+import { initRedis } from "./config/redisClient.js";
 // import { initRedis } from "./config/redisClient.js";
 
 const PORT = process.env.PORT || 4003;
 
 async function bootstrap() {
   try {
-    // await initRedis();
+    await initRedis();
     const app = await createApp();
 
     app.listen(PORT, () => {

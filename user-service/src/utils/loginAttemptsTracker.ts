@@ -9,12 +9,15 @@ const FAILURE_WINDOW_SECONDS = 15 * 60; // window in which failures accumulate
 
 export const recordFailedLoginAttempt = async (context: TLoginContext) => {
 
-  const key = failedLoginAttemptsCacheKey(context.identifier);
-  const newCount = await redis.incr(key);
+  const failKey = failedLoginAttemptsCacheKey(context.identifier);
+  const lockKey = loginLockoutCacheKey(context.identifier);
 
-  // Ensure key expires so failures don't accumulate forever
+  const newCount = await redis.incr(failKey);
+
+  // Set TTL on the failed-attempt counter key on the first failure only,
+  // starting a fixed-time window for counting attempts (no sliding reset).
   if(newCount === 1) {
-    await redis.expire(key, FAILURE_WINDOW_SECONDS);
+    await redis.expire(failKey, FAILURE_WINDOW_SECONDS);
   }
 
   logger.warn(
@@ -29,7 +32,7 @@ export const recordFailedLoginAttempt = async (context: TLoginContext) => {
   );
 
   // Lock the user temporarily after 5 failed login attempts
-  if( newCount >= MAX_FAILED_ATTEMPTS ) {
+  if( newCount === MAX_FAILED_ATTEMPTS ) {
     const lockKey = loginLockoutCacheKey(context.identifier);
     await redis.set( lockKey, "1", { EX: LOCKOUT_TTL_SECONDS } );
     

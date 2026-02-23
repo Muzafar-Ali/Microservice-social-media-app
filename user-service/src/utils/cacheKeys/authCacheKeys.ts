@@ -3,5 +3,5 @@
   }
   
   export const loginLockoutCacheKey = (identifier: string) => {
-    return `auth:login:lock:user:${identifier}`;
+    return `auth:login:locked:user:${identifier}`;
   }

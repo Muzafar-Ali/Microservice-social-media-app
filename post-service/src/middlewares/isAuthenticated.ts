@@ -35,11 +35,11 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
     }
 
     if(!token) {
-      throw new ApiErrorHandler(401, "Please login") // Using 401 directly
+      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login") // Using 401 directly
     }
 
     if (!config.jwtSecret) {
-      throw new ApiErrorHandler(500, "JWT secret is not configured");
+      throw new ApiErrorHandler(StatusCodes.INTERNAL_SERVER_ERROR, "JWT secret is not configured");
     }
 
     const decode = verify(token, config.jwtSecret) as UserToken
@@ -51,11 +51,11 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
 
   } catch (error) {
     if( error instanceof TokenExpiredError) {
-      return next(new ApiErrorHandler(401, "Session expired, please login again")) // Using 401
+      return next(new ApiErrorHandler(401, "Session expired, please login again")) 
     }
 
     if( error instanceof JsonWebTokenError) {
-      return next( new ApiErrorHandler(401, "Invalid token, please login again")) // Using 401
+      return next( new ApiErrorHandler(401, "Invalid token, please login again"))
     }
 
     return next(error)

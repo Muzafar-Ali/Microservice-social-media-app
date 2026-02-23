@@ -11,6 +11,7 @@ type SessionData = {
   createdAt: number;
   ip?: string;
   userAgent?: string;
+  expiry: number
 };
 
 export const generateSessionId = () => {
@@ -28,6 +29,7 @@ export const createWebSession = async ( params: {
   const sessionData: SessionData = {
     userId: params.userId,
     createdAt: Date.now(),
+    expiry: SESSION_TTL_SECONDS,
     ip: params.ip,
     userAgent: params.userAgent,
   };

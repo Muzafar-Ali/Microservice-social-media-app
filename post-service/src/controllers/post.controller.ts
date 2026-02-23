@@ -130,4 +130,10 @@ export class PostController {
       next(error);
     }
   }
+
+  async createTest(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+    res.status(200).json({
+      message: "its test"
+    })
+  }
 }

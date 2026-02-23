@@ -12,6 +12,7 @@ const config = {
   // kafkaBrokers: process.env.KAFKA_BROKERS ? process.env.KAFKA_BROKERS.split(',') : ["localhost:9092"],
   kafkaBrokers: ["kafka:9092"],
   jwtSecret: process.env.JWT_SECRET,
+  redisUrl: process.env.REDIS_URL || "redis://redis-cache:6379" || "redis://localhost:6379"
 };
 
 export default config;

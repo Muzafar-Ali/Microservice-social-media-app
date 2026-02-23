@@ -1,12 +1,8 @@
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware'
+import config from './config/config.js';
 
 const app = express()
-
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL ?? "http://user-service:4001";
-const MEDIA_SERVICE_URL = process.env.MEDIA_SERVICE_URL ?? "http://media-service:4002";
-const POST_SERVICE_URL = process.env.POST_SERVICE_URL ?? "http://post-service:4003";
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL ?? "http://chat-service:4004";
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -17,7 +13,7 @@ app.get("/health", (_req, res) => {
 
 // Route: /api/user/* -> user-service/*
 app.use("/api/user", createProxyMiddleware({
-  target: USER_SERVICE_URL,
+  target: config.userServiceUrl,
   changeOrigin: true,
   pathRewrite: (path, _req) => `/api/user${path}`,  // ✅ adds prefix back
 }));
@@ -25,7 +21,7 @@ app.use("/api/user", createProxyMiddleware({
 
 // Route: /api/auth/* -> user-service/*
 app.use("/api/auth", createProxyMiddleware({
-  target: USER_SERVICE_URL,
+  target: config.userServiceUrl,
   changeOrigin: true,
   pathRewrite: (path, _req) => `/api/auth${path}`,  // ✅ adds prefix back
 
@@ -33,7 +29,7 @@ app.use("/api/auth", createProxyMiddleware({
 
 // Route: /api/media/* -> media-service/*
 app.use("/api/media", createProxyMiddleware({
-    target: MEDIA_SERVICE_URL,
+    target: config.mediaServiceUrl,
     changeOrigin: true,
     pathRewrite: (path, _req) => `/api/media${path}`,  // ✅ adds prefix back
   })
@@ -41,7 +37,7 @@ app.use("/api/media", createProxyMiddleware({
 
 // Route: /api/posts/* -> post-service/*
 app.use("/api/posts", createProxyMiddleware({
-    target: POST_SERVICE_URL,
+    target: config.mediaServiceUrl,
     changeOrigin: true,
     pathRewrite: (path, _req) => `/api/posts${path}`,  // ✅ adds prefix back
   })
@@ -49,7 +45,7 @@ app.use("/api/posts", createProxyMiddleware({
 
 // Route: /api/chat/* -> chat-service/*
 app.use("/api/chat", createProxyMiddleware({
-    target: CHAT_SERVICE_URL,
+    target: config.chatServiceUrl,
     changeOrigin: true,
     pathRewrite: (path, _req) => `/api/chat${path}`,  // ✅ adds prefix back
   })
@@ -60,11 +56,11 @@ const port = Number(process.env.PORT ?? 8088);
 
 const server = app.listen(port, () => {
   console.log(`[web-gateway] listening on http://localhost:${port}`);
-  console.log(`  /api/auth  -> ${USER_SERVICE_URL}`);
-  console.log(`  /api/user  -> ${USER_SERVICE_URL}`);
-  console.log(`  /api/media -> ${MEDIA_SERVICE_URL}`);
-  console.log(`  /api/posts -> ${POST_SERVICE_URL}`);
-  console.log(`  /api/chat  -> ${CHAT_SERVICE_URL}`);
+  console.log(`  /api/auth  -> ${config.userServiceUrl}`);
+  console.log(`  /api/user  -> ${config.userServiceUrl}`);
+  console.log(`  /api/media -> ${config.mediaServiceUrl}`);
+  console.log(`  /api/posts -> ${config.postServiceLUrl}`);
+  console.log(`  /api/chat  -> ${config.chatServiceUrl}`);
 });
 
 // Graceful shutdown

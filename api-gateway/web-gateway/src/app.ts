@@ -37,7 +37,7 @@ app.use("/api/media", createProxyMiddleware({
 
 // Route: /api/posts/* -> post-service/*
 app.use("/api/posts", createProxyMiddleware({
-    target: config.mediaServiceUrl,
+    target: config.postServiceLUrl,
     changeOrigin: true,
     pathRewrite: (path, _req) => `/api/posts${path}`,  // ✅ adds prefix back
   })

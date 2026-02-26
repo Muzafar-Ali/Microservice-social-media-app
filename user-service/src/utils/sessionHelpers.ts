@@ -7,7 +7,7 @@ import { Response } from 'express';
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
 type SessionData = {
-  userId: number;
+  userId: string;
   createdAt: number;
   ip?: string;
   userAgent?: string;
@@ -19,7 +19,7 @@ export const generateSessionId = () => {
 }
 
 export const createWebSession = async ( params: {
-  userId: number;
+  userId: string;
   ip?: string;
   userAgent?: string;
 }) => {

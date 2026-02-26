@@ -18,13 +18,10 @@ export async function createApp() {
 
   // Initialize repositories with injected Prisma
   const postRepository = new PostRepository(prisma);
-  
    // Initialize event consumer (inject singleton Kafka producer)
   const postEventPublisher = new PostEventPublisher(producer);
-  
   //  Initialize services
   const postService = new PostService(postRepository, postEventPublisher); // Producer might be used in service for events
-
   // Initialize controllers
   const postController = new PostController(postService);
 

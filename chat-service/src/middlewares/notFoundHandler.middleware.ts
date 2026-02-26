@@ -1,8 +1,9 @@
 import { NextFunction, Request, Response } from "express";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass";
+import { StatusCodes } from "http-status-codes";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 
 const notFoundHandler = async(req: Request, res: Response, next: NextFunction) => {
-  const notFound = new ApiErrorHandler(404, `Route ${req.originalUrl} not found`);
+  const notFound = new ApiErrorHandler(StatusCodes.NOT_FOUND, `Route ${req.originalUrl} not found`);
   next(notFound);
 }
 

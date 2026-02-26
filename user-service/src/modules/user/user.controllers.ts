@@ -41,6 +41,7 @@ export class UserController {
       next(error)
     }
   }
+  
   getProfileById = async (req: Request<GetUserByIdDto>, res: Response, next: NextFunction) => {
     try {
       const parsedId = getUserByIdSchema.safeParse(req.params);
@@ -49,7 +50,7 @@ export class UserController {
         throw new ApiErrorHandler(400, formatZodError(parsedId.error));
       }
       
-      const profile = await this.userService.getUserById(Number(parsedId.data.id));
+      const profile = await this.userService.getUserById(String(parsedId.data.id));
 
       if(!profile) {
         throw new ApiErrorHandler(404, "user not found");
@@ -97,7 +98,7 @@ export class UserController {
         throw new ApiErrorHandler(400, formatZodError(parsedData.error))
       }
      
-      await this.userService.updateUserProfileImage(parsedData.data, Number(userId));
+      await this.userService.updateUserProfileImage(parsedData.data, String(userId));
 
       res.status(200).json({
         success: true,
@@ -123,7 +124,7 @@ export class UserController {
       }
 
       const updatedProfile = await this.userService.updateMyProfile(
-        Number(userId),
+        String(userId),
         parsedBody.data
       );
       const {password, ...userWithoutPassword} =  updatedProfile;

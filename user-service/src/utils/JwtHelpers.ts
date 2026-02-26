@@ -3,7 +3,7 @@ import config from "../config/config.js";
 import { Response } from "express";
 
 type UserTokenPayload = {
-  userId: number;
+  userId: string;
   email: string;
   username: string
 }

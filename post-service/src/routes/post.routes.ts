@@ -2,7 +2,7 @@ import express from 'express';
 import { PostController } from '../controllers/post.controller.js';
 import isAuthenticated from '../middlewares/isAuthenticated.js';
 import validateRequestBody from '../middlewares/validaterequestBody.middleware.js';
-import { createPostSchema, updatePostSchema } from '../schema/post.schema.js';
+import { createPostSchema, updatePostSchema } from '../validation/post.validation.js';
 import isAuthenticatedRedis from '../middlewares/isAUthenticatedRedis.js';
 
 const router = express.Router();

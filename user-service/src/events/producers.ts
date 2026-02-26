@@ -2,7 +2,7 @@ import { Producer } from "kafkajs";
 import { KAFKA_TOPICS } from "./topics.js";
 
 type UserCreatedPayload = {
-  id: number;
+  id: string;
   email: string;
   username: string;
   name: string | null;

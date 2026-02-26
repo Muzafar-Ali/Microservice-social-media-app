@@ -22,7 +22,7 @@ export class UserRepository {
     });
   }
 
-  findById = async (id: number): Promise<User | null> => {
+  findById = async (id: string): Promise<User | null> => {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
@@ -30,14 +30,14 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { username } });
   }
 
-  updateUser = async (id: number, data: UpdateMyProfileDto): Promise<User> => {
+  updateUser = async (id: string, data: UpdateMyProfileDto): Promise<User> => {
     return this.prisma.user.update({
       where: { id },
       data,
     });
   }
 
-  updateProfileImageById = async (secureUrl: string, publicId: string, userId: number) => {
+  updateProfileImageById = async (secureUrl: string, publicId: string, userId: string) => {
     return this.prisma.user.update({
       where: {
         id: userId,

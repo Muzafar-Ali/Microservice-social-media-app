@@ -4,7 +4,7 @@ import { UserService } from "../modules/user/user.service.js";
 import logger from "../utils/logger.js";
 
 type ProfileImageUpdatedEvent = {
-  userId: number;
+  userId: string;
   secureUrl: string;
   publicId: string;
 };

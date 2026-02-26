@@ -1,8 +1,9 @@
 import { createApp } from "./app.js";
+import config from "./config/config.js";
 import { initRedis } from "./config/redisClient.js";
 // import { initRedis } from "./config/redisClient.js";
 
-const PORT = process.env.PORT || 4003;
+const PORT = config.port;
 
 async function bootstrap() {
   try {

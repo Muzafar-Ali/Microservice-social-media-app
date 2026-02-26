@@ -1,6 +1,6 @@
 
 import { MediaType, PrismaClient } from '../generated/prisma/client.js';
-import { CreatePostDto } from '../schema/post.schema.js';
+import { CreatePostDto } from '../validation/post.validation.js';
 
 type PostUpdate = {
   content?: string;

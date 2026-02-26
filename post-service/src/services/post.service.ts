@@ -1,5 +1,5 @@
 import { PostRepository } from '../repositories/post.repository.js';
-import { CreatePostDto, UpdatePostDto } from '../schema/post.schema.js';
+import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/producer.js';

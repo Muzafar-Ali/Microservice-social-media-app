@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
-
-import ApiErrorHandler from "../utils/apiErrorHanlderClass.js";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import { redis } from "../config/redisClient.js";
 
 declare global {
@@ -12,6 +11,12 @@ declare global {
   }
 }
 
+/**
+ * Auth middleware:
+ * - reads sid cookie
+ * - loads session from Redis (session:<sid>)
+ * - attaches req.userId
+ */
 const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     const sessionId = req.cookies?.sid;
@@ -28,13 +33,11 @@ const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunc
     }
 
     const session = JSON.parse(sessionJson) as { userId: number; ip?: string; userAgent?: string };
-    
-    // Optional hardening (recommended): bind session to IP/User-Agent
-    // if (session.ip && session.ip !== req.ip) { ... }
-    // if (session.userAgent && session.userAgent !== req.get("user-agent")) { ... }
 
     req.userId = String(session.userId);
+
     return next();
+    
   } catch (error) {
     return next(error);
   }

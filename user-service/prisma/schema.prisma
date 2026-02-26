@@ -27,7 +27,7 @@ enum Status {
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
+  id              String    @id @default(uuid())
   username        String    @unique
   name            String
   email           String    @unique

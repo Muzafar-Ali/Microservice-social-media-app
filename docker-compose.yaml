@@ -143,6 +143,24 @@ services:
     networks:
       - backend-network
 
+  chat-db:
+    image: postgres:16
+    restart: always
+    env_file:
+      - ./chat-service/.env.db
+    ports:
+      - "5435:5432"
+    volumes:
+      - chat_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend-network
+
   # =================================================================
   #                       👤 Business Services
   # =================================================================
@@ -202,6 +220,27 @@ services:
     networks:
       - backend-network
 
+  chat-service:
+    build: 
+      context: ./chat-service
+      args:
+        DATABASE_URL: ${DATABASE_URL_CHAT}
+    ports:
+      - "4004:4004"
+    depends_on:
+      chat-db:
+       condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+    env_file:
+      - ./chat-service/.env.docker
+    networks:
+      - backend-network
+   
   # =================================================================
   #                   🚪 API Gateways (routing-only)
   # =================================================================
@@ -214,17 +253,24 @@ services:
       USER_SERVICE_URL: "http://user-service:4001"
       MEDIA_SERVICE_URL: "http://media-service:4002"
       POST_SERVICE_URL: "http://post-service:4003"
+      CHAT_SERVICE_URL: "http://chat-service:4004"
     depends_on:
       - user-service
       - media-service
       - post-service
+      - chat-service
     networks:
       - backend-network
 
+  # =================================================================
+  #                   🗄 Volumes
+  # =================================================================
 volumes:
   user_db_data:
     driver: local
   post_db_data:
+    driver: local
+  chat_db_data:
     driver: local
   grafana_data:
     driver: local

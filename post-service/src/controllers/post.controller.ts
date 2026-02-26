@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
-import { CreatePostDto, createPostSchema, postIdDto, postIdSchema, QuerryPaginationDto, queryPaginationSchema, UpdatePostDto, updatePostSchema } from '../schema/post.schema.js';
+import { CreatePostDto, PostIdDto, postIdSchema, QueryPaginationDto, queryPaginationSchema, UpdatePostDto, updatePostSchema } from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
@@ -33,7 +33,7 @@ export class PostController {
     }
   }
 
-  async getPostByIdHandler(req: Request<postIdDto>, res: Response, next: NextFunction) {
+  async getPostByIdHandler(req: Request<PostIdDto>, res: Response, next: NextFunction) {
     try {
       const safeParams = postIdSchema.safeParse(req.params);
 
@@ -54,7 +54,7 @@ export class PostController {
   }
 
   async getAllPostsHandler(
-    req: Request<Record<string, never>, any, Record<string, never>, QuerryPaginationDto>, 
+    req: Request<Record<string, never>, any, Record<string, never>, QueryPaginationDto>, 
     res: Response, 
     next: NextFunction
   ) {
@@ -83,7 +83,7 @@ export class PostController {
     }
   }
 
-  async updatePostHandler(req: Request<postIdDto, {}, UpdatePostDto>, res: Response, next: NextFunction) {
+  async updatePostHandler(req: Request<PostIdDto, {}, UpdatePostDto>, res: Response, next: NextFunction) {
     try {
       const data = req.body;
       const { userId } = req;

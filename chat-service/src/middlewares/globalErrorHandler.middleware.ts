@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass";
-import config from "../config/config";
-import logger from "../utils/logger";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
+import logger from "../utils/logger.js";
+import config from "../config/config.js";
 
 const globalErrorHandler = async (err: ApiErrorHandler, req: Request, res: Response, next: NextFunction) => {
 

@@ -8,6 +8,8 @@ import { UserEventPublisher } from '../../events/producers.js';
 import bcrypt from "bcrypt"
 import config from '../../config/config.js';
 
+export type SafeUSer = Omit<User, "password">
+
 export class UserService {
 
   constructor(
@@ -15,7 +17,7 @@ export class UserService {
     private userEventPublisher: UserEventPublisher
   ) {}
 
-  async createUser(dto: CreateUserDto): Promise<User> {
+  async createUser(dto: CreateUserDto): Promise<SafeUSer> {
 
     const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds!)
 
@@ -69,10 +71,10 @@ export class UserService {
     //   })
     // }
     
-    return user
+    return safeUser
   }
 
-  async getUserByUsername(username: string): Promise<User | null> {
+  async getUserByUsername(username: string): Promise<SafeUSer | null> {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
     const cached = await redis.get(cacheKey);
@@ -105,10 +107,10 @@ export class UserService {
       ),
     ]);
 
-    return user;
+    return safeUser;
   }
 
-  async getUserById(id: number): Promise<User | null> {
+  async getUserById(id: string): Promise<SafeUSer | null> {
     
     const cacheKey = getUserCacheKeyById(id);
     const cached = await redis.get(cacheKey);
@@ -138,10 +140,10 @@ export class UserService {
       }),
     ]);
 
-    return user;
+    return safeUser;
   }
 
-  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: number) => {
+  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
     const updatedUser = await this.userRepository.updateProfileImageById(
       dto.secureUrl, 
       dto.publicId, 
@@ -218,7 +220,7 @@ export class UserService {
   //   });
   // }
 
-    async updateMyProfile(authenticatedUserId: number, updatePayload: UpdateMyProfileDto) {
+    async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto) {
 
     const existingUser = await this.userRepository.findById(authenticatedUserId);
     

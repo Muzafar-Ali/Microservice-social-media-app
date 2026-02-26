@@ -9,6 +9,7 @@ const getKafkaProducer = async () => {
     await producer.connect();
     console.log('[Kafka] Producer connected (post-service)');
   }
+  
   return producer;
 };
 

@@ -38,5 +38,5 @@ export const queryPaginationSchema = z.object({
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
-export type postIdDto = z.infer<typeof postIdSchema>
-export type QuerryPaginationDto = z.infer<typeof queryPaginationSchema>
+export type PostIdDto = z.infer<typeof postIdSchema>
+export type QueryPaginationDto = z.infer<typeof queryPaginationSchema>

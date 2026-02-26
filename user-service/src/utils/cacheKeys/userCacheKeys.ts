@@ -1,6 +1,6 @@
 export const USER_CACHE_TTL_SECONDS = 3600;
   
-export const getUserCacheKeyById = (id: number) => {
+export const getUserCacheKeyById = (id: string) => {
   return `user:${id}`;
 }
 

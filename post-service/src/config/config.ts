@@ -5,7 +5,7 @@ dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 const config = {
   environment: process.env.NODE_ENV || 'development',
-  port: process.env.PORT || 4002,
+  port: process.env.PORT || 4003,
   dataBaseUrl: process.env.DATABASE_URL,
   serviceName: process.env.SERVICE_NAME || 'post-service',
   logLevel: process.env.LOG_LEVEL || 'info',

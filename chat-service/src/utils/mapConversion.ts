@@ -1,6 +1,6 @@
-import { ConversationResponseDto } from "../types/caht.types.js";
+import { BaseConversationDto, ConversationResponseDto } from "../types/caht.types.js";
 
-function mapConversation(conversation: any): ConversationResponseDto {
+function mapConversation(conversation: any): BaseConversationDto {
   return {
     id: conversation.id,
     type: conversation.type,
@@ -11,6 +11,7 @@ function mapConversation(conversation: any): ConversationResponseDto {
       userId: p.userId,
       role: p.role,
       joinedAt: p.joinedAt.toISOString(),
+      lastReadAt: p.lastReadAt ? p.lastReadAt.toISOString() : null,
     })),
   };
 }

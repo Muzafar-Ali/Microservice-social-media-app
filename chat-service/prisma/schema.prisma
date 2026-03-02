@@ -37,6 +37,7 @@ model Participant {
   userId         String          // user-service userId (stored as string)
   role           ParticipantRole @default(MEMBER)
   joinedAt       DateTime        @default(now())
+  lastReadAt     DateTime?       // last time user read this conversation
 
   conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 

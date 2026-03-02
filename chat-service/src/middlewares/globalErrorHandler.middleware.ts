@@ -16,7 +16,7 @@ const globalErrorHandler = async (err: ApiErrorHandler, req: Request, res: Respo
     method: req.method,
     ip: req.ip,
     userAgent: req.headers['user-agent']
-  })
+  });
   
   res.status(statusCode).json({
     success: false,

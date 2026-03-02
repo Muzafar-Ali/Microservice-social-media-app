@@ -1,20 +1,20 @@
 import { Server as HttpServer } from "http";
 import { Server } from "socket.io";
-import { ChatService } from "../services/chat.service.js";
 import { PresenceService } from "./presence.service.js";
 import { socketAuthMiddleware } from "./auth.middleware.js";
 import logger from "../utils/logger.js";
 import { registerCoreHandlers } from "./events/registerCoreHandlers.js";
 import config from "../config/config.js";
-
+import { ChatService } from "../services/chat.service.js";
 
 
 /**
  * Socket server bootstrapping:
  * - Attach to same HTTP server
- * - Apply auth middleware
- * - Setup connection lifecycle
- * - Hook core handlers (typing/presence)
+ * - Apply auth middleware (sid cookie -> redis session)
+ * - Setup presence lifecycle
+ * - Auto-join conversation rooms
+ * - Register chat handlers
  */
 export function initSocketServer(httpServer: HttpServer, chatService: ChatService) {
   const io = new Server(httpServer, {
@@ -39,19 +39,23 @@ export function initSocketServer(httpServer: HttpServer, chatService: ChatServic
     const presenceOnline = await presenceService.markOnline(userId, socket.id);
     io.emit("presence:update", presenceOnline);
 
-    /**
-     * IMPORTANT:
-     * We’ll join conversation rooms later, after we implement:
-     * - conversation membership in DB
-     * - a method in ChatService to list user's conversations
-     *
-     * For now: no auto-join. We'll add it step-by-step.
-     */
+    // Auto-join rooms for all conversations the user belongs to
+    try {
+      const myConversations = await chatService.listMyConversations(userId);
+      for (const conversation of myConversations) {
+        await socket.join(`conversation:${conversation.id}`);
+      }
+      logger.info(
+        { userId, roomsJoined: myConversations.length },
+        "🏠 auto-joined conversation rooms"
+      );
+    } catch (error) {
+      logger.warn({ userId, error }, "⚠️ failed to auto-join rooms");
+    }
 
-    // Register core handlers like typing, presence check
-    registerCoreHandlers(io, socket, presenceService);
+    // Register handlers (typing, join/leave, send)
+    registerCoreHandlers(io, socket, presenceService, chatService);
 
-    // Disconnect handling
     socket.on("disconnect", async () => {
       logger.info({ userId, socketId: socket.id }, "❌ socket disconnected");
 
@@ -63,6 +67,5 @@ export function initSocketServer(httpServer: HttpServer, chatService: ChatServic
   });
 
   logger.info({ port: config.port }, "🔌 Socket.IO initialized (chat-service)");
-
   return io;
 }

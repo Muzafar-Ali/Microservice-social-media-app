@@ -93,10 +93,10 @@ export const getUserByUsernameSchema = z.object({
 });
 
 export const getUserByIdSchema = z.object({
-  id: z.coerce
-    .number()
-    .int()
-    .min(1, { message: "User ID must be a positive integer" }),
+  id: z
+    .string()
+    .trim()
+    .min(1, { message: "User ID is required" }),
 });
 
 export const bulkUserLookupSchema = z.object({

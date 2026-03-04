@@ -18,35 +18,29 @@ export function registerCoreHandlers(
   const userId = socket.data.userId as string;
 
   // ---- Join a conversation room (on demand) ----
-  socket.on(
-    "chat:room:join",
-    async (payload: { conversationId: string }, callback?: (resp: any) => void) => {
-      try {
-        const { conversationId } = payload;
+  socket.on("chat:room:join", async (payload: { conversationId: string }, callback?: (resp: any) => void) => {
+    try {
+      const { conversationId } = payload;
 
-        const isMember = await chatService.isParticipant(conversationId, userId);
-        if (!isMember) {
-          if (callback) callback({ ok: false, message: "Not a conversation member" });
-          return;
-        }
-
-        await socket.join(`conversation:${conversationId}`);
-        if (callback) callback({ ok: true });
-      } catch (err) {
-        if (callback) callback({ ok: false, message: "Failed to join room" });
+      const isMember = await chatService.isParticipant(conversationId, userId);
+      if (!isMember) {
+        if (callback) callback({ ok: false, message: "Not a conversation member" });
+        return;
       }
+
+      await socket.join(`conversation:${conversationId}`);
+      if (callback) callback({ ok: true });
+    } catch (err) {
+      if (callback) callback({ ok: false, message: "Failed to join room" });
     }
-  );
+  });
 
   // ---- Leave a conversation room ----
-  socket.on(
-    "chat:room:leave",
-    async (payload: { conversationId: string }, callback?: (resp: any) => void) => {
-      const { conversationId } = payload;
-      await socket.leave(`conversation:${conversationId}`);
-      if (callback) callback({ ok: true });
-    }
-  );
+  socket.on("chat:room:leave", async (payload: { conversationId: string }, callback?: (resp: any) => void) => {
+    const { conversationId } = payload;
+    await socket.leave(`conversation:${conversationId}`);
+    if (callback) callback({ ok: true });
+  });
 
   // ---- Typing indicator ----
   socket.on("chat:typing", async (payload: { conversationId: string; isTyping: boolean }) => {
@@ -60,9 +54,7 @@ export function registerCoreHandlers(
   });
 
   // ---- Send message (persist + broadcast) ----
-  socket.on(
-    "chat:message:send",
-    async (
+  socket.on("chat:message:send", async (
       payload: { conversationId: string; body: string; metadata?: any },
       callback?: (resp: any) => void
     ) => {

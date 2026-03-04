@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-export const createConversationSchema = z.object({
-  type: z.enum(["DIRECT", "GROUP"]),
-  // DIRECT:
-  participantUserId: z.string().min(1).optional(),
-  // GROUP:
-  title: z.string().min(1).max(80).optional(),
-  participantUserIds: z.array(z.string().min(1)).optional(),
+export const createDirectConversationSchema = z.object({
+  participantUserId: z.string().min(1),
+})
+
+export const createGroupConversationSchema = z.object({
+  title: z.string().min(1).max(80),
+  participantUserIds: z.array(z.string().min(1))
 });
 
-export type CreateConversationDTO = z.infer<typeof createConversationSchema>;
+export type CreateDirectConversationDTO = z.infer<typeof createDirectConversationSchema>;
+export type CreateGroupeConversationDTO = z.infer<typeof createGroupConversationSchema>;

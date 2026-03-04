@@ -1,29 +1,52 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
 import { ChatService } from "../services/chat.service.js";
-import { CreateConversationDTO, createConversationSchema } from "../validations/chat.validation.js";
+import { CreateDirectConversationDTO, createDirectConversationSchema, createGroupConversationSchema, CreateGroupeConversationDTO } from "../validations/chat.validation.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  createConversation = async (req: Request<any, any, CreateConversationDTO>, res: Response, next: NextFunction) => {
+  createDirectConversation = async (req: Request<any, any, CreateDirectConversationDTO>, res: Response, next: NextFunction) => {
     try {
       if (!req.userId) {
         return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
       }
 
-      const parsed = createConversationSchema.safeParse(req.body);
+      const parsed = createDirectConversationSchema.safeParse(req.body);
       if (!parsed.success) {
-        return next(
-          new ApiErrorHandler(StatusCodes.BAD_REQUEST, parsed.error.issues.map(i => i.message).join(", "))
-        );
+        return next(new ApiErrorHandler(StatusCodes.BAD_REQUEST, parsed.error.issues.map(i => i.message).join(", ")));
       }
 
-      const conversation = await this.chatService.createConversation({
+      const conversation = await this.chatService.createDirectConversation({
         creatorUserId: req.userId,
-        type: parsed.data.type,
+        type: "DIRECT",
         participantUserId: parsed.data.participantUserId,
+      });
+
+      return res.status(StatusCodes.CREATED).json({
+        success: true,
+        data: conversation,
+      });
+    } catch (error) {
+      return next(error);
+    }
+  };
+
+  createGroupConversation = async (req: Request<any, any, CreateGroupeConversationDTO>, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
+      }
+
+      const parsed = createGroupConversationSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return next(new ApiErrorHandler(StatusCodes.BAD_REQUEST, parsed.error.issues.map(i => i.message).join(", ")));
+      }
+
+      const conversation = await this.chatService.createGroupConversation({
+        creatorUserId: req.userId,
+        type: "GROUP",
         title: parsed.data.title,
         participantUserIds: parsed.data.participantUserIds,
       });

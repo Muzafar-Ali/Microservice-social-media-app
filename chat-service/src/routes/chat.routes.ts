@@ -7,13 +7,12 @@ export default function chatRoutes(chatController: ChatController) {
   const router = Router();
 
   router.route("/conversations")
-    .post(isAuthenticatedRedis, chatController.createConversation)
-    .get(isAuthenticatedRedis, chatController.listMyConversations)
-
-  // // Create conversation (DIRECT/GROUP)
-  // router.post("/conversations", isAuthenticatedRedis, chatController.createConversation);
-  // // List my conversations
-  // router.get("/conversations", isAuthenticatedRedis, chatController.listMyConversations);
+  .get(isAuthenticatedRedis, chatController.listMyConversations)
+  
+  router.route("/conversations/direct")
+    .post(isAuthenticatedRedis, chatController.createDirectConversation)
+  router.route("/conversations/group")
+    .post(isAuthenticatedRedis, chatController.createGroupConversation)
 
   // Get messages with cursor pagination
   router.get("/conversations/:conversationId/messages", isAuthenticatedRedis, chatController.getConversationMessages);

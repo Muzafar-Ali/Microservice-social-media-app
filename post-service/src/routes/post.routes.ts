@@ -13,7 +13,8 @@ const postRoutes = (postController: PostController) => {
     .post(isAuthenticated, validateRequestBody(createPostSchema), postController.createPostHandler)
     .get(postController.getAllPostsHandler);
   
-  router.route('/test').get(isAuthenticatedRedis, postController.createTest)
+  router.route('/test').get(isAuthenticatedRedis, postController.createTest);
+
 
   router.route('/:postId')
     .get(postController.getPostByIdHandler)

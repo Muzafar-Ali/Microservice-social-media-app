@@ -7,6 +7,21 @@ import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
+    getMe = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
+      }
+
+      return res.status(StatusCodes.OK).json({
+        success: true,
+        data: { userId: req.userId },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  };
+
   createDirectConversation = async (req: Request<any, any, CreateDirectConversationDTO>, res: Response, next: NextFunction) => {
     try {
       if (!req.userId) {
@@ -82,7 +97,9 @@ export class ChatController {
       if (!req.userId) {
         return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
       }
-
+      console.log('req.params.conversationId', req.params.conversationId)
+      console.log('req.query.limit', req.query.limit)
+      console.log('req.query.cursorreq.query.limit', req.query.cursor)
       const conversationId = String(req.params.conversationId);
       const limit = Math.min(Number(req.query.limit ?? 30), 50); // max 50
       const cursorMessageId = req.query.cursor ? String(req.query.cursor) : undefined;

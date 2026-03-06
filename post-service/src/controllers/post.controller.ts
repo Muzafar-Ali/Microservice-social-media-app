@@ -1,6 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
-import { CreatePostDto, PostIdDto, postIdSchema, QueryPaginationDto, queryPaginationSchema, UpdatePostDto, updatePostSchema } from '../validation/post.validation.js';
+import { 
+  CreatePostDto,  
+  postIdParamsSchema,  
+  PostParamsIdDto,  
+  QueryPaginationDto, 
+  queryPaginationSchema, 
+  UpdatePostDto, 
+  updatePostSchema 
+} from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
@@ -8,11 +16,12 @@ import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 export class PostController {
   constructor(private postService: PostService) {}
 
-  async createPostHandler(
-    req: Request<Record<string, never>, any, CreatePostDto>, 
-    res: Response, 
-    next: NextFunction
-  ) {
+  /**
+   * @desc    Create a new post
+   * @route   POST /api/post
+   * @access  Private
+   */
+  async createPostHandler( req: Request<Record<string, never>, any, CreatePostDto>, res: Response, next: NextFunction) {
     try {
       const data = req.body;
       const { userId } = req;
@@ -33,9 +42,14 @@ export class PostController {
     }
   }
 
-  async getPostByIdHandler(req: Request<PostIdDto>, res: Response, next: NextFunction) {
+  /**
+   * @desc    Get a single post by ID
+   * @route   GET /api/post/:postId
+   * @access  Public
+   */
+  async getPostByIdHandler(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) {
     try {
-      const safeParams = postIdSchema.safeParse(req.params);
+      const safeParams = postIdParamsSchema.safeParse(req.params);
 
       if(!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
@@ -53,6 +67,11 @@ export class PostController {
     }
   }
 
+  /**
+   * @desc    Get all posts with pagination
+   * @route   GET /api/post?page=1&limit=10
+   * @access  Public
+   */
   async getAllPostsHandler(
     req: Request<Record<string, never>, any, Record<string, never>, QueryPaginationDto>, 
     res: Response, 
@@ -83,15 +102,22 @@ export class PostController {
     }
   }
 
-  async updatePostHandler(req: Request<PostIdDto, {}, UpdatePostDto>, res: Response, next: NextFunction) {
+
+
+  /**
+   * @desc    Update a post
+   * @route   PATCH /api/post/:postId
+   * @access  Private (Owner only)
+   */
+  async updatePostHandler(req: Request<PostParamsIdDto, any, UpdatePostDto>, res: Response, next: NextFunction) {
     try {
       const data = req.body;
       const { userId } = req;
       
-      const validationResult = postIdSchema.safeParse(req.params);
-      
-      if (!validationResult.success) {
-        throw new ApiErrorHandler(400, formatZodError(validationResult.error));
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
       
       if (!userId) {
@@ -100,7 +126,7 @@ export class PostController {
 
       // const post = await this.postService.updatePost(req.params.id, req.body, userId);
 
-      const post = await this.postService.updatePost(data, validationResult.data.postId, userId);
+      const post = await this.postService.updatePost(data, safeParams.data.postId, userId);
       
       res.status(200).json({ 
         success: true, 
@@ -112,14 +138,25 @@ export class PostController {
     }
   }
 
-  async deletePostHandler(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+  /**
+   * @desc    Delete a post
+   * @route   DELETE /api/post/:postId
+   * @access  Private (Owner only)
+   */
+  async deletePostHandler(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) {
     try {
       const { userId } = req;
       if (!userId) {
         throw new ApiErrorHandler(401,'Unauthorized');
       }
+      
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(400, formatZodError(safeParams.error));
+      }
+      
 
-      await this.postService.deletePost(req.params.id, userId);
+      await this.postService.deletePost(req.params.postId, userId);
       
       res.status(204).json({
         success: true,
@@ -136,4 +173,5 @@ export class PostController {
       message: "its test"
     })
   }
+
 }

@@ -27,9 +27,21 @@ export const updatePostSchema = z.object({
   path:["content"]
 })
 
-export const postIdSchema = z.object({
-  postId: z.string().trim().min(1, "post id param is required").max(64, "invalid post id")
-})
+export const postIdParamsSchema = z.object({
+  postId: z
+    .string()
+    .trim()
+    .min(1, "post id param is required")
+    .max(64, "invalid post id")
+});
+
+export const userIdParamsSchema = z.object({
+  userId: z
+    .string()
+    .trim()
+    .min(1, "post id param is required")
+    .max(64, "invalid post id")
+});
 
 export const queryPaginationSchema = z.object({
   page: z.coerce.number().int("page must be an integer").min(1,"Page must be at least 1").default(1),
@@ -38,5 +50,6 @@ export const queryPaginationSchema = z.object({
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
-export type PostIdDto = z.infer<typeof postIdSchema>
+export type PostParamsIdDto = z.infer<typeof postIdParamsSchema>
+export type UserParamsIdDto = z.infer<typeof userIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryPaginationSchema>

@@ -35,8 +35,8 @@ export const postIdParamsSchema = z.object({
     .max(64, "invalid post id")
 });
 
-export const userIdParamsSchema = z.object({
-  userId: z
+export const profileUserIdParamsSchema = z.object({
+  profileUserId: z
     .string()
     .trim()
     .min(1, "post id param is required")
@@ -51,5 +51,5 @@ export const queryPaginationSchema = z.object({
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
 export type PostParamsIdDto = z.infer<typeof postIdParamsSchema>
-export type UserParamsIdDto = z.infer<typeof userIdParamsSchema>
+export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryPaginationSchema>

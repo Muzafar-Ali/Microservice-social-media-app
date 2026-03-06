@@ -26,6 +26,10 @@ export class PostService {
     return this.postRepository.findById(postId);
   }
 
+  async getPostsByUserId(profileUserId: string) {
+    return this.postRepository.findPostsByUserId(profileUserId);
+  }
+
   async getAllPosts(page: number, limit: number, skip: number) {
     const { posts, total } = await this.postRepository.findAllPaginated(skip, limit);
 

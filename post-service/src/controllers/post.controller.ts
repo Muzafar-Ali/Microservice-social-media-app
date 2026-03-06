@@ -4,10 +4,13 @@ import {
   CreatePostDto,  
   postIdParamsSchema,  
   PostParamsIdDto,  
+  profileUserIdParamsSchema,  
+  ProfileUserParamsIdDto,  
   QueryPaginationDto, 
   queryPaginationSchema, 
   UpdatePostDto, 
-  updatePostSchema 
+  updatePostSchema, 
+
 } from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
@@ -50,17 +53,20 @@ export class PostController {
   async getPostByIdHandler(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
-
       if(!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(400, erroMessages);
       }
+
       const post = await this.postService.getPostById(safeParams.data.postId);
-      
       if (!post) {
         throw new ApiErrorHandler(404, 'Post not found');
       }
-      res.status(200).json({ success: true, data: post });
+
+      res.status(200).json({ 
+        success: true, 
+        data: post 
+      });
     } catch (error) {
       logger.error(error, 'Error in getPostByIdHandler');
       next(error);
@@ -99,6 +105,34 @@ export class PostController {
     } catch (error) {
       logger.error(error, 'Error in getAllPostsHandler');
       next(error);
+    }
+  }
+
+  /**
+   * @desc    Get posts by user ID
+   * @route   GET /api/post/user/:userId
+   * @access  Public
+   */
+  async getPostsByUserIdHandler(req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) {
+    try {
+      
+      const safeParams = profileUserIdParamsSchema.safeParse(req.params);
+
+      if(!safeParams.success) {
+        const erroMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, erroMessages);
+      }
+
+      const posts = await this.postService.getPostsByUserId(safeParams.data.profileUserId);
+
+      res.status(200).json({
+        success: true,
+        data: posts
+      })
+
+    } catch (error) {
+      logger.error(error, 'Error in getPostByUserIdHandler');
+      return next(error)
     }
   }
 

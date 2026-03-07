@@ -136,8 +136,6 @@ export class PostController {
     }
   }
 
-
-
   /**
    * @desc    Update a post
    * @route   PATCH /api/post/:postId

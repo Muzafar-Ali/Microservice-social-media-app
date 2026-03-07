@@ -16,7 +16,8 @@ export class PostRepository {
       data: {
         authorId,
         content: input.content ?? "",
-        media: input.media.length ? {
+        media: input.media?.length ? 
+        {
           create: input.media.map((item, index) => ({
             type: item.type === "image" ? MediaType.IMAGE : MediaType.VIDEO,
             url: item.url,
@@ -24,12 +25,11 @@ export class PostRepository {
             duration: item.duration ?? null,
             width: item.width ?? null,
             height: item.height ?? null,
-
-            // your prisma field is `order`
-            order: item.order ?? index,
+            order: index,
           })),
-        } : undefined
-      }
+        } 
+        : undefined
+      },
     });
   }
 

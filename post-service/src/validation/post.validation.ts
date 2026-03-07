@@ -3,21 +3,38 @@ import { z } from 'zod';
 
 export const postMediaItemSchema = z.object({
   type: z.enum(["image", "video"]),
-  url: z.url(),
-  thumbnailUrl: z.url().optional(),
+  url: z.url("Media URL must be a valid URL"),
+  thumbnailUrl: z.url("Thumbnail URL must be a valid URL").optional(),
   duration: z.number().int().positive().optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
-  order: z.number().int().nonnegative().optional(),
 });
 
 export const createPostSchema = z.object({
-  content: z.string().max(2200).optional().default(""),
-  media: z.array(postMediaItemSchema).optional().default([]),
-}).refine(
-  (data) => (data.content?.trim()?.length ?? 0) > 0 || (data.media?.length ?? 0) > 0,
-  { message: "Post must include either content text or at least one media item." }
-)
+  content: z.string().trim().max(2200, "Content must not exceed 2200 characters").optional(),
+  themeKey: z.string().trim().min(1, "Theme key cannot be empty").optional(),
+  media: z.array(postMediaItemSchema).max(5, "Maximum 5 media items are allowed'").optional().default([]),
+}).superRefine((data, ctx) => {
+
+  const hasContent = (data.content?.trim().length ?? 0) > 0;
+  const hasMedia = (data.media.length ?? 0) > 0;
+
+  if (!hasContent && !hasMedia) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Post must include either content text or at least one media item.',
+      path: ['content'],
+    });
+  }
+
+  if (data.themeKey && hasMedia) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Theme key can only be used for text-only posts.',
+      path: ['themeKey'],
+    });
+  }
+});
 
 export const updatePostSchema = z.object({
   postId: z.string().min(1, "postId is required"),

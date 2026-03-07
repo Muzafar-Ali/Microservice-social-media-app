@@ -15,11 +15,12 @@ model Post {
   id        String      @id @default(cuid())
   authorId  String
   content   String      @default("") @db.Text
+  themeKey  String?
 
   editedAt  DateTime?
   isEdited  Boolean     @default(false)
 
-  media     PostMedia[] // carousel
+  media     PostMedia[]  // carousel
   likes     PostLike[]
   comments  PostComment[]
 

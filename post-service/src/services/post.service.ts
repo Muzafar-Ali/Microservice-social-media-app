@@ -3,6 +3,7 @@ import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/producer.js';
+import { MediaType } from '../generated/prisma/enums.js';
 
 export class PostService {
   constructor(
@@ -44,6 +45,53 @@ export class PostService {
         hasPrevious: page > 1
       }
     }
+  }
+
+  async getUserGridPosts(
+    profileUserId: string,
+    query: { page?: number; limit?: number }
+  ) {
+    const page = !query.page || query.page < 1 ? 1 : query.page;
+    const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
+
+    const result = await this.postRepository.findUserGridPosts(profileUserId, {
+      page,
+      limit,
+    });
+
+    const items = result.posts.map((post) => {
+      const hasContent = post.content.trim().length > 0;
+      const primaryMedia = post.media[0] ?? null;
+
+      return {
+        id: post.id,
+        authorId: post.authorId,
+        content: post.content,
+        hasContent,
+        themeKey: post.themeKey ?? null,
+        mediaCount: post._count.media,
+        primaryMedia: primaryMedia
+          ? {
+              type: primaryMedia.type === MediaType.IMAGE ? "image" : "video",
+              url: primaryMedia.url,
+              thumbnailUrl: primaryMedia.thumbnailUrl ?? null,
+              width: primaryMedia.width ?? null,
+              height: primaryMedia.height ?? null,
+            }
+          : null,
+        createdAt: post.createdAt,
+      };
+    });
+
+    return {
+      items,
+      pagination: {
+        page,
+        limit,
+        total: result.total,
+        hasNextPage: page * limit < result.total,
+      },
+    };
   }
 
   async updatePost(input: UpdatePostDto, postId: string, authorId: string) {

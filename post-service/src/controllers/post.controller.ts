@@ -136,6 +136,47 @@ export class PostController {
     }
   }
 
+
+  /**
+   * @desc    Get post grid for a profile user
+   * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
+   * @access  Public
+   */
+  async getUserGridPostsHandler(req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, res: Response, next: NextFunction) {
+    try {
+
+      const safeParams = queryPaginationSchema.safeParse(req.params);
+      if(!safeParams.success) {
+        const erroMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, erroMessages);
+      }
+      
+      const safeQuery = queryPaginationSchema.safeParse(req.query);
+      if(!safeQuery.success) {
+        const erroMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, erroMessages);
+      }
+
+      const profileUserId = req.params.profileUserId;
+      const limit = (req.query.limit ?? 30); 
+      const page = (req.query.page ?? 1);
+
+      const result = await this.postService.getUserGridPosts(profileUserId, {
+        page,
+        limit,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+      
+    } catch (error) {
+      logger.error(error, 'Error in getUserGridPostsHandler');
+      next(error);
+    }
+  }
+
   /**
    * @desc    Update a post
    * @route   PATCH /api/post/:postId

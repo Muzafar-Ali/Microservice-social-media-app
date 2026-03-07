@@ -14,6 +14,7 @@ const postRoutes = (postController: PostController) => {
     .get(postController.getAllPostsHandler);
   
   router.route('/test').get(isAuthenticatedRedis, postController.createTest);
+  router.route('/user/:userId/grid').get(postController.getPostsByUserIdHandler);
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
   router.route('/:postId')

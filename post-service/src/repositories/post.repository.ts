@@ -1,6 +1,7 @@
 
-import { MediaType, PrismaClient } from '../generated/prisma/client.js';
+import { MediaType, Prisma, PrismaClient } from '../generated/prisma/client.js';
 import { CreatePostDto } from '../validation/post.validation.js';
+import { UserGridPost, userGridPostSelect } from './post.repository.types.js';
 
 type PostUpdate = {
   content?: string;
@@ -51,6 +52,36 @@ export class PostRepository {
         comments: true,
       },
     });
+  }
+  
+  async findUserGridPosts(
+    profileUserId: string,
+    options: { page: number; limit: number }
+  ): Promise<{ posts: UserGridPost[]; total: number }> {
+
+    const { page, limit } = options;
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await Promise.all([
+      this.prisma.post.findMany({
+        where: {
+          authorId: profileUserId,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        skip,
+        take: limit,
+        select: userGridPostSelect,
+      }),
+      this.prisma.post.count({
+        where: {
+          authorId: profileUserId,
+        },
+      }),
+    ]);
+
+    return { posts, total };
   }
   
   async findAll() {

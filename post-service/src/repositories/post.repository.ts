@@ -54,10 +54,43 @@ export class PostRepository {
     });
   }
   
-  async findUserGridPosts(
-    profileUserId: string,
-    options: { page: number; limit: number }
-  ): Promise<{ posts: UserGridPost[]; total: number }> {
+  async findUserGridPostsCursor(profileUserId: string, options: { limit: number; cursor?: string }): Promise<{ posts: UserGridPost[]; nextCursor: string | null; hasNextPage: boolean }> {
+   
+    const { limit, cursor } = options;
+
+    const posts = await this.prisma.post.findMany({
+      where: {
+        authorId: profileUserId,
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: limit + 1,
+      ...(cursor
+        ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+        : {}),
+      select: userGridPostSelect,
+    });
+
+    const hasNextPage = posts.length > limit;
+    const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+    const nextCursor = hasNextPage && slicedPosts.length > 0
+        ? slicedPosts[slicedPosts.length - 1].id
+        : null;
+
+    return {
+      posts: slicedPosts,
+      nextCursor,
+      hasNextPage,
+    };
+  }
+
+  async findUserGridPostsOffset( profileUserId: string, options: { page: number; limit: number }): Promise<{ posts: UserGridPost[]; total: number }> {
 
     const { page, limit } = options;
     const skip = (page - 1) * limit;

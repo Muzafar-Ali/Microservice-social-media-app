@@ -2,10 +2,12 @@ import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
 import { 
   CreatePostDto,  
+  gridCursorPaginationSchema,  
   postIdParamsSchema,  
   PostParamsIdDto,  
   profileUserIdParamsSchema,  
   ProfileUserParamsIdDto,  
+  QueryCursorPaginationDto,  
   QueryPaginationDto, 
   queryPaginationSchema, 
   UpdatePostDto, 
@@ -136,16 +138,65 @@ export class PostController {
     }
   }
 
+  /**
+   * @desc    Get logged-in user's posts
+   * @route   GET /api/post/me
+   * @access  Private
+   */
+  async getMyPostsHandler(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+    try {
+      
+    } catch (error) {
+      logger.error(error, 'Error in getMyPostsHandler');
+      next(error);
+    }
+  }
 
   /**
-   * @desc    Get post grid for a profile user
+   * @desc    Get profile user post grid (cursor pagination for infinite scrolling) 
+   * @route   GET /api/posts/users/:profileUserId/grid?limit=12&cursor=<postId>
+   * @access  Public
+   */
+  async getUserGridPostsCursorHandler( req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, res: Response, next: NextFunction
+  ) {
+    try {
+      const safeParams = profileUserIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const safeQuery = gridCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getUserGridPostsCursor( safeParams.data.profileUserId, {
+          limit: safeQuery.data.limit,
+          cursor: safeQuery.data.cursor,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getUserGridPostsCursorHandler");
+      next(error);
+    }
+  }
+
+  /**
+   * @desc    Get profile user grid posts (offset pagination)
    * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
    * @access  Public
    */
-  async getUserGridPostsHandler(req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, res: Response, next: NextFunction) {
+  async getUserGridPostsOffsetHandler(req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, res: Response, next: NextFunction) {
     try {
 
-      const safeParams = queryPaginationSchema.safeParse(req.params);
+      const safeParams = profileUserIdParamsSchema.safeParse(req.params);
       if(!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(400, erroMessages);
@@ -157,13 +208,9 @@ export class PostController {
         throw new ApiErrorHandler(400, erroMessages);
       }
 
-      const profileUserId = req.params.profileUserId;
-      const limit = (req.query.limit ?? 30); 
-      const page = (req.query.page ?? 1);
-
-      const result = await this.postService.getUserGridPosts(profileUserId, {
-        page,
-        limit,
+      const result = await this.postService.getUserGridPostsOffset(safeParams.data.profileUserId, {
+        page: safeQuery.data.page,
+        limit: safeQuery.data.limit,
       });
 
       res.status(200).json({

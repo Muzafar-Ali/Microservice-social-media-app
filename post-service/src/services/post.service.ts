@@ -47,19 +47,74 @@ export class PostService {
     }
   }
 
-  async getUserGridPosts(
-    profileUserId: string,
-    query: { page?: number; limit?: number }
-  ) {
+  async getUserGridPostsCursor( profileUserId: string, query: { limit?: number; cursor?: string } ) {
+    
+    const limit = !query.limit || query.limit < 1 ? 30 : Math.min(query.limit, 50);
+
+    const result = await this.postRepository.findUserGridPostsCursor(profileUserId, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    const items = result.posts.map((post) => {
+      const trimmedContent = post.content.trim();
+      const hasContent = trimmedContent.length > 0;
+      const primaryMedia = post.media[0] ?? null;
+
+      let previewType: "text" | "image" | "video" | "carousel";
+
+      if (post._count.media === 0) {
+        previewType = "text";
+      } else if (post._count.media > 1) {
+        previewType = "carousel";
+      } else {
+        previewType = primaryMedia?.type === MediaType.VIDEO ? "video" : "image";
+      }
+
+      return {
+        id: post.id,
+        previewType,
+        contentPreview: hasContent ? trimmedContent.slice(0, 120) : null,
+        hasContent,
+        themeKey: post.themeKey ?? null,
+        mediaCount: post._count.media,
+        likesCount: post._count.likes,
+        commentsCount: post._count.comments,
+        primaryMedia: primaryMedia
+          ? {
+              type: primaryMedia.type === MediaType.IMAGE ? "image" : "video",
+              url: primaryMedia.url,
+              thumbnailUrl: primaryMedia.thumbnailUrl ?? null,
+              width: primaryMedia.width ?? null,
+              height: primaryMedia.height ?? null,
+            }
+          : null,
+        createdAt: post.createdAt,
+      };
+    });
+
+    return {
+      items,
+      pagination: {
+        limit,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
+  }
+
+  async getUserGridPostsOffset( profileUserId: string, query: { page?: number; limit?: number }) {
+
     const page = !query.page || query.page < 1 ? 1 : query.page;
     const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
 
-    const result = await this.postRepository.findUserGridPosts(profileUserId, {
+    const result = await this.postRepository.findUserGridPostsOffset(profileUserId, {
       page,
       limit,
     });
 
     const items = result.posts.map((post) => {
+      
       const hasContent = post.content.trim().length > 0;
       const primaryMedia = post.media[0] ?? null;
 

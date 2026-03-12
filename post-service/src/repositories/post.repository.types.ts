@@ -9,6 +9,8 @@ export const userGridPostSelect = {
   _count: {
     select: {
       media: true,
+      likes: true,
+      comments: true,
     },
   },
   media: {

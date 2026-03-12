@@ -61,12 +61,39 @@ export const profileUserIdParamsSchema = z.object({
 });
 
 export const queryPaginationSchema = z.object({
-  page: z.coerce.number().int("page must be an integer").min(1,"Page must be at least 1").default(1),
-  limit: z.coerce.number().int("limit must be an integer").min(1, "Limit must be at least 1").max(100, "Limit cannot exceed 100").default(50)
+  page: z
+    .coerce.number()
+    .int("page must be an integer")
+    .min(1,"Page must be at least 1")
+    .default(1), 
+  limit: z
+    .coerce.number()
+    .int("limit must be an integer")
+    .min(1, "Limit must be at least 1")
+    .max(100, "Limit cannot exceed 100")
+    .default(50)
 })
+
+export const gridCursorPaginationSchema = z.object({
+  limit: z
+    .coerce.number()
+    .int("limit must be an integer")
+    .positive()
+    .max(50, "limit can not exceed 50 charachters")
+    .optional()
+    .default(30),
+  cursor: z
+    .string()
+    .trim()
+    .min(1)
+    .optional(),
+});
+
+export type GridCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>;
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
 export type PostParamsIdDto = z.infer<typeof postIdParamsSchema>
 export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryPaginationSchema>
+export type QueryCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>

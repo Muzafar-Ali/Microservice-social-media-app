@@ -1,6 +1,5 @@
 import express from 'express';
 import { PostController } from '../controllers/post.controller.js';
-import isAuthenticated from '../middlewares/isAuthenticated.js';
 import validateRequestBody from '../middlewares/validaterequestBody.middleware.js';
 import { createPostSchema, updatePostSchema } from '../validation/post.validation.js';
 import isAuthenticatedRedis from '../middlewares/isAUthenticatedRedis.js';
@@ -10,17 +9,18 @@ const router = express.Router();
 const postRoutes = (postController: PostController) => {
 
   router.route('/')
-    .post(isAuthenticated, validateRequestBody(createPostSchema), postController.createPostHandler)
+    .post(isAuthenticatedRedis, validateRequestBody(createPostSchema), postController.createPostHandler)
     .get(postController.getAllPostsHandler);
   
   router.route('/test').get(isAuthenticatedRedis, postController.createTest);
-  router.route('/user/:userId/grid').get(postController.getPostsByUserIdHandler);
+  router.route('/me').get(isAuthenticatedRedis, postController.getMyPostsHandler);
+  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsHandler);
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
   router.route('/:postId')
     .get(postController.getPostByIdHandler)
-    .patch(isAuthenticated, validateRequestBody(updatePostSchema), postController.updatePostHandler)
-    .delete(isAuthenticated, postController.deletePostHandler)
+    .patch(isAuthenticatedRedis, validateRequestBody(updatePostSchema), postController.updatePostHandler)
+    .delete(isAuthenticatedRedis, postController.deletePostHandler)
   
   
   return router;

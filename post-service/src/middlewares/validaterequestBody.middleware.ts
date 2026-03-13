@@ -16,6 +16,8 @@ const validateRequestBody = (schema: z.ZodObject<any>) => {
 
       req.body = result.data.body;
 
+      next();
+
     } catch (error) {
       next(error)
     }

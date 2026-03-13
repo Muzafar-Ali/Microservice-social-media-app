@@ -12,7 +12,6 @@ import {
   queryPaginationSchema, 
   UpdatePostDto, 
   updatePostSchema, 
-
 } from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
@@ -22,9 +21,9 @@ export class PostController {
   constructor(private postService: PostService) {}
 
   /**
-   * @desc    Create a new post
-   * @route   POST /api/post
-   * @access  Private
+   * @desc    Create a new post for the authenticated user
+   * @route   POST /api/posts
+   * @access  Private (Authenticated users only)
    */
   async createPostHandler( req: Request<Record<string, never>, any, CreatePostDto>, res: Response, next: NextFunction) {
     try {
@@ -48,7 +47,7 @@ export class PostController {
   }
 
   /**
-   * @desc    Get a single post by ID
+   * @desc    Retrieve a single post by its ID
    * @route   GET /api/post/:postId
    * @access  Public
    */
@@ -76,7 +75,7 @@ export class PostController {
   }
 
   /**
-   * @desc    Get all posts with pagination
+   * @desc    Get all posts with pagination support
    * @route   GET /api/post?page=1&limit=10
    * @access  Public
    */
@@ -111,7 +110,7 @@ export class PostController {
   }
 
   /**
-   * @desc    Get posts by user ID
+   * @desc    Retrieve all posts created by a specific user
    * @route   GET /api/post/user/:userId
    * @access  Public
    */
@@ -139,9 +138,9 @@ export class PostController {
   }
 
   /**
-   * @desc    Get logged-in user's posts
+   * @desc    Retrieve posts created by the currently logged-in user
    * @route   GET /api/post/me
-   * @access  Private
+   * @access  Private (Authenticated users only)
    */
   async getMyPostsHandler(req: Request<{ id: string }>, res: Response, next: NextFunction) {
     try {
@@ -154,7 +153,7 @@ export class PostController {
 
   /**
    * @desc    Get profile user post grid (cursor pagination for infinite scrolling) 
-   * @route   GET /api/posts/users/:profileUserId/grid?limit=12&cursor=<postId>
+   * @route   GET /api/posts/users/:profileUserId/grid?limit=50&cursor=<postId>
    * @access  Public
    */
   async getUserGridPostsCursorHandler( req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, res: Response, next: NextFunction

@@ -2,7 +2,7 @@ import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter } from "../monitoring/metrics.js";
-import { PostEventPublisher } from '../events/producer.js';
+import { PostEventPublisher } from '../events/producers/postEventProducer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 
 export class PostService {
@@ -18,7 +18,15 @@ export class PostService {
     postCreatedCounter.inc(); // Increment the counter
 
     // Publish the event post created
-    await this.postEventPublisher.publishPostCreated(post);
+    await this.postEventPublisher.publishPostCreated({
+      postId: post.id,
+      authorId: post.authorId,
+      content: post.content,
+      isEdited: post.isEdited,
+      editedAt: post.editedAt ? post.editedAt.toISOString() : null,
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
+    });
 
     return post;
   }

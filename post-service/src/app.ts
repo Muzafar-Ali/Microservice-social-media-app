@@ -11,7 +11,8 @@ import { PostRepository } from "./repositories/post.repository.js";
 import { PostService } from "./services/post.service.js";
 import { PostController } from "./controllers/post.controller.js";
 import prisma from "./config/prismaClient.js";
-import { PostEventPublisher } from "./events/producer.js";
+import { PostEventPublisher } from "./events/producers/postEventProducer.js";
+
 
 export async function createApp() {
   const producer = await getKafkaProducer();

@@ -2,6 +2,7 @@ import { Producer } from "kafkajs";
 import { KAFKA_TOPICS, POST_EVENT_NAMES } from "../topics.js";
 import logger from "../../utils/logger.js";
 
+
 type PostCreatedEventPayload = {
   postId: string;
   authorId: string;

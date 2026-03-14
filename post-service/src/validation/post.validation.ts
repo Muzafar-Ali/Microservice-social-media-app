@@ -60,7 +60,7 @@ export const profileUserIdParamsSchema = z.object({
     .max(64, "invalid post id")
 });
 
-export const queryPaginationSchema = z.object({
+export const queryOffsetPaginationSchema = z.object({
   page: z
     .coerce.number()
     .int("page must be an integer")
@@ -95,5 +95,5 @@ export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
 export type PostParamsIdDto = z.infer<typeof postIdParamsSchema>
 export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
-export type QueryPaginationDto = z.infer<typeof queryPaginationSchema>
+export type QueryPaginationDto = z.infer<typeof queryOffsetPaginationSchema>
 export type QueryCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>

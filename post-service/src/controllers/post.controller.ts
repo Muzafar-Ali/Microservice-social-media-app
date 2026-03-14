@@ -8,8 +8,8 @@ import {
   profileUserIdParamsSchema,  
   ProfileUserParamsIdDto,  
   QueryCursorPaginationDto,  
+  queryOffsetPaginationSchema,  
   QueryPaginationDto, 
-  queryPaginationSchema, 
   UpdatePostDto, 
   updatePostSchema, 
 } from '../validation/post.validation.js';
@@ -25,7 +25,7 @@ export class PostController {
    * @route   POST /api/posts
    * @access  Private (Authenticated users only)
    */
-  async createPostHandler( req: Request<Record<string, never>, any, CreatePostDto>, res: Response, next: NextFunction) {
+  createPostHandler = async( req: Request<Record<string, never>, any, CreatePostDto>, res: Response, next: NextFunction) => {
     try {
       const data = req.body;
       const { userId } = req;
@@ -51,7 +51,7 @@ export class PostController {
    * @route   GET /api/post/:postId
    * @access  Public
    */
-  async getPostByIdHandler(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) {
+  getPostByIdHandler = async(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if(!safeParams.success) {
@@ -79,13 +79,13 @@ export class PostController {
    * @route   GET /api/post?page=1&limit=10
    * @access  Public
    */
-  async getAllPostsHandler(
+  getAllPostsHandler = async(
     req: Request<Record<string, never>, any, Record<string, never>, QueryPaginationDto>, 
     res: Response, 
     next: NextFunction
-  ) {
+  ) => {
     try {
-      const safeQuery = queryPaginationSchema.safeParse(req.query);
+      const safeQuery = queryOffsetPaginationSchema.safeParse(req.query);
 
       if(!safeQuery.success) {
         const errorMessagge = formatZodError(safeQuery.error);
@@ -114,7 +114,7 @@ export class PostController {
    * @route   GET /api/post/user/:userId
    * @access  Public
    */
-  async getPostsByUserIdHandler(req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) {
+  getPostsByUserIdHandler = async(req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
       
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -142,7 +142,7 @@ export class PostController {
    * @route   GET /api/post/me
    * @access  Private (Authenticated users only)
    */
-  async getMyPostsHandler(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+  getMyPostsHandler = async(req: Request<{ id: string }>, res: Response, next: NextFunction) => {
     try {
       
     } catch (error) {
@@ -156,8 +156,8 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/grid?limit=50&cursor=<postId>
    * @access  Public
    */
-  async getUserGridPostsCursorHandler( req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, res: Response, next: NextFunction
-  ) {
+  getUserGridPostsCursorHandler = async( req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, res: Response, next: NextFunction
+  ) => {
     try {
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
@@ -192,7 +192,7 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
    * @access  Public
    */
-  async getUserGridPostsOffsetHandler(req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, res: Response, next: NextFunction) {
+  getUserGridPostsOffsetHandler = async(req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, res: Response, next: NextFunction) => {
     try {
 
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -201,7 +201,7 @@ export class PostController {
         throw new ApiErrorHandler(400, erroMessages);
       }
       
-      const safeQuery = queryPaginationSchema.safeParse(req.query);
+      const safeQuery = queryOffsetPaginationSchema.safeParse(req.query);
       if(!safeQuery.success) {
         const erroMessages = formatZodError(safeQuery.error);
         throw new ApiErrorHandler(400, erroMessages);
@@ -228,7 +228,7 @@ export class PostController {
    * @route   PATCH /api/post/:postId
    * @access  Private (Owner only)
    */
-  async updatePostHandler(req: Request<PostParamsIdDto, any, UpdatePostDto>, res: Response, next: NextFunction) {
+  updatePostHandler = async(req: Request<PostParamsIdDto, any, UpdatePostDto>, res: Response, next: NextFunction) => {
     try {
       const data = req.body;
       const { userId } = req;
@@ -262,7 +262,7 @@ export class PostController {
    * @route   DELETE /api/post/:postId
    * @access  Private (Owner only)
    */
-  async deletePostHandler(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) {
+  deletePostHandler = async(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
       if (!userId) {
@@ -287,7 +287,7 @@ export class PostController {
     }
   }
 
-  async createTest(req: Request<{ id: string }>, res: Response, next: NextFunction) {
+  createTest = async(req: Request<{ id: string }>, res: Response, next: NextFunction) => {
     res.status(200).json({
       message: "its test"
     })

@@ -18,7 +18,7 @@ export class PostService {
     postCreatedCounter.inc(); // Increment the counter
 
     // Publish the event post created
-    await this.postEventPublisher.publishPostCreatedEvent(post);
+    await this.postEventPublisher.publishPostCreated(post);
 
     return post;
   }

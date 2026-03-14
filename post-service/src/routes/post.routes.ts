@@ -9,12 +9,13 @@ const router = express.Router();
 const postRoutes = (postController: PostController) => {
 
   router.route('/')
-    .post(isAuthenticatedRedis, validateRequestBody(createPostSchema), postController.createPostHandler)
+    .post(isAuthenticatedRedis, postController.createPostHandler)
     .get(postController.getAllPostsHandler);
   
   router.route('/test').get(isAuthenticatedRedis, postController.createTest);
   router.route('/me').get(isAuthenticatedRedis, postController.getMyPostsHandler);
-  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsHandler);
+  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler);
+  router.route('/user/:profileUserId/grid/cursor').get(postController.getUserGridPostsCursorHandler);
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
   router.route('/:postId')

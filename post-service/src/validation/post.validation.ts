@@ -4,10 +4,28 @@ import { z } from 'zod';
 export const postMediaItemSchema = z.object({
   type: z.enum(["image", "video"]),
   url: z.url("Media URL must be a valid URL"),
+  publicId: z.string().trim().min(1, "Public ID cannot be empty").optional(),
   thumbnailUrl: z.url("Thumbnail URL must be a valid URL").optional(),
   duration: z.number().int().positive().optional(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
+}).superRefine((mediaItem, ctx) => {
+  
+  if (mediaItem.type === "image" && mediaItem.duration !== undefined) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["duration"],
+      message: "Duration is only allowed for video media.",
+    });
+  }
+
+  if (mediaItem.type === "video" && !mediaItem.thumbnailUrl) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["thumbnailUrl"],
+      message: "Thumbnail URL is required for video media.",
+    });
+  }
 });
 
 export const createPostSchema = z.object({
@@ -34,6 +52,17 @@ export const createPostSchema = z.object({
       path: ['themeKey'],
     });
   }
+
+  data.media.forEach((mediaItem, index) => {
+    if (mediaItem.type === "video" && !mediaItem.thumbnailUrl) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Video media should include a thumbnail URL.",
+        path: ["media", index, "thumbnailUrl"],
+      });
+    }
+  });
+
 });
 
 export const updatePostSchema = z.object({

@@ -1,33 +1,19 @@
-/*
-  Warnings:
-
-  - The primary key for the `Post` table will be changed. If it partially fails, the table could be left without primary key constraint.
-  - You are about to drop the column `media` on the `Post` table. All the data in the column will be lost.
-  - You are about to drop the column `title` on the `Post` table. All the data in the column will be lost.
-  - You are about to drop the column `userId` on the `Post` table. All the data in the column will be lost.
-  - Added the required column `authorId` to the `Post` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- CreateEnum
 CREATE TYPE "MediaType" AS ENUM ('IMAGE', 'VIDEO');
 
--- DropIndex
-DROP INDEX "Post_userId_idx";
+-- CreateTable
+CREATE TABLE "Post" (
+    "id" TEXT NOT NULL,
+    "authorId" TEXT NOT NULL,
+    "content" TEXT NOT NULL DEFAULT '',
+    "themeKey" TEXT,
+    "editedAt" TIMESTAMP(3),
+    "isEdited" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- AlterTable
-ALTER TABLE "Post" DROP CONSTRAINT "Post_pkey",
-DROP COLUMN "media",
-DROP COLUMN "title",
-DROP COLUMN "userId",
-ADD COLUMN     "authorId" TEXT NOT NULL,
-ADD COLUMN     "editedAt" TIMESTAMP(3),
-ADD COLUMN     "isEdited" BOOLEAN NOT NULL DEFAULT false,
-ADD COLUMN     "themeKey" TEXT,
-ALTER COLUMN "id" DROP DEFAULT,
-ALTER COLUMN "id" SET DATA TYPE TEXT,
-ALTER COLUMN "content" SET DEFAULT '',
-ADD CONSTRAINT "Post_pkey" PRIMARY KEY ("id");
-DROP SEQUENCE "Post_id_seq";
+    CONSTRAINT "Post_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "PostMedia" (
@@ -40,6 +26,7 @@ CREATE TABLE "PostMedia" (
     "width" INTEGER,
     "height" INTEGER,
     "order" INTEGER NOT NULL,
+    "publicId" TEXT,
 
     CONSTRAINT "PostMedia_pkey" PRIMARY KEY ("id")
 );
@@ -66,6 +53,12 @@ CREATE TABLE "PostComment" (
 );
 
 -- CreateIndex
+CREATE INDEX "Post_authorId_idx" ON "Post"("authorId");
+
+-- CreateIndex
+CREATE INDEX "Post_createdAt_idx" ON "Post"("createdAt");
+
+-- CreateIndex
 CREATE INDEX "PostMedia_postId_idx" ON "PostMedia"("postId");
 
 -- CreateIndex
@@ -79,12 +72,6 @@ CREATE INDEX "PostComment_postId_createdAt_idx" ON "PostComment"("postId", "crea
 
 -- CreateIndex
 CREATE INDEX "PostComment_authorId_idx" ON "PostComment"("authorId");
-
--- CreateIndex
-CREATE INDEX "Post_authorId_idx" ON "Post"("authorId");
-
--- CreateIndex
-CREATE INDEX "Post_createdAt_idx" ON "Post"("createdAt");
 
 -- AddForeignKey
 ALTER TABLE "PostMedia" ADD CONSTRAINT "PostMedia_postId_fkey" FOREIGN KEY ("postId") REFERENCES "Post"("id") ON DELETE CASCADE ON UPDATE CASCADE;

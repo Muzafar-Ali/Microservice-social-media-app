@@ -17,19 +17,24 @@ export class PostRepository {
       data: {
         authorId,
         content: input.content ?? "",
-        media: input.media?.length ? 
-        {
-          create: input.media.map((item, index) => ({
-            type: item.type === "image" ? MediaType.IMAGE : MediaType.VIDEO,
-            url: item.url,
-            thumbnailUrl: item.thumbnailUrl ?? null,
-            duration: item.duration ?? null,
-            width: item.width ?? null,
-            height: item.height ?? null,
-            order: index,
-          })),
-        } 
-        : undefined
+        themeKey: input.themeKey ?? null,
+        media: input?.media?.length
+          ? {
+              create: input.media.map((item, index) => ({
+                type: item.type === "image" ? MediaType.IMAGE : MediaType.VIDEO,
+                url: item.url,
+                publicId: item.publicId ?? null,
+                thumbnailUrl: item.thumbnailUrl ?? null,
+                duration: item.duration ?? null,
+                width: item.width ?? null,
+                height: item.height ?? null,
+                order: index,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        media: true,
       },
     });
   }

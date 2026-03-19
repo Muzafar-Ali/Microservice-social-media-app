@@ -1,5 +1,8 @@
+import { StatusCodes } from "http-status-codes";
 import MediaServiceEventPublisher from "../events/producer";
 import MediaRespository from "../respositories/media.respository";
+import { PostMediaUploadedDto } from "../schema/media.schema";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass";
 
 class MediaService {
   constructor(
@@ -19,6 +22,32 @@ class MediaService {
       userId
     );
   }
+
+ preparePostMediaPayload =  async (uploadedMedia: PostMediaUploadedDto) => {
+    const {
+      publicId,
+      secureUrl,
+      resourceType,
+      thumbnailUrl,
+      duration,
+      width,
+      height,
+    } = uploadedMedia;
+
+    if (resourceType !== "image" && resourceType !== "video") {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only image and video uploads are allowed");
+    }
+
+    return {
+      type: resourceType,
+      url: secureUrl,
+      publicId,
+      thumbnailUrl: resourceType === "video" ? thumbnailUrl : undefined,
+      duration: resourceType === "video" ? duration : undefined,
+      width,
+      height,
+    };
+  };
 
   // postMediaUpload = async (
   //   userId: string,

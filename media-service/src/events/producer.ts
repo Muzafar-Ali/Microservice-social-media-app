@@ -7,12 +7,7 @@ class MediaServiceEventPublisher {
 
   constructor( private producer: Producer) {}
 
-  publishProfileImageUpdatedEvent = async (
-    secureUrl: string,
-    publicId: string,
-    userId: string
-  ) => {
-    
+  publishProfileImageUpdatedEvent = async ( secureUrl: string, publicId: string, userId: string ) => {
     try {
       await this.producer.send({
         topic: KAFKA_TOPICS.PROFILE_IMAGE_UPDATED,

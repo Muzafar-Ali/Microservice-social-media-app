@@ -12,7 +12,7 @@ datasource db {
 
 
 model Post {
-  id        String      @id @default(cuid())
+  id        String    @id @default(uuid())
   authorId  String
   content   String      @default("") @db.Text
   themeKey  String?
@@ -46,6 +46,7 @@ model PostMedia {
   width        Int?
   height       Int?
   order        Int       // 0,1,2,...
+  publicId     String?
 
   post         Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
 

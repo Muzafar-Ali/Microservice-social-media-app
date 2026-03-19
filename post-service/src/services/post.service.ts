@@ -5,6 +5,7 @@ import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/producers/postEventProducer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 
+
 export class PostService {
   constructor(
     private postRepository: PostRepository,
@@ -12,20 +13,31 @@ export class PostService {
   ) {}
 
   async createPost(input: CreatePostDto, userId: string) {
-
+    
     const post = await this.postRepository.create(input, userId);
 
-    postCreatedCounter.inc(); // Increment the counter
+    postCreatedCounter.inc();
 
-    // Publish the event post created
     await this.postEventPublisher.publishPostCreated({
       postId: post.id,
       authorId: post.authorId,
       content: post.content,
+      themeKey: post.themeKey,
       isEdited: post.isEdited,
       editedAt: post.editedAt ? post.editedAt.toISOString() : null,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      media: post.media.map((mediaItem: any) => ({
+        id: mediaItem.id,
+        type: mediaItem.type,
+        url: mediaItem.url,
+        publicId: mediaItem.publicId,
+        thumbnailUrl: mediaItem.thumbnailUrl,
+        duration: mediaItem.duration,
+        width: mediaItem.width,
+        height: mediaItem.height,
+        order: mediaItem.order,
+      })),
     });
 
     return post;

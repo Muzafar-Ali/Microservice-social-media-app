@@ -22,6 +22,7 @@ CREATE TABLE "Participant" (
     "userId" TEXT NOT NULL,
     "role" "ParticipantRole" NOT NULL DEFAULT 'MEMBER',
     "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastReadAt" TIMESTAMP(3),
 
     CONSTRAINT "Participant_pkey" PRIMARY KEY ("id")
 );

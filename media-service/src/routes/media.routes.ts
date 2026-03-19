@@ -1,17 +1,31 @@
 import MediaController from "../controllers/media.controller";
 import { Router } from "express";
 import validateRequestBody from "../middlewares/validaterequestBody.middleware";
-import { postMediaUploadedSchema, postMediaUploadSignatureSchema, profileImageUpdateSchema } from "../schema/media.schema";
+import { postMediaUploadedSchema, postMediaUploadSignatureSchema, profileImageUpdateSchema } from "../validations/media.validation";
 import isAuthenticatedRedis from "../middlewares/isAuthenticatedRedis.middleware";
 
 
 const mediaRoutes = (mediaController: MediaController) => {
   const router = Router();
 
-  router.post("/upload/profile-image/signature", mediaController.profileUploadSignatureHanlder);
-  router.post("/upload/profile-image/update", isAuthenticatedRedis, validateRequestBody(profileImageUpdateSchema), mediaController.profileImageUploadHandler);
-  router.post("/upload/media/signature", isAuthenticatedRedis, validateRequestBody(postMediaUploadSignatureSchema), mediaController.postMediaUploadSignatureHandler);
-  router.post("/upload/media", isAuthenticatedRedis, validateRequestBody(postMediaUploadedSchema), mediaController.postMediaUploadHandler);
+  router.post("/upload/profile-image/signature", 
+    mediaController.profileUploadSignatureHanlder
+  );
+  router.post("/upload/profile-image/update", 
+    isAuthenticatedRedis, 
+    validateRequestBody(profileImageUpdateSchema), 
+    mediaController.profileImageUploadHandler
+  );
+  router.post("/upload/media/signature", 
+    isAuthenticatedRedis, 
+    validateRequestBody(postMediaUploadSignatureSchema), 
+    mediaController.postMediaUploadSignatureHandler
+  );
+  router.post("/upload/media", 
+    isAuthenticatedRedis, 
+    validateRequestBody(postMediaUploadedSchema), 
+    mediaController.postMediaUploadHandler
+  );
 
   return router;
 }

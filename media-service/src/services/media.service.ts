@@ -1,7 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import MediaServiceEventPublisher from "../events/producer";
 import MediaRespository from "../respositories/media.respository";
-import { PostMediaUploadedDto } from "../schema/media.schema";
+import { PostMediaUploadedDto } from "../validations/media.validation";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass";
 
 class MediaService {

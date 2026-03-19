@@ -2,7 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import z from "zod";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass";
 import formatZodError from "../utils/formatZodError";
-import { StatusCodes } from "http-status-codes";
 
 const validateRequestBody = (schema: z.ZodObject<any>) => {
   
@@ -15,7 +14,7 @@ const validateRequestBody = (schema: z.ZodObject<any>) => {
         throw new ApiErrorHandler(400, errorMessages)
       }
 
-      req.body = result.data.body;
+      req.body = result.data;
 
       next();
 

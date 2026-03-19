@@ -33,7 +33,7 @@ export const postMediaUploadSignatureSchema = z.object({
 
 export const postMediaUploadedSchema = z.object({
   publicId: z.string().min(1, "publicId is required"),
-  secureUrl: z.string().url("secureUrl must be a valid URL"),
+  secureUrl: z.url("secureUrl must be a valid URL"),
   resourceType: z.enum(["image", "video"]),
   thumbnailUrl: z.url("Thumbnail URL must be a valid URL").optional(),
   duration: z.number().positive("Duration must be greater than 0").optional(),

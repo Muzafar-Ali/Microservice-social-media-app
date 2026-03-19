@@ -4,14 +4,11 @@ import { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass";
 import MediaService from "../services/media.service";
-import formatZodError from "../utils/formatZodError";
 import { 
   PostMediaUploadedDto, 
-  postMediaUploadedSchema, 
   PostMediaUploadSignatureDto, 
-  postMediaUploadSignatureSchema, 
   ProfileImageUpdateDto 
-} from "../schema/media.schema";
+} from "../validations/media.validation";
 
 
 class MediaController {
@@ -49,7 +46,11 @@ class MediaController {
     }
   }
 
-  profileImageUploadHandler = async ( req: Request<Record<string, any>, any, ProfileImageUpdateDto>, res: Response, next: NextFunction ) => {
+  profileImageUploadHandler = async ( 
+    req: Request<Record<string, any>, any, ProfileImageUpdateDto>, 
+    res: Response, 
+    next: NextFunction 
+  ) => {
     try {
       const { userId } = req
       const { publicId, secureUrl } = req.body;
@@ -138,37 +139,6 @@ class MediaController {
     }
   };
 
-  // postVideoOrImageUploadHandler = async ( req: Request<{}, {}, PostVideoOrImageUploadDto["body"]>, res: Response, next: NextFunction ) => {
-  //   try {
-  //     const { userId } = req
-
-  //     const validationResult = postVideoOrImageUpladSchema.safeParse(req.body);
-  //     if (!validationResult.success) {
-  //       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(validationResult.error));
-  //     }
-
-  //     if(!userId) {
-  //       throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login");
-  //     }
-
-  //     // Publihs event for user service
-  //     await this.mediaService.postMediaUpload(
-  //       userId,
-  //       validationResult.data.body.postId,
-  //       validationResult.data.body.secureUrl,
-  //       validationResult.data.body.publicId,
-  //       validationResult.data.body.mediaType,
-  //     );
-
-  //     res.status(StatusCodes.CREATED).json({
-  //       success: true,
-  //       message: "Media uplad evenet published successfuly",
-  //     });
-
-  //   } catch (error) {
-  //     next(error);
-  //   }
-  // };
 }
 
 export default MediaController;

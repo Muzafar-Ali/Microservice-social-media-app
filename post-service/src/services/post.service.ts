@@ -4,6 +4,8 @@ import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/producers/postEventProducer.js';
 import { MediaType } from '../generated/prisma/enums.js';
+import mapUserFeedPost from '../utils/mapUserFeedPost .js';
+import { UserFeedPost } from '../prisma/selects/userFeedPostSelect.js';
 
 
 export class PostService {
@@ -169,6 +171,25 @@ export class PostService {
     };
   }
 
+  async getUserFeedWindow( profileUserId: string, query: { postId: string; limit?: number } ) {
+
+    const limit = !query.limit || query.limit < 1 ? 10 : Math.min(query.limit, 20);
+
+    const result = await this.postRepository.findUserFeedWindow(profileUserId, {
+      postId: query.postId,
+      limit,
+    });
+
+    return {
+      items: result.posts.map((post: UserFeedPost[]) => mapUserFeedPost(post)),
+      pagination: {
+        anchorPostId: result.anchorPostId,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
+  }
+
   async updatePost(input: UpdatePostDto, postId: string, authorId: string) {
 
     const existingPost = await this.postRepository.findById(postId);
@@ -236,4 +257,5 @@ export class PostService {
     //   logger.error({error},'Failed to send post deleted event to Kafka');
     // }
   }
+  
 }

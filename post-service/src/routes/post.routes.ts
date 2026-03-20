@@ -14,18 +14,18 @@ const postRoutes = (postController: PostController) => {
   
   router.route('/test').get(isAuthenticatedRedis, postController.createTest);
   router.route('/me').get(isAuthenticatedRedis, postController.getMyPostsHandler);
-  // offset pagination endponit page + limit
-  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler);
-  // cursor pagination end point
-  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsCursorHandler);
+  router.route('/user/:profileUserId/grid/cursor').get(postController.getUserGridPostsCursorHandler); // cursor pagination end point
+  router.route("/user/:profileUserId/feed/window").get(postController.getUserFeedWindowHandler);
+  router.route("/user/:profileUserId/feed/after").get(postController.getUserFeedAfterHandler);
+  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler); // offset pagination endponit
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
-
+  
   router.route('/:postId')
     .get(postController.getPostByIdHandler)
     .patch(isAuthenticatedRedis, validateRequestBody(updatePostSchema), postController.updatePostHandler)
     .delete(isAuthenticatedRedis, postController.deletePostHandler)
   
-  
+
   return router;
 }
 

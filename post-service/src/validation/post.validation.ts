@@ -4,11 +4,29 @@ import { z } from 'zod';
 export const postMediaItemSchema = z.object({
   type: z.enum(["image", "video"]),
   url: z.url("Media URL must be a valid URL"),
-  publicId: z.string().trim().min(1, "Public ID cannot be empty").optional(),
-  thumbnailUrl: z.url("Thumbnail URL must be a valid URL").optional(),
-  duration: z.number().int().positive().optional(),
-  width: z.number().int().positive().optional(),
-  height: z.number().int().positive().optional(),
+  publicId: z
+    .string()
+    .trim()
+    .min(1, "Public ID cannot be empty")
+    .optional(),
+  thumbnailUrl: z
+    .url("Thumbnail URL must be a valid URL")
+    .optional(),
+  duration: z
+    .number()
+    .int()
+    .positive()
+    .optional(),
+  width: z
+    .number()
+    .int()
+    .positive()
+    .optional(),
+  height: z
+    .number()
+    .int()
+    .positive()
+    .optional(),
 }).superRefine((mediaItem, ctx) => {
   
   if (mediaItem.type === "image" && mediaItem.duration !== undefined) {
@@ -29,9 +47,21 @@ export const postMediaItemSchema = z.object({
 });
 
 export const createPostSchema = z.object({
-  content: z.string().trim().max(2200, "Content must not exceed 2200 characters").optional(),
-  themeKey: z.string().trim().min(1, "Theme key cannot be empty").optional(),
-  media: z.array(postMediaItemSchema).max(5, "Maximum 5 media items are allowed'").optional().default([]),
+  content: z
+    .string()
+    .trim()
+    .max(2200, "Content must not exceed 2200 characters")
+    .optional(),
+  themeKey: z
+    .string()
+    .trim()
+    .min(1, "Theme key cannot be empty")
+    .optional(),
+  media: z
+    .array(postMediaItemSchema)
+    .max(5, "Maximum 5 media items are allowed'")
+    .optional()
+    .default([]),
 }).superRefine((data, ctx) => {
 
   const hasContent = (data.content?.trim().length ?? 0) > 0;
@@ -66,8 +96,14 @@ export const createPostSchema = z.object({
 });
 
 export const updatePostSchema = z.object({
-  postId: z.string().min(1, "postId is required"),
-  content: z.string().trim().max(2200).optional(), // IG caption limit is ~2200 chars
+  postId: z
+    .string()
+    .min(1, "postId is required"),
+  content: z
+    .string()
+    .trim()
+    .max(2200)
+    .optional(), // IG caption limit is ~2200 chars
 }).refine((data) => data.content !== undefined, {
   message: "At least one field must be provided to update",
   path:["content"]
@@ -118,7 +154,34 @@ export const gridCursorPaginationSchema = z.object({
     .optional(),
 });
 
-export type GridCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>;
+export const feedWindowQuerySchema = z.object({
+  postId: z
+    .string()
+    .trim()
+    .min(1, "Post ID is required"),
+  limit: z
+    .coerce.number()
+    .int()
+    .positive()
+    .max(20)
+    .optional()
+    .default(10),
+});
+
+export const feedAfterQuerySchema = z.object({
+  cursor: z
+    .string()
+    .trim()
+    .min(1, "Cursor is required"),
+  limit: z
+    .coerce.number()
+    .int()
+    .positive()
+    .max(20)
+    .optional()
+    .default(10),
+});
+
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
@@ -126,3 +189,6 @@ export type PostParamsIdDto = z.infer<typeof postIdParamsSchema>
 export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryOffsetPaginationSchema>
 export type QueryCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>
+export type GridCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>;
+export type FeedWindowQueryDto = z.infer<typeof feedWindowQuerySchema>;
+export type FeedAfterQueryDto = z.infer<typeof feedAfterQuerySchema>;

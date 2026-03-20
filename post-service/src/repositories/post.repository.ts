@@ -1,5 +1,7 @@
 
 import { MediaType, Prisma, PrismaClient } from '../generated/prisma/client.js';
+import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
+import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
 import { UserGridPost, userGridPostSelect } from './post.repository.types.js';
 
@@ -59,8 +61,15 @@ export class PostRepository {
     });
   }
   
-  async findUserGridPostsCursor(profileUserId: string, options: { limit: number; cursor?: string }): Promise<{ posts: UserGridPost[]; nextCursor: string | null; hasNextPage: boolean }> {
-   
+  async findUserGridPostsCursor(
+    profileUserId: string, 
+    options: { limit: number; cursor?: string }
+  ): Promise<{ 
+    posts: UserGridPost[]; 
+    nextCursor: string | null; 
+    hasNextPage: boolean 
+  }> {
+
     const { limit, cursor } = options;
 
     const posts = await this.prisma.post.findMany({
@@ -95,7 +104,13 @@ export class PostRepository {
     };
   }
 
-  async findUserGridPostsOffset( profileUserId: string, options: { page: number; limit: number }): Promise<{ posts: UserGridPost[]; total: number }> {
+  async findUserGridPostsOffset(
+    profileUserId: string, 
+    options: { page: number; limit: number }
+  ): Promise<{
+    posts: UserGridPost[]; 
+    total: number 
+  }> {
 
     const { page, limit } = options;
     const skip = (page - 1) * limit;
@@ -122,6 +137,85 @@ export class PostRepository {
     return { posts, total };
   }
   
+  async findUserFeedWindow(
+    profileUserId: string,
+    options: { postId: string; limit: number }
+  ): Promise<{
+    posts: UserFeedPost[];
+    anchorPostId: string;
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
+    const { postId, limit } = options;
+
+    const anchorPost = await this.prisma.post.findFirst({
+      where: {
+        id: postId,
+        authorId: profileUserId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    if (!anchorPost) {
+      throw new ApiErrorHandler(404, "Selected post not found");
+    }
+
+    const clickedPost = await this.prisma.post.findFirst({
+      where: {
+        id: anchorPost.id,
+        authorId: profileUserId,
+      },
+      select: userFeedPostSelect,
+    });
+
+    if (!clickedPost) {
+      throw new ApiErrorHandler(404, "Selected post not found");
+    }
+
+    const olderTake = Math.max(limit - 1, 0);
+
+    const olderPostsPlusOne = await this.prisma.post.findMany({
+      where: {
+        authorId: profileUserId,
+        OR: [
+          { createdAt: { lt: anchorPost.createdAt } },
+          {
+            createdAt: anchorPost.createdAt,
+            id: { lt: anchorPost.id },
+          },
+        ],
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: olderTake + 1,
+      select: userFeedPostSelect,
+    });
+
+    const hasNextPage = olderPostsPlusOne.length > olderTake;
+    const slicedOlderPosts = hasNextPage
+      ? olderPostsPlusOne.slice(0, olderTake)
+      : olderPostsPlusOne;
+
+    const posts = [clickedPost, ...slicedOlderPosts];
+
+    const nextCursor =
+      hasNextPage && posts.length > 0
+        ? posts[posts.length - 1].id
+        : null;
+
+    return {
+      posts,
+      anchorPostId: clickedPost.id,
+      nextCursor,
+      hasNextPage,
+    };
+  }
+
   async findAll() {
     return this.prisma.post.findMany({
       orderBy: {

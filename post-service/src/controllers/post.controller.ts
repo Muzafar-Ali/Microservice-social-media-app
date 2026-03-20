@@ -11,7 +11,6 @@ import {
   queryOffsetPaginationSchema,  
   QueryPaginationDto, 
   UpdatePostDto, 
-  updatePostSchema, 
 } from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
@@ -25,7 +24,11 @@ export class PostController {
    * @route   POST /api/posts
    * @access  Private (Authenticated users only)
    */
-  createPostHandler = async( req: Request<Record<string, never>, any, CreatePostDto>, res: Response, next: NextFunction) => {
+  createPostHandler = async( 
+    req: Request<Record<string, never>, any, CreatePostDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       const data = req.body;
       const { userId } = req;
@@ -51,7 +54,11 @@ export class PostController {
    * @route   GET /api/post/:postId
    * @access  Public
    */
-  getPostByIdHandler = async(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) => {
+  getPostByIdHandler = async(
+    req: Request<PostParamsIdDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if(!safeParams.success) {
@@ -114,7 +121,11 @@ export class PostController {
    * @route   GET /api/post/user/:userId
    * @access  Public
    */
-  getPostsByUserIdHandler = async(req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
+  getPostsByUserIdHandler = async(
+    req: Request<ProfileUserParamsIdDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -142,7 +153,11 @@ export class PostController {
    * @route   GET /api/post/me
    * @access  Private (Authenticated users only)
    */
-  getMyPostsHandler = async(req: Request<{ id: string }>, res: Response, next: NextFunction) => {
+  getMyPostsHandler = async(
+    req: Request<{ id: string }>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       
     } catch (error) {
@@ -156,7 +171,10 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/grid?limit=50&cursor=<postId>
    * @access  Public
    */
-  getUserGridPostsCursorHandler = async( req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, res: Response, next: NextFunction
+  getUserGridPostsCursorHandler = async( 
+    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, 
+    res: Response, 
+    next: NextFunction
   ) => {
     try {
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -192,7 +210,11 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
    * @access  Public
    */
-  getUserGridPostsOffsetHandler = async(req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, res: Response, next: NextFunction) => {
+  getUserGridPostsOffsetHandler = async(
+    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
 
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -228,7 +250,11 @@ export class PostController {
    * @route   PATCH /api/post/:postId
    * @access  Private (Owner only)
    */
-  updatePostHandler = async(req: Request<PostParamsIdDto, any, UpdatePostDto>, res: Response, next: NextFunction) => {
+  updatePostHandler = async(
+    req: Request<PostParamsIdDto, any, UpdatePostDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       const data = req.body;
       const { userId } = req;
@@ -262,7 +288,11 @@ export class PostController {
    * @route   DELETE /api/post/:postId
    * @access  Private (Owner only)
    */
-  deletePostHandler = async(req: Request<PostParamsIdDto>, res: Response, next: NextFunction) => {
+  deletePostHandler = async(
+    req: Request<PostParamsIdDto>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       const { userId } = req;
       if (!userId) {

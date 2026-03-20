@@ -69,7 +69,7 @@ export class PostService {
 
   async getUserGridPostsCursor( profileUserId: string, query: { limit?: number; cursor?: string } ) {
     
-    const limit = !query.limit || query.limit < 1 ? 30 : Math.min(query.limit, 50);
+    const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findUserGridPostsCursor(profileUserId, {
       limit,

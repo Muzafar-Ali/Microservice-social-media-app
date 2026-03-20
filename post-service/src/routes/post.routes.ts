@@ -9,13 +9,15 @@ const router = express.Router();
 const postRoutes = (postController: PostController) => {
 
   router.route('/')
-    .post(isAuthenticatedRedis, postController.createPostHandler)
+    .post(isAuthenticatedRedis, validateRequestBody(createPostSchema), postController.createPostHandler)
     .get(postController.getAllPostsHandler);
   
   router.route('/test').get(isAuthenticatedRedis, postController.createTest);
   router.route('/me').get(isAuthenticatedRedis, postController.getMyPostsHandler);
+  // offset pagination endponit page + limit
   router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler);
-  router.route('/user/:profileUserId/grid/cursor').get(postController.getUserGridPostsCursorHandler);
+  // cursor pagination end point
+  router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsCursorHandler);
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
   router.route('/:postId')

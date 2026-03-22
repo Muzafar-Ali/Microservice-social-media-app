@@ -1,9 +1,9 @@
 
-import { MediaType, Prisma, PrismaClient } from '../generated/prisma/client.js';
+import { MediaType, PrismaClient } from '../generated/prisma/client.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
+import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
-import { UserGridPost, userGridPostSelect } from './post.repository.types.js';
 
 type PostUpdate = {
   content?: string;
@@ -211,6 +211,65 @@ export class PostRepository {
     return {
       posts,
       anchorPostId: clickedPost.id,
+      nextCursor,
+      hasNextPage,
+    };
+  }
+
+  async findUserFeedAfter(
+    profileUserId: string,
+    options: { cursor: string; limit: number }
+  ): Promise<{
+    posts: UserFeedPost[];
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
+    const { cursor, limit } = options;
+
+    const cursorPost = await this.prisma.post.findFirst({
+      where: {
+        id: cursor,
+        authorId: profileUserId,
+      },
+      select: {
+        id: true,
+        createdAt: true,
+      },
+    });
+
+    if (!cursorPost) {
+      throw new ApiErrorHandler(404, "Cursor post not found");
+    }
+
+    const posts = await this.prisma.post.findMany({
+      where: {
+        authorId: profileUserId,
+        OR: [
+          { createdAt: { lt: cursorPost.createdAt } },
+          {
+            createdAt: cursorPost.createdAt,
+            id: { lt: cursorPost.id },
+          },
+        ],
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: limit + 1,
+      select: userFeedPostSelect,
+    });
+
+    const hasNextPage = posts.length > limit;
+    const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+    const nextCursor =
+      hasNextPage && slicedPosts.length > 0
+        ? slicedPosts[slicedPosts.length - 1].id
+        : null;
+
+    return {
+      posts: slicedPosts,
       nextCursor,
       hasNextPage,
     };

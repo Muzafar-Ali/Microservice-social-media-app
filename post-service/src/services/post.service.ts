@@ -5,7 +5,6 @@ import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/producers/postEventProducer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost .js';
-import { UserFeedPost } from '../prisma/selects/userFeedPostSelect.js';
 
 
 export class PostService {
@@ -15,7 +14,7 @@ export class PostService {
   ) {}
 
   async createPost(input: CreatePostDto, userId: string) {
-    
+
     const post = await this.postRepository.create(input, userId);
 
     postCreatedCounter.inc();
@@ -181,9 +180,29 @@ export class PostService {
     });
 
     return {
-      items: result.posts.map((post: UserFeedPost[]) => mapUserFeedPost(post)),
+      items: result.posts.map((post: any) => mapUserFeedPost(post)),
       pagination: {
         anchorPostId: result.anchorPostId,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
+  }
+
+  async getUserFeedAfter(
+    profileUserId: string,
+    query: { cursor: string; limit?: number }
+  ) {
+    const limit = !query.limit || query.limit < 1 ? 10 : Math.min(query.limit, 20);
+
+    const result = await this.postRepository.findUserFeedAfter(profileUserId, {
+      cursor: query.cursor,
+      limit,
+    });
+
+    return {
+      items: result.posts.map((post) => mapUserFeedPost(post)),
+      pagination: {
         nextCursor: result.nextCursor,
         hasNextPage: result.hasNextPage,
       },

@@ -2,6 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
 import { 
   CreatePostDto,  
+  FeedAfterQueryDto,  
+  feedAfterQuerySchema,  
   FeedWindowQueryDto,  
   feedWindowQuerySchema,  
   gridCursorPaginationSchema,  
@@ -248,6 +250,88 @@ export class PostController {
   }
 
   /**
+   * @desc    Open profile user feed from a clicked post
+   * @route   GET /api/posts/users/:profileUserId/feed/window?postId=<postId>&limit=10
+   * @access  Public
+   */
+  getUserFeedWindowHandler = async (
+    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, FeedWindowQueryDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const safeParams = profileUserIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const safeQuery = feedWindowQuerySchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getUserFeedWindow(
+        safeParams.data.profileUserId,
+        {
+          postId: safeQuery.data.postId,
+          limit: safeQuery.data.limit,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getUserFeedWindowHandler");
+      return next(error);
+    }
+  }
+
+  /**
+ * @desc    Load older profile user feed posts after current bottom cursor
+ * @route   GET /api/posts/user/:profileUserId/feed/after?cursor=<postId>&limit=10
+ * @access  Public
+ */
+  async getUserFeedAfterHandler(
+    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, FeedAfterQueryDto>,
+    res: Response,
+    next: NextFunction
+  ) {
+    try {
+      const safeParams = profileUserIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const safeQuery = feedAfterQuerySchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getUserFeedAfter(
+        safeParams.data.profileUserId,
+        {
+          cursor: safeQuery.data.cursor,
+          limit: safeQuery.data.limit,
+        }
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getUserFeedAfterHandler");
+      return next(error);
+    }
+  }
+
+  /**
    * @desc    Update a post
    * @route   PATCH /api/post/:postId
    * @access  Private (Owner only)
@@ -316,47 +400,6 @@ export class PostController {
     } catch (error) {
       logger.error(error, 'Error in deletePostHandler');
       next(error);
-    }
-  }
-
-  /**
-   * @desc    Open profile user feed from a clicked post
-   * @route   GET /api/posts/users/:profileUserId/feed/window?postId=<postId>&limit=10
-   * @access  Public
-   */
-  async getUserFeedWindowHandler(
-    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, FeedWindowQueryDto>,
-    res: Response,
-    next: NextFunction
-  ) {
-    try {
-      const safeParams = profileUserIdParamsSchema.safeParse(req.params);
-      if (!safeParams.success) {
-        const errorMessages = formatZodError(safeParams.error);
-        throw new ApiErrorHandler(400, errorMessages);
-      }
-
-      const safeQuery = feedWindowQuerySchema.safeParse(req.query);
-      if (!safeQuery.success) {
-        const errorMessages = formatZodError(safeQuery.error);
-        throw new ApiErrorHandler(400, errorMessages);
-      }
-
-      const result = await this.postService.getUserFeedWindow(
-        safeParams.data.profileUserId,
-        {
-          postId: safeQuery.data.postId,
-          limit: safeQuery.data.limit,
-        }
-      );
-
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      logger.error(error, "Error in getUserFeedWindowHandler");
-      return next(error);
     }
   }
 

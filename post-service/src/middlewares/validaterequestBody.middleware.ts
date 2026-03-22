@@ -14,7 +14,7 @@ const validateRequestBody = (schema: z.ZodObject<any>) => {
         throw new ApiErrorHandler(400, errorMessages)
       }
 
-      req.body = result.data.body;
+      req.body = result.data;
 
       next();
 

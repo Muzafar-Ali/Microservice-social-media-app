@@ -1,4 +1,4 @@
-import { Prisma } from "../generated/prisma/client.js";
+import { Prisma } from '../../generated/prisma/client.js';
 
 export const userGridPostSelect = {
   id: true,
@@ -31,9 +31,3 @@ export const userGridPostSelect = {
 export type UserGridPost = Prisma.PostGetPayload<{
   select: typeof userGridPostSelect;
 }>;
-
-export type PostUpdate = {
-  content?: string;
-  editedAt?: Date;
-  isEdited?: boolean;
-}

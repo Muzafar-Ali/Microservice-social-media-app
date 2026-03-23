@@ -18,7 +18,9 @@ const postRoutes = (postController: PostController) => {
   router.route("/user/:profileUserId/feed/after").get(postController.getUserFeedAfterHandler);
   router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler); // offset pagination endponit
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
-  
+
+  router.route("/:postId/like").post(isAuthenticatedRedis, postController.likePostHandler);
+  router.route("/:postId/unlike").delete(isAuthenticatedRedis, postController.unlikePostHandler);    
   router.route('/:postId')
     .get(postController.getPostByIdHandler)
     .patch(isAuthenticatedRedis, validateRequestBody(updatePostSchema), postController.updatePostHandler)

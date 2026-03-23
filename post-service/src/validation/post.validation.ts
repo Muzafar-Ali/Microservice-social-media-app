@@ -185,7 +185,7 @@ export const feedAfterQuerySchema = z.object({
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
-export type PostParamsIdDto = z.infer<typeof postIdParamsSchema>
+export type PostIdParamsDto = z.infer<typeof postIdParamsSchema>
 export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryOffsetPaginationSchema>
 export type QueryCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>

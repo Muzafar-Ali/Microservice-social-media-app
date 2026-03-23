@@ -7,8 +7,8 @@ import {
   FeedWindowQueryDto,  
   feedWindowQuerySchema,  
   gridCursorPaginationSchema,  
+  PostIdParamsDto,  
   postIdParamsSchema,  
-  PostParamsIdDto,  
   profileUserIdParamsSchema,  
   ProfileUserParamsIdDto,  
   QueryCursorPaginationDto,  
@@ -59,7 +59,7 @@ export class PostController {
    * @access  Public
    */
   getPostByIdHandler = async(
-    req: Request<PostParamsIdDto>, 
+    req: Request<PostIdParamsDto>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -337,7 +337,7 @@ export class PostController {
    * @access  Private (Owner only)
    */
   updatePostHandler = async(
-    req: Request<PostParamsIdDto, any, UpdatePostDto>, 
+    req: Request<PostIdParamsDto, any, UpdatePostDto>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -375,7 +375,7 @@ export class PostController {
    * @access  Private (Owner only)
    */
   deletePostHandler = async(
-    req: Request<PostParamsIdDto>, 
+    req: Request<PostIdParamsDto>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -400,6 +400,74 @@ export class PostController {
     } catch (error) {
       logger.error(error, 'Error in deletePostHandler');
       next(error);
+    }
+  }
+
+  /**
+   * @desc    Like a post
+   * @route   POST /api/posts/:postId/like
+   * @access  Private
+   */
+  likePostHandler = async (
+    req: Request<PostIdParamsDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const { userId } = req;
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const result = await this.postService.likePost(safeParams.data.postId, userId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in likePostHandler");
+      return next(error);
+    }
+  }
+
+  /**
+   * @desc    Unlike a post
+   * @route   DELETE /api/posts/:postId/unlike
+   * @access  Private
+   */
+  unlikePostHandler = async (
+    req: Request<PostIdParamsDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const { userId } = req;
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const result = await this.postService.unlikePost(safeParams.data.postId, userId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in unlikePostHandler");
+      return next(error);
     }
   }
 

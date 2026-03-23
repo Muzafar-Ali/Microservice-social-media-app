@@ -45,7 +45,7 @@ export class PostService {
   }
 
   async getPostById(postId: string) {
-    return this.postRepository.findById(postId);
+    return this.postRepository.findPostById(postId);
   }
 
   async getPostsByUserId(profileUserId: string) {
@@ -211,7 +211,7 @@ export class PostService {
 
   async updatePost(input: UpdatePostDto, postId: string, authorId: string) {
 
-    const existingPost = await this.postRepository.findById(postId);
+    const existingPost = await this.postRepository.findPostById(postId);
     if (!existingPost) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
@@ -248,7 +248,7 @@ export class PostService {
 
   async deletePost(postId: string, userId: string) {
 
-    const existingPost = await this.postRepository.findById(postId);
+    const existingPost = await this.postRepository.findPostById(postId);
     if (!existingPost) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
@@ -275,6 +275,40 @@ export class PostService {
     // } catch (error) {
     //   logger.error({error},'Failed to send post deleted event to Kafka');
     // }
+  }
+
+  async likePost(postId: string, currentUserId: string) {
+    const postExists = await this.postRepository.findPostById(postId);
+    if (!postExists) {
+      throw new ApiErrorHandler(404, "Post not found");
+    }
+
+    await this.postRepository.createPostLike(postId, currentUserId);
+
+    const likesCount = await this.postRepository.countPostLikes(postId);
+
+    return {
+      postId,
+      liked: true,
+      likesCount,
+    };
+  }
+
+  async unlikePost(postId: string, currentUserId: string) {
+    const postExists = await this.postRepository.findPostById(postId);
+    if (!postExists) {
+      throw new ApiErrorHandler(404, "Post not found");
+    }
+
+    await this.postRepository.deletePostLike(postId, currentUserId);
+
+    const likesCount = await this.postRepository.countPostLikes(postId);
+
+    return {
+      postId,
+      liked: false,
+      likesCount,
+    };
   }
   
 }

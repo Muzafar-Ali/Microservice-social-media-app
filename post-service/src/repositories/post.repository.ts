@@ -41,9 +41,43 @@ export class PostRepository {
     });
   }
 
-  async findById(id: string) {
+  async findPostById(postId: string) {
     return this.prisma.post.findUnique({
-      where: { id },
+      where: { id: postId },
+    });
+  }
+
+  async createPostLike(postId: string, userId: string) {
+    try {
+      return await this.prisma.postLike.create({
+        data: {
+          postId,
+          userId,
+        },
+      });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async deletePostLike(postId: string, userId: string) {
+    try {
+      return await this.prisma.postLike.delete({
+        where: {
+          postId_userId: {
+            postId,
+            userId,
+          },
+        },
+      });
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async countPostLikes(postId: string) {
+    return this.prisma.postLike.count({
+      where: { postId },
     });
   }
 

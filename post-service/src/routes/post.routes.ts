@@ -20,6 +20,7 @@ const postRoutes = (postController: PostController) => {
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
   router.route("/:postId/like").post(isAuthenticatedRedis, postController.likePostHandler);
+  router.route("/:postId/likes").get(postController.getPostLikesHandler);
   router.route("/:postId/unlike").delete(isAuthenticatedRedis, postController.unlikePostHandler);    
   router.route('/:postId')
     .get(postController.getPostByIdHandler)

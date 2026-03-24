@@ -310,5 +310,33 @@ export class PostService {
       likesCount,
     };
   }
+
+  async getPostLikes(
+    postId: string,
+    query: { cursor?: string; limit?: number }
+  ) {
+    const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
+
+    const postExists = await this.postRepository.findPostById(postId);
+    if (!postExists) {
+      throw new ApiErrorHandler(404, "Post not found");
+    }
+
+    const result = await this.postRepository.findPostLikes(postId, {
+      cursor: query.cursor,
+      limit,
+    });
+
+    return {
+      items: result.likes.map((like) => ({
+        userId: like.userId,
+        likedAt: like.createdAt,
+      })),
+      pagination: {
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
+  }
   
 }

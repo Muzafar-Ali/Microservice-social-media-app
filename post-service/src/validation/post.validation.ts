@@ -154,32 +154,46 @@ export const gridCursorPaginationSchema = z.object({
     .optional(),
 });
 
-export const feedWindowQuerySchema = z.object({
-  postId: z
-    .string()
-    .trim()
-    .min(1, "Post ID is required"),
-  limit: z
-    .coerce.number()
+export const likesCursorPaginationSchema = z.object({
+  limit: z.coerce.number()
     .int()
     .positive()
-    .max(20)
+    .max(50)
     .optional()
-    .default(10),
+    .default(20),
+  cursor: z
+    .string()
+    .trim()
+    .min(1)
+    .optional(),
+});
+
+export const feedWindowQuerySchema = z.object({
+  postId: z
+  .string()
+  .trim()
+  .min(1, "Post ID is required"),
+  limit: z
+  .coerce.number()
+  .int()
+  .positive()
+  .max(20)
+  .optional()
+  .default(10),
 });
 
 export const feedAfterQuerySchema = z.object({
   cursor: z
-    .string()
-    .trim()
-    .min(1, "Cursor is required"),
+  .string()
+  .trim()
+  .min(1, "Cursor is required"),
   limit: z
-    .coerce.number()
-    .int()
-    .positive()
-    .max(20)
-    .optional()
-    .default(10),
+  .coerce.number()
+  .int()
+  .positive()
+  .max(20)
+  .optional()
+  .default(10),
 });
 
 
@@ -190,5 +204,6 @@ export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryOffsetPaginationSchema>
 export type QueryCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>
 export type GridCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>;
+export type LikesCursorPaginationDto = z.infer<typeof likesCursorPaginationSchema>;
 export type FeedWindowQueryDto = z.infer<typeof feedWindowQuerySchema>;
 export type FeedAfterQueryDto = z.infer<typeof feedAfterQuerySchema>;

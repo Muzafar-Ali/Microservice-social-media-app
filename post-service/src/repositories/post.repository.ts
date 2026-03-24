@@ -94,6 +94,75 @@ export class PostRepository {
       },
     });
   }
+
+  async findPostLikes(
+    postId: string,
+    options: { cursor?: string; limit: number }
+  ): Promise<{
+    likes: Array<{ userId: string; createdAt: Date }>;
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
+    const { cursor, limit } = options;
+
+    let cursorLike: { createdAt: Date; userId: string } | null = null;
+
+    if (cursor) {
+      cursorLike = await this.prisma.postLike.findFirst({
+        where: {
+          postId,
+          userId: cursor,
+        },
+        select: {
+          createdAt: true,
+          userId: true,
+        },
+      });
+
+      if (!cursorLike) {
+        throw new ApiErrorHandler(404, "Likes cursor not found");
+      }
+    }
+
+    const likes = await this.prisma.postLike.findMany({
+      where: {
+        postId,
+        ...(cursorLike
+          ? {
+              OR: [
+                { createdAt: { lt: cursorLike.createdAt } },
+                {
+                  createdAt: cursorLike.createdAt,
+                  userId: { lt: cursorLike.userId },
+                },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { userId: "desc" },
+      ],
+      take: limit + 1,
+      select: {
+        userId: true,
+        createdAt: true,
+      },
+    });
+
+    const hasNextPage = likes.length > limit;
+    const slicedLikes = hasNextPage ? likes.slice(0, limit) : likes;
+
+    const nextCursor = hasNextPage && slicedLikes.length > 0
+        ? slicedLikes[slicedLikes.length - 1].userId
+        : null;
+
+    return {
+      likes: slicedLikes,
+      nextCursor,
+      hasNextPage,
+    };
+  }
   
   async findUserGridPostsCursor(
     profileUserId: string, 

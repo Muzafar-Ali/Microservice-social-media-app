@@ -7,6 +7,8 @@ import {
   FeedWindowQueryDto,  
   feedWindowQuerySchema,  
   gridCursorPaginationSchema,  
+  LikesCursorPaginationDto,  
+  likesCursorPaginationSchema,  
   PostIdParamsDto,  
   postIdParamsSchema,  
   profileUserIdParamsSchema,  
@@ -467,6 +469,44 @@ export class PostController {
       });
     } catch (error) {
       logger.error(error, "Error in unlikePostHandler");
+      return next(error);
+    }
+  }
+
+  /**
+   * @desc    Get users who liked a post
+   * @route   GET /api/posts/:postId/likes?cursor=<userId>&limit=20
+   * @access  Public
+   */
+  getPostLikesHandler = async (
+    req: Request<PostIdParamsDto, any, Record<string, never>, LikesCursorPaginationDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const safeQuery = likesCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getPostLikes(safeParams.data.postId, {
+        cursor: safeQuery.data.cursor,
+        limit: safeQuery.data.limit,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getPostLikesHandler");
       return next(error);
     }
   }

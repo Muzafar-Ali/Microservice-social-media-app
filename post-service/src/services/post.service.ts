@@ -327,16 +327,33 @@ export class PostService {
       limit,
     });
 
+    const likedUserIds = result.likes.map((like) => like.userId);
+
+    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(likedUserIds);
+
+    const cachedProfilesByUserId = new Map(
+      cachedProfiles.map((profile) => [profile.userId, profile])
+    );
+
     return {
-      items: result.likes.map((like) => ({
-        userId: like.userId,
-        likedAt: like.createdAt,
-      })),
+      items: result.likes.map((like) => {
+        const cachedProfile = cachedProfilesByUserId.get(like.userId);
+        const isUnknownUser = !cachedProfile || cachedProfile.isDeleted;
+
+        return {
+          userId: like.userId,
+          username: isUnknownUser ? "unknown_user" : cachedProfile.username,
+          displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+          avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+          isVerified: isUnknownUser ? false : (cachedProfile.isVerified ?? false),
+          likedAt: like.createdAt,
+        };
+      }),
       pagination: {
         nextCursor: result.nextCursor,
         hasNextPage: result.hasNextPage,
       },
     };
   }
-  
+    
 }

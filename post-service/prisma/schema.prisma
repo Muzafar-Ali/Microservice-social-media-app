@@ -79,3 +79,15 @@ model PostComment {
   @@index([postId, createdAt])
   @@index([authorId])
 }
+
+model UserProfileCache {
+  userId       String   @id
+  username     String
+  displayName  String?
+  avatarUrl    String?
+  isVerified   Boolean  @default(false)
+  isDeleted    Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+
+  @@index([username])
+}

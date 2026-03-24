@@ -239,6 +239,28 @@ export class PostRepository {
 
     return { posts, total };
   }
+
+  async findUserProfileCacheByIds(userIds: string[]) {
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    return this.prisma.userProfileCache.findMany({
+      where: {
+        userId: {
+          in: userIds,
+        },
+      },
+      select: {
+        userId: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        isVerified: true,
+        isDeleted: true,
+      },
+    });
+  }
   
   async findUserFeedWindow(
     profileUserId: string,

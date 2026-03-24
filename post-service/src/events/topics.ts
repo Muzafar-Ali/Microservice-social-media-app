@@ -1,7 +1,8 @@
 
 export const KAFKA_TOPICS = {
   POST_EVENTS: "post.events",
-  MEDIA_EVENTS: "media.events",
+  MEDIA_EVENTS: "media.events", 
+  USER_EVENTS: "user.events",
 } as const;
 
 export const POST_EVENT_NAMES = {
@@ -19,4 +20,9 @@ export const POST_EVENT_NAMES = {
 export const MEDIA_EVENT_NAMES = {
   MEDIA_UPLOAD_COMPLETED: "media.upload.completed",
   MEDIA_DELETED: "media.deleted",
+} as const;
+
+export const USER_EVENT_NAMES = {
+  USER_CREATED: "user.created",
+  USER_UPDATED: "user.updated"
 } as const;

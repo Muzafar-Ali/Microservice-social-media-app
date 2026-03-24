@@ -85,8 +85,7 @@ model UserProfileCache {
   username     String
   displayName  String?
   avatarUrl    String?
-  isVerified   Boolean  @default(false)
-  isDeleted    Boolean  @default(false)
+  status       String
   updatedAt    DateTime @updatedAt
 
   @@index([username])

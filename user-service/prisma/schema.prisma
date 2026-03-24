@@ -21,9 +21,9 @@ enum Gender {
 
 enum Status {
   ACTIVE
-  SUSPENDED
-  UNBLOCKED
   BLOCKED
+  SUSPENDED
+  DELETED
 }
 
 model User {
@@ -35,8 +35,8 @@ model User {
   bio             String?   @db.Text
   profileImage    Json?
   gender          Gender?
-  status          Status?    @default(ACTIVE)
-  isPrivate       Boolean    @default(false)
+  status          Status    @default(ACTIVE)
+  isPrivate       Boolean   @default(false)
 
   followersCount  Int       @default(0)
   followingCount  Int       @default(0)

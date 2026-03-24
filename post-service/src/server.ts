@@ -1,14 +1,20 @@
 import { createApp } from "./app.js";
 import config from "./config/config.js";
 import { initRedis } from "./config/redisClient.js";
-// import { initRedis } from "./config/redisClient.js";
 
 const PORT = config.port;
 
 async function bootstrap() {
   try {
     await initRedis();
-    const app = await createApp();
+    const { app, postEventConsumer } = await createApp();
+
+    try {
+      await postEventConsumer.start();
+      console.log("[Kafka] PostEventConsumer started");
+    } catch (error) {
+      console.error("[Kafka] Failed to start PostEventConsumer", error);
+    }
 
     app.listen(PORT, () => {
       console.log(`Post service is listening at ${PORT}`);

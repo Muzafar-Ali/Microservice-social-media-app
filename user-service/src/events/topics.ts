@@ -1,6 +1,8 @@
 export const KAFKA_TOPICS = {
-  USER_CREATED: "social-user-created",
-  PROFILE_IMAGE_UPLOAD_REQUESTED: "social-profile-image-upload-requested",
-  PROFILE_IMAGE_UPLOADED: "social-profile-image-uploaded",
-  PROFILE_IMAGE_UPDATED: "social-profile-image-updated",
+  USER_EVENTS: "user.events",
+} as const;
+
+export const USER_EVENT_NAMES = {
+  USER_CREATED: "user.created",
+  USER_UPDATED: "user.updated"
 } as const;

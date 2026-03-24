@@ -1,7 +1,7 @@
 import { Consumer } from "kafkajs";
-import { PostService } from "../../services/post.service.js";
-import { KAFKA_TOPICS, MEDIA_EVENT_NAMES } from "../topics.js";
-import logger from "../../utils/logger.js";
+import { PostService } from "../services/post.service.js";
+import { KAFKA_TOPICS, MEDIA_EVENT_NAMES, USER_EVENT_NAMES } from "./topics.js";
+import logger from "../utils/logger.js";
 
 type MediaUploadCompletedPayload = {
   userId: string;
@@ -11,7 +11,7 @@ type MediaUploadCompletedPayload = {
   mediaType: "image" | "video";
 };
 
-class postEventConsumer {
+class PostEventConsumer {
   constructor(
     private readonly consumer: Consumer,
     private readonly postService: PostService
@@ -22,7 +22,12 @@ class postEventConsumer {
     // Subscribe only to topics this service actually handles
     await this.consumer.subscribe({
       topic: KAFKA_TOPICS.MEDIA_EVENTS,
-      fromBeginning: true
+      fromBeginning: false,
+    });
+
+    await this.consumer.subscribe({
+      topic: KAFKA_TOPICS.USER_EVENTS,
+      fromBeginning: false,
     });
 
     await this.consumer.run({
@@ -41,10 +46,15 @@ class postEventConsumer {
 
           switch(event.eventName) {
             case MEDIA_EVENT_NAMES.MEDIA_UPLOAD_COMPLETED:
-            await this.handleMediaUploadCompleted(rawValue)
+              await this.handleMediaUploadCompleted(event)
+              break;
 
             case MEDIA_EVENT_NAMES.MEDIA_DELETED:
               await this.handleMediaDeleted(event);
+              break;
+            
+            case USER_EVENT_NAMES.USER_CREATED:
+              await this.handleUserCreated(event);
               break;
           }
         } catch (error) {
@@ -94,4 +104,34 @@ class postEventConsumer {
 
     // await this.postService.detachMediaFromPost(data.postId, data.mediaId);
   }
+
+  private async handleUserCreated(event: any): Promise<void> {
+    const data = event.data;
+
+    logger.info(
+      {
+        eventName: event.eventName,
+        userId: data.userId,
+        username: data.username,
+      },
+      "Handling user.created event"
+    );
+
+    try {
+      const result = await this.postService.upsertUserProfileCache({
+        userId: data.userId,
+        username: data.username,
+        displayName: data.displayName ?? null,
+        avatarUrl: data.avatarUrl?.secureUrl ?? data.avatarUrl ?? null,
+        status: data.status,
+      });
+
+      logger.info({ result }, "UserProfileCache upsert success");
+    } catch (error) {
+      logger.error({ error, data }, "UserProfileCache upsert failed");
+      throw error;
+    }
+  }
 }
+
+export default PostEventConsumer;

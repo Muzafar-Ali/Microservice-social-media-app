@@ -54,22 +54,20 @@ export class UserService {
       )
     ])
 
-    // Publish user created event for other services (notification, search, etc.)
+    // for type
+    const image = user.profileImage ;
+    // Publish user created event
     await this.userEventPublisher.publishUserCreated({
-      id: user.id,
-      email: user.email,
-      name: user.name,
+      userId: user.id,
+      displayName: user.name,
       username: user.username,
+      avatarUrl: user.profileImage as {
+        secureUrl: string;
+        publicId: string;
+      } | null,
+      status: user.status,
       createdAt: user.createdAt
     })
-
-    // // If user uploaded a profile image at signup → send to media-service
-    // if(dto.profileImage) {
-    //   await this.userEventPublisher.publishProfileImageUploadRequested({
-    //     userId: user.id,
-    //     rawImage: dto.profileImage
-    //   })
-    // }
     
     return safeUser
   }

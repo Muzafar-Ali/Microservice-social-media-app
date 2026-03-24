@@ -20,7 +20,7 @@ export class UserController {
 
   constructor(private userService: UserService) {}
 
-  createUser = async (req: Request<{}, {}, CreateUserDto>, res: Response, next: NextFunction) => {
+  createUser = async (req: Request<Record<string, never>, any, CreateUserDto>, res: Response, next: NextFunction) => {
     try {
 
       const parsedData = createUserSchema.safeParse(req.body);

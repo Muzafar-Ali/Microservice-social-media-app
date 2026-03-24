@@ -256,8 +256,8 @@ export class PostRepository {
         username: true,
         displayName: true,
         avatarUrl: true,
-        isVerified: true,
-        isDeleted: true,
+        status: true,
+        updatedAt: true
       },
     });
   }
@@ -438,6 +438,31 @@ export class PostRepository {
   async delete(id: string) {
     return this.prisma.post.delete({
       where: { id },
+    });
+  }
+
+  async upsertUserProfileCache(data: {
+    userId: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    status: string;
+  }) {
+    return this.prisma.userProfileCache.upsert({
+      where: { userId: data.userId },
+      update: {
+        username: data.username,
+        displayName: data.displayName,
+        avatarUrl: data.avatarUrl,
+        status: data.status,
+      },
+      create: {
+        userId: data.userId,
+        username: data.username,
+        displayName: data.displayName,
+        avatarUrl: data.avatarUrl,
+        status: data.status,
+      },
     });
   }
 }

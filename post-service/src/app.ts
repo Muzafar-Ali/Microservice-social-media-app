@@ -11,20 +11,20 @@ import { PostRepository } from "./repositories/post.repository.js";
 import { PostService } from "./services/post.service.js";
 import { PostController } from "./controllers/post.controller.js";
 import prisma from "./config/prismaClient.js";
-import { PostEventPublisher } from "./events/producers/postEventProducer.js";
+import { PostEventPublisher } from "./events/post-events.producer.js";
+import PostEventConsumer from "./events/post-events.consumer.js";
+import getKafkaConsumer from "./utils/getKafkaConsumer.js";
 
 
 export async function createApp() {
   const producer = await getKafkaProducer();
+  const consumer = await getKafkaConsumer();
 
-  // Initialize repositories with injected Prisma
   const postRepository = new PostRepository(prisma);
-   // Initialize event consumer (inject singleton Kafka producer)
   const postEventPublisher = new PostEventPublisher(producer);
-  //  Initialize services
   const postService = new PostService(postRepository, postEventPublisher); // Producer might be used in service for events
-  // Initialize controllers
   const postController = new PostController(postService);
+  const postEventConsumer = new PostEventConsumer(consumer, postService);
 
   const app = express();
 
@@ -55,5 +55,8 @@ export async function createApp() {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
 
-  return app;
+  return {
+    app,
+    postEventConsumer 
+  }
 }

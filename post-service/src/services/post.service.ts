@@ -2,7 +2,7 @@ import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter } from "../monitoring/metrics.js";
-import { PostEventPublisher } from '../events/producers/postEventProducer.js';
+import { PostEventPublisher } from '../events/post-events.producer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost .js';
 
@@ -331,8 +331,8 @@ export class PostService {
 
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(likedUserIds);
 
-    const cachedProfilesByUserId = new Map(
-      cachedProfiles.map((profile) => [profile.userId, profile])
+    const cachedProfilesByUserId: any = new Map(
+      cachedProfiles.map((profile: any) => [profile.userId, profile])
     );
 
     return {
@@ -354,6 +354,18 @@ export class PostService {
         hasNextPage: result.hasNextPage,
       },
     };
+  }
+
+  async upsertUserProfileCache(data: {
+    userId: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    status: string;
+  }) {
+    console.log('data in post service', data);
+    
+    return this.postRepository.upsertUserProfileCache(data);
   }
     
 }

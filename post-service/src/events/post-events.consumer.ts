@@ -56,7 +56,35 @@ class PostEventConsumer {
             case USER_EVENT_NAMES.USER_CREATED:
               await this.handleUserCreated(event);
               break;
-          }
+            
+            default: 
+              logger.warn(
+                { 
+                  eventName: event.eventName, 
+                  topic, 
+                  partition, 
+                  offset: message.offset 
+                },
+                "[Kafka] Unknown event name"
+              );
+              break;
+          };
+
+          await this.consumer.commitOffsets([{
+            topic,
+            partition,
+            offset: (BigInt(message.offset) + 1n).toString(),
+          }])
+
+        logger.info(
+          { 
+            topic, 
+            partition, 
+            committedOffset: (BigInt(message.offset) + 1n).toString(), 
+          },
+          "[Kafka] Message processed and offset committed"
+        );
+
         } catch (error) {
           logger.error({
             error,

@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
 import { ChatService } from "../services/chat.service.js";
-import { CreateDirectConversationDTO, createDirectConversationSchema, createGroupConversationSchema, CreateGroupeConversationDTO } from "../validations/chat.validation.js";
+import { ConversationParamsDTO, conversationParamsSchema, CreateDirectConversationDTO, createDirectConversationSchema, createGroupConversationSchema, CreateGroupeConversationDTO, CursorPaginationDTO, cursorPaginationSchema } from "../validations/chat.validation.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
+import formatZodError from "../utils/formatZodError.js";
 
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
@@ -22,7 +23,11 @@ export class ChatController {
     }
   };
 
-  createDirectConversation = async (req: Request<any, any, CreateDirectConversationDTO>, res: Response, next: NextFunction) => {
+  createDirectConversation = async (
+    req: Request<Record<string, any>, any, CreateDirectConversationDTO>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       if (!req.userId) {
         return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
@@ -48,7 +53,11 @@ export class ChatController {
     }
   };
 
-  createGroupConversation = async (req: Request<any, any, CreateGroupeConversationDTO>, res: Response, next: NextFunction) => {
+  createGroupConversation = async (
+    req: Request<Record<string, never>, any, CreateGroupeConversationDTO>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       if (!req.userId) {
         return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
@@ -92,23 +101,34 @@ export class ChatController {
     }
   };
 
-  getConversationMessages = async (req: Request, res: Response, next: NextFunction) => {
+  getConversationMessages = async (
+    req: Request<ConversationParamsDTO, any, never, CursorPaginationDTO>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       if (!req.userId) {
         return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
       }
-      console.log('req.params.conversationId', req.params.conversationId)
-      console.log('req.query.limit', req.query.limit)
-      console.log('req.query.cursorreq.query.limit', req.query.cursor)
-      const conversationId = String(req.params.conversationId);
-      const limit = Math.min(Number(req.query.limit ?? 30), 50); // max 50
-      const cursorMessageId = req.query.cursor ? String(req.query.cursor) : undefined;
+
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+      const safequery = cursorPaginationSchema.safeParse(req.query);
+      
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      if (!safequery.success) {
+        const errorMessages = formatZodError(safequery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
 
       const data = await this.chatService.getConversationMessages({
         userId: req.userId,
-        conversationId,
-        limit,
-        cursorMessageId,
+        conversationId: safeParams.data.conversationId,
+        limit: safequery.data.limit,
+        cursorMessageId: safequery.data.cursor,
       });
 
       return res.status(StatusCodes.OK).json({ success: true, data });
@@ -117,17 +137,25 @@ export class ChatController {
     }
   };
 
-  markConversationRead = async (req: Request, res: Response, next: NextFunction) => {
+  markConversationRead = async (
+    req: Request<ConversationParamsDTO>, 
+    res: Response, 
+    next: NextFunction
+  ) => {
     try {
       if (!req.userId) {
         return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login"));
       }
 
-      const conversationId = String(req.params.conversationId);
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
 
       const data = await this.chatService.markConversationRead({
         userId: req.userId,
-        conversationId,
+        conversationId: safeParams.data.conversationId,
       });
 
       return res.status(StatusCodes.OK).json({ success: true, data });

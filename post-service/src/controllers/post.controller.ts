@@ -93,7 +93,7 @@ export class PostController {
    * @access  Public
    */
   getAllPostsHandler = async(
-    req: Request<Record<string, never>, any, Record<string, never>, QueryPaginationDto>, 
+    req: Request<Record<string, never>, any, never, QueryPaginationDto>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -178,7 +178,7 @@ export class PostController {
    * @access  Public
    */
   getUserGridPostsCursorHandler = async( 
-    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryCursorPaginationDto>, 
+    req: Request<ProfileUserParamsIdDto, any, never, QueryCursorPaginationDto>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -217,7 +217,7 @@ export class PostController {
    * @access  Public
    */
   getUserGridPostsOffsetHandler = async(
-    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, QueryPaginationDto>, 
+    req: Request<ProfileUserParamsIdDto, any, never, QueryPaginationDto>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -257,7 +257,7 @@ export class PostController {
    * @access  Public
    */
   getUserFeedWindowHandler = async (
-    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, FeedWindowQueryDto>,
+    req: Request<ProfileUserParamsIdDto, any, never, FeedWindowQueryDto>,
     res: Response,
     next: NextFunction
   ) => {
@@ -298,7 +298,7 @@ export class PostController {
  * @access  Public
  */
   async getUserFeedAfterHandler(
-    req: Request<ProfileUserParamsIdDto, any, Record<string, never>, FeedAfterQueryDto>,
+    req: Request<ProfileUserParamsIdDto, any, never, FeedAfterQueryDto>,
     res: Response,
     next: NextFunction
   ) {
@@ -479,7 +479,7 @@ export class PostController {
    * @access  Public
    */
   getPostLikesHandler = async (
-    req: Request<PostIdParamsDto, any, Record<string, never>, LikesCursorPaginationDto>,
+    req: Request<PostIdParamsDto, any, never, LikesCursorPaginationDto>,
     res: Response,
     next: NextFunction
   ) => {

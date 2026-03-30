@@ -363,7 +363,6 @@ export class PostService {
     avatarUrl: string | null;
     status: string;
   }) {
-    console.log('data in post service', data);
     
     return this.postRepository.upsertUserProfileCache(data);
   }

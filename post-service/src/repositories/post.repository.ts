@@ -536,4 +536,16 @@ export class PostRepository {
       hasNextPage,
     };
   }
+
+  async findCommentById(commentId: string) {
+    return this.prisma.postComment.findUnique({
+      where: { id: commentId },
+    });
+  }
+
+  async deleteComment(commentId: string) {
+    return this.prisma.postComment.delete({
+      where: { id: commentId },
+    });
+  }
 }

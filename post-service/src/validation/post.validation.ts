@@ -110,11 +110,12 @@ export const updatePostSchema = z.object({
 })
 
 export const postIdParamsSchema = z.object({
-  postId: z
-    .string()
-    .trim()
-    .min(1, "post id param is required")
-    .max(64, "invalid post id")
+  postId: z.uuid("Invalid postId"),
+});
+
+export const deletePostCommentParamsSchema = z.object({
+  postId: z.uuid("Invalid postId"),
+  commentId: z.uuid("Invalid commentId"),
 });
 
 export const profileUserIdParamsSchema = z.object({
@@ -217,6 +218,7 @@ export const createPostCommentSchema = z.object({
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
 export type PostIdParamsDto = z.infer<typeof postIdParamsSchema>
+export type DeletePostCommentParamsDto = z.infer<typeof deletePostCommentParamsSchema>
 export type ProfileUserParamsIdDto = z.infer<typeof profileUserIdParamsSchema>
 export type QueryPaginationDto = z.infer<typeof queryOffsetPaginationSchema>
 export type QueryCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>

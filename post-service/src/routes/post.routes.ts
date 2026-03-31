@@ -21,13 +21,14 @@ const postRoutes = (postController: PostController) => {
 
   router.route("/:postId/like")
     .post(isAuthenticatedRedis, postController.likePostHandler)
-    .get(postController.getPostLikesHandler);
-
-  router.route("/:postId/unlike").delete(isAuthenticatedRedis, postController.unlikePostHandler);
+    .get(postController.getPostLikesHandler)
+    .delete(isAuthenticatedRedis, postController.unlikePostHandler);
   
+  router.route("/:postId/comments/:commentId").delete(isAuthenticatedRedis, postController.deletePostCommentHandler);    
   router.route("/:postId/comments")
     .post(isAuthenticatedRedis, validateRequestBody(createPostCommentSchema), postController.createPostCommentHandler)
-    .get(postController.getPostCommentsHandler);    
+    .get(postController.getPostCommentsHandler)
+        
  
     router.route('/:postId')
     .get(postController.getPostByIdHandler)

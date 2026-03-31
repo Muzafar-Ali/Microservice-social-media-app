@@ -5,6 +5,8 @@ import {
   commentsCursorPaginationSchema,
   CreatePostCommentDto,
   CreatePostDto,  
+  DeletePostCommentParamsDto,  
+  deletePostCommentParamsSchema,  
   FeedAfterQueryDto,  
   feedAfterQuerySchema,  
   FeedWindowQueryDto,  
@@ -588,6 +590,45 @@ export class PostController {
       });
     } catch (error) {
       logger.error(error, "Error in getPostCommentsHandler");
+      return next(error);
+    }
+  };
+  
+  /**
+   * @desc    Delete comment on a post
+   * @route   DELETE /api/posts/:postId/comments/:commentId
+   * @access  Private
+   */
+  deletePostCommentHandler = async (
+    req: Request<DeletePostCommentParamsDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const safeParams = deletePostCommentParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const { userId } = req;
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const result = await this.postService.deletePostComment(
+        safeParams.data.postId,
+        safeParams.data.commentId,
+        userId
+      );
+
+      res.status(200).json({
+        success: true,
+        message: "Comment deleted successfully",
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in deletePostCommentHandler");
       return next(error);
     }
   };

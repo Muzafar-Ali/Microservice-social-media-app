@@ -454,5 +454,37 @@ export class PostService {
       },
     };
   }
+
+  async deletePostComment(
+    postId: string,
+    commentId: string,
+    currentUserId: string
+  ) {
+    const postExists = await this.postRepository.findPostById(postId);
+    if (!postExists) {
+      throw new ApiErrorHandler(404, "Post not found");
+    }
+
+    const comment = await this.postRepository.findCommentById(commentId);
+    if (!comment) {
+      throw new ApiErrorHandler(404, "Comment not found");
+    }
+
+    if (comment.postId !== postId) {
+      throw new ApiErrorHandler(400, "Comment does not belong to this post");
+    }
+
+    if (comment.authorId !== currentUserId) {
+      throw new ApiErrorHandler(403, "You are not allowed to delete this comment");
+    }
+
+    await this.postRepository.deleteComment(commentId);
+
+    return {
+      postId,
+      commentId,
+      deleted: true,
+    };
+  }
     
 }

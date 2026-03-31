@@ -2,14 +2,10 @@
 import { MediaType, PrismaClient } from '../generated/prisma/client.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
 import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
+import { PostUpdate } from '../types/post.types.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
 
-type PostUpdate = {
-  content?: string;
-  editedAt?: Date;
-  isEdited?: boolean;
-}
 
 export class PostRepository {
   constructor(private prisma: PrismaClient) {}
@@ -464,5 +460,80 @@ export class PostRepository {
         status: data.status,
       },
     });
+  }
+
+  async createPostComment(postId: string, authorId: string, content: string) {
+    return this.prisma.postComment.create({
+      data: {
+        postId,
+        authorId,
+        content,
+      },
+      select: {
+        id: true,
+        postId: true,
+        authorId: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async findPostComments(
+    postId: string,
+    options: { cursor?: string; limit: number }
+  ): Promise<{
+    comments: Array<{
+      id: string;
+      postId: string;
+      authorId: string;
+      content: string;
+      createdAt: Date;
+      updatedAt: Date;
+    }>;
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
+    const { cursor, limit } = options;
+
+    const comments = await this.prisma.postComment.findMany({
+      where: {
+        postId,
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: limit + 1,
+      ...(cursor
+        ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+        : {}),
+      select: {
+        id: true,
+        postId: true,
+        authorId: true,
+        content: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    const hasNextPage = comments.length > limit;
+    const slicedComments = hasNextPage ? comments.slice(0, limit) : comments;
+
+    const nextCursor =
+      hasNextPage && slicedComments.length > 0
+        ? slicedComments[slicedComments.length - 1].id
+        : null;
+
+    return {
+      comments: slicedComments,
+      nextCursor,
+      hasNextPage,
+    };
   }
 }

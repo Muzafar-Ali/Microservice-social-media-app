@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
 import { 
+  CommentsCursorPaginationDto,
+  commentsCursorPaginationSchema,
+  CreatePostCommentDto,
   CreatePostDto,  
   FeedAfterQueryDto,  
   feedAfterQuerySchema,  
@@ -510,5 +513,83 @@ export class PostController {
       return next(error);
     }
   }
+
+  /**
+   * @desc    Create comment on a post
+   * @route   POST /api/posts/:postId/comments
+   * @access  Private
+   */
+  createPostCommentHandler = async (
+    req: Request<PostIdParamsDto, any, CreatePostCommentDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { content } = req.body
+
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const { userId } = req;
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const result = await this.postService.createPostComment(
+        safeParams.data.postId,
+        userId,
+        content
+      );
+
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in createPostCommentHandler");
+      return next(error);
+    }
+  };
+
+  /**
+   * @desc    Get comments of a post
+   * @route   GET /api/posts/:postId/comments?cursor=<commentId>&limit=20
+   * @access  Public
+   */
+  getPostCommentsHandler = async (
+    req: Request<PostIdParamsDto, any, never, CommentsCursorPaginationDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const safeParams = postIdParamsSchema.safeParse(req.params);
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const safeQuery = commentsCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getPostComments(safeParams.data.postId, {
+        cursor: safeQuery.data.cursor,
+        limit: safeQuery.data.limit,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getPostCommentsHandler");
+      return next(error);
+    }
+  };
 
 }

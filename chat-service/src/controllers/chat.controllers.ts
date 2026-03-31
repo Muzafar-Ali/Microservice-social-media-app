@@ -102,7 +102,7 @@ export class ChatController {
   };
 
   getConversationMessages = async (
-    req: Request<ConversationParamsDTO, any, never, CursorPaginationDTO>, 
+    req: Request<ConversationParamsDTO>, 
     res: Response, 
     next: NextFunction
   ) => {
@@ -124,16 +124,19 @@ export class ChatController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const data = await this.chatService.getConversationMessages({
+      const result = await this.chatService.getConversationMessages({
         userId: req.userId,
         conversationId: safeParams.data.conversationId,
         limit: safequery.data.limit,
         cursorMessageId: safequery.data.cursor,
       });
 
-      return res.status(StatusCodes.OK).json({ success: true, data });
+      res.status(StatusCodes.OK).json({ 
+        success: true, 
+        data: result 
+      });
     } catch (error) {
-      return next(error);
+      next(error);
     }
   };
 

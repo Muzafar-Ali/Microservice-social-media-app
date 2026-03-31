@@ -1,7 +1,7 @@
 import express from 'express';
 import { PostController } from '../controllers/post.controller.js';
 import validateRequestBody from '../middlewares/validaterequestBody.middleware.js';
-import { createPostSchema, updatePostSchema } from '../validation/post.validation.js';
+import { createPostCommentSchema, createPostSchema, updatePostSchema } from '../validation/post.validation.js';
 import isAuthenticatedRedis from '../middlewares/isAUthenticatedRedis.js';
 
 const router = express.Router();
@@ -19,10 +19,17 @@ const postRoutes = (postController: PostController) => {
   router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler); // offset pagination endponit
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
-  router.route("/:postId/like").post(isAuthenticatedRedis, postController.likePostHandler);
-  router.route("/:postId/likes").get(postController.getPostLikesHandler);
-  router.route("/:postId/unlike").delete(isAuthenticatedRedis, postController.unlikePostHandler);    
-  router.route('/:postId')
+  router.route("/:postId/like")
+    .post(isAuthenticatedRedis, postController.likePostHandler)
+    .get(postController.getPostLikesHandler);
+
+  router.route("/:postId/unlike").delete(isAuthenticatedRedis, postController.unlikePostHandler);
+  
+  router.route("/:postId/comments")
+    .post(isAuthenticatedRedis, validateRequestBody(createPostCommentSchema), postController.createPostCommentHandler)
+    .get(postController.getPostCommentsHandler);    
+ 
+    router.route('/:postId')
     .get(postController.getPostByIdHandler)
     .patch(isAuthenticatedRedis, validateRequestBody(updatePostSchema), postController.updatePostHandler)
     .delete(isAuthenticatedRedis, postController.deletePostHandler)

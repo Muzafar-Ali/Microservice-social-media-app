@@ -126,13 +126,11 @@ export const profileUserIdParamsSchema = z.object({
 });
 
 export const queryOffsetPaginationSchema = z.object({
-  page: z
-    .coerce.number()
+  page: z.coerce.number()
     .int("page must be an integer")
     .min(1,"Page must be at least 1")
     .default(1), 
-  limit: z
-    .coerce.number()
+  limit: z.coerce.number()
     .int("limit must be an integer")
     .min(1, "Limit must be at least 1")
     .max(100, "Limit cannot exceed 100")
@@ -144,27 +142,41 @@ export const gridCursorPaginationSchema = z.object({
     .coerce.number()
     .int("limit must be an integer")
     .positive()
-    .max(50, "limit can not exceed 50 charachters")
+    .max(50, "limit can not exceed 50")
     .optional()
     .default(30),
   cursor: z
     .string()
     .trim()
-    .min(1)
+    .min(1, "cursor can not be empty")
     .optional(),
 });
 
 export const likesCursorPaginationSchema = z.object({
   limit: z.coerce.number()
-    .int()
+    .int("limit must be an integer")
     .positive()
-    .max(50)
+    .max(50, "limit can not exceed 50")
     .optional()
     .default(20),
   cursor: z
     .string()
     .trim()
-    .min(1)
+    .min(1, "cursor can not be empty")
+    .optional(),
+});
+
+export const commentsCursorPaginationSchema = z.object({
+  limit: z.coerce.number()
+    .int("limit must be an integer")
+    .positive()
+    .max(50, "limit can not exceed 50")
+    .optional()
+    .default(20),
+  cursor: z
+    .string()
+    .trim()
+    .min(1, "cursor can not be empty")
     .optional(),
 });
 
@@ -173,29 +185,34 @@ export const feedWindowQuerySchema = z.object({
   .string()
   .trim()
   .min(1, "Post ID is required"),
-  limit: z
-  .coerce.number()
-  .int()
+  limit: z.coerce.number()
+  .int("limit must be an integer")
   .positive()
-  .max(20)
+  .max(20, "limit can not exceed 20")
   .optional()
   .default(10),
 });
 
 export const feedAfterQuerySchema = z.object({
   cursor: z
-  .string()
-  .trim()
-  .min(1, "Cursor is required"),
-  limit: z
-  .coerce.number()
-  .int()
-  .positive()
-  .max(20)
-  .optional()
-  .default(10),
+    .string()
+    .trim()
+    .min(1, "Cursor is required"),
+  limit: z.coerce.number()
+    .int("limit must be an integer")
+    .positive()
+    .max(20, "limit can not exceed 20")
+    .optional()
+    .default(10),
 });
 
+export const createPostCommentSchema = z.object({
+  content: z
+  .string()
+  .trim()
+  .min(1, "Comment content is required")
+  .max(1000, "Comment must not exceed 1000 characters"),
+});
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
@@ -207,3 +224,5 @@ export type GridCursorPaginationDto = z.infer<typeof gridCursorPaginationSchema>
 export type LikesCursorPaginationDto = z.infer<typeof likesCursorPaginationSchema>;
 export type FeedWindowQueryDto = z.infer<typeof feedWindowQuerySchema>;
 export type FeedAfterQueryDto = z.infer<typeof feedAfterQuerySchema>;
+export type CreatePostCommentDto = z.infer<typeof createPostCommentSchema>;
+export type CommentsCursorPaginationDto = z.infer<typeof commentsCursorPaginationSchema>;

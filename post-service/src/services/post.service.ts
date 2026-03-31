@@ -5,6 +5,7 @@ import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/post-events.producer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost .js';
+import { UserProfileCacheSummary } from '../types/post.types.js';
 
 
 export class PostService {
@@ -331,21 +332,21 @@ export class PostService {
 
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(likedUserIds);
 
-    const cachedProfilesByUserId: any = new Map(
+    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
       cachedProfiles.map((profile: any) => [profile.userId, profile])
     );
 
     return {
       items: result.likes.map((like) => {
         const cachedProfile = cachedProfilesByUserId.get(like.userId);
-        const isUnknownUser = !cachedProfile || cachedProfile.isDeleted;
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
 
         return {
           userId: like.userId,
           username: isUnknownUser ? "unknown_user" : cachedProfile.username,
           displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
           avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-          isVerified: isUnknownUser ? false : (cachedProfile.isVerified ?? false),
+          status: cachedProfile?.status,
           likedAt: like.createdAt,
         };
       }),
@@ -365,6 +366,93 @@ export class PostService {
   }) {
     
     return this.postRepository.upsertUserProfileCache(data);
+  }
+
+  async   createPostComment(
+    postId: string,
+    currentUserId: string,
+    content: string
+  ) {
+    const postExists = await this.postRepository.findPostById(postId);
+    if (!postExists) {
+      throw new ApiErrorHandler(404, "Post not found");
+    }
+
+    const createdComment = await this.postRepository.createPostComment(
+      postId,
+      currentUserId,
+      content.trim()
+    );
+
+    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds([currentUserId]);
+    const cachedProfile = cachedProfiles[0];
+    const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+
+    return {
+      id: createdComment.id,
+      postId: createdComment.postId,
+      author: {
+        userId: currentUserId,
+        username: isUnknownUser ? "unknown_user" : cachedProfile.username,
+        displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+        avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+        status: cachedProfile?.status ?? "unknown",
+      },
+      content: createdComment.content,
+      createdAt: createdComment.createdAt,
+      updatedAt: createdComment.updatedAt,
+    };
+  }
+
+  async getPostComments(
+    postId: string,
+    query: { cursor?: string; limit?: number }
+  ) {
+    const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
+
+    const postExists = await this.postRepository.findPostById(postId);
+    if (!postExists) {
+      throw new ApiErrorHandler(404, "Post not found");
+    }
+
+    const result = await this.postRepository.findPostComments(postId, {
+      cursor: query.cursor,
+      limit,
+    });
+
+    const authorIds = [...new Set(result.comments.map((comment) => comment.authorId))];
+    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
+
+    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
+      cachedProfiles.map((profile: any) => [profile.userId, profile])
+    );
+
+    return {
+      items: result.comments.map((comment) => {
+        const cachedProfile = cachedProfilesByUserId.get(comment.authorId);
+
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+
+        return {
+          id: comment.id,
+          postId: comment.postId,
+          author: {
+            userId: comment.authorId,
+            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
+            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+            status: cachedProfile?.status ?? "unknown",
+          },
+          content: comment.content,
+          createdAt: comment.createdAt,
+          updatedAt: comment.updatedAt,
+        };
+      }),
+      pagination: {
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
   }
     
 }

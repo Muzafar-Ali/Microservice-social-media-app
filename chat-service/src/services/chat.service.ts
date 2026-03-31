@@ -1,7 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import { ChatRepository } from "../respositories/chat.repository.js";
-import { BaseConversationDto, ConversationResponseDto } from "../types/caht.types.js";
+import { BaseConversationDto, ConversationResponseDto } from "../types/chat.types.js";
 import mapConversation from "../utils/mapConversion.js";
 
 export class ChatService {

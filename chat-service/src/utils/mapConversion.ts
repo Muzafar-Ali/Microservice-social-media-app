@@ -1,4 +1,4 @@
-import { BaseConversationDto, ConversationResponseDto } from "../types/caht.types.js";
+import { BaseConversationDto, ConversationResponseDto } from "../types/chat.types.js";
 
 function mapConversation(conversation: any): BaseConversationDto {
   return {

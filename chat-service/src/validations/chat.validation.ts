@@ -14,11 +14,14 @@ export const conversationParamsSchema = z.object({
 });
 
 export const cursorPaginationSchema = z.object({
-  limit: z.preprocess(
-      (val) => (val === undefined || val === "" ? undefined : Number(val)),
-      z.number().min(1).max(50).default(30)
-    ),
-  cursor: z.string().optional(),
+  limit: z.coerce.number()
+    .int("limit must be an integer")
+    .min(1, "limit must be at least 1")
+    .max(50, "limit can not exceed 50")
+    .default(20),
+  cursor: z
+    .string()
+    .optional(),
 });
 
 export type CreateDirectConversationDTO = z.infer<typeof createDirectConversationSchema>;

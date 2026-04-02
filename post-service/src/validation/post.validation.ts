@@ -234,12 +234,22 @@ export const homeFeedBeforeQuerySchema = z.object({
     .min(1, "cursor is required"),
 });
 
+export const homeFeedAfterQuerySchema = z.object({
+  limit: z.coerce.number()
+    .int("limit must be an integer")
+    .positive()
+    .max(50, "limit can not exceed 50")
+    .optional()
+    .default(20),
+  cursor: z.string().trim().min(1, "cursor is required"),
+});
+
 export const createPostCommentSchema = z.object({
   content: z
-    .string()
-    .trim()
-    .min(1, "Comment content is required")
-    .max(1000, "Comment must not exceed 1000 characters"),
+  .string()
+  .trim()
+  .min(1, "Comment content is required")
+  .max(1000, "Comment must not exceed 1000 characters"),
 });
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
@@ -257,3 +267,4 @@ export type CreatePostCommentDto = z.infer<typeof createPostCommentSchema>;
 export type CommentsCursorPaginationDto = z.infer<typeof commentsCursorPaginationSchema>;
 export type HomeFeedQueryDto = z.infer<typeof homeFeedQuerySchema>;
 export type HomeFeedBeforeQueryDto = z.infer<typeof homeFeedBeforeQuerySchema>;
+export type HomeFeedAfterQueryDto = z.infer<typeof homeFeedAfterQuerySchema>;

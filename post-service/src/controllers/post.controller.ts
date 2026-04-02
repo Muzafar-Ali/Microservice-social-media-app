@@ -12,6 +12,7 @@ import {
   FeedWindowQueryDto,  
   feedWindowQuerySchema,  
   gridCursorPaginationSchema,  
+  homeFeedAfterQuerySchema,  
   homeFeedBeforeQuerySchema,  
   HomeFeedQueryDto,  
   homeFeedQuerySchema,  
@@ -179,6 +180,48 @@ export class PostController {
       });
     } catch (error) {
       logger.error(error, "Error in getHomeFeedBeforeHandler");
+      next(error);
+    }
+  };
+
+  /**
+   * @desc    Get older home feed posts after the current bottom cursor for infinite scroll
+   *          - Usage
+   *            GET /api/posts/feed/home/after?cursor=post_123
+   *            GET /api/posts/feed/home/after?cursor=post_123&limit=20
+   * 
+   * @route   GET /api/posts/feed/home/after
+   * @access  Private (Authenticated users only)
+   */
+  getHomeFeedAfterHandler = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const safeQuery = homeFeedAfterQuerySchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getHomeFeedAfter(userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getHomeFeedAfterHandler");
       next(error);
     }
   };

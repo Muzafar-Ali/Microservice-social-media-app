@@ -183,6 +183,58 @@ export class PostRepository {
     });
   }
 
+  async findHomeFeedAfter(options: { cursor: string; limit: number }): Promise<{
+    posts: UserFeedPost[];
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
+    const { cursor, limit } = options;
+
+    const cursorPost = await this.findPostCursorById(cursor);
+
+    if (!cursorPost) {
+      throw new ApiErrorHandler(404, "Cursor post not found");
+    }
+
+    const posts = await this.prisma.post.findMany({
+      where: {
+        OR: [
+          {
+            createdAt: {
+              lt: cursorPost.createdAt,
+            },
+          },
+          {
+            createdAt: cursorPost.createdAt,
+            id: {
+              lt: cursorPost.id,
+            },
+          },
+        ],
+      },
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: limit + 1,
+      select: userFeedPostSelect,
+    });
+
+    const hasNextPage = posts.length > limit;
+    const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+    const nextCursor =
+      slicedPosts.length > 0
+        ? slicedPosts[slicedPosts.length - 1].id
+        : null;
+
+    return {
+      posts: slicedPosts,
+      nextCursor,
+      hasNextPage,
+    };
+  }
+
   async findPostLikes(
     postId: string,
     options: { cursor?: string; limit: number }

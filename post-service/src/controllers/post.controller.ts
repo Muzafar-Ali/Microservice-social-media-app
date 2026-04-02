@@ -12,6 +12,7 @@ import {
   FeedWindowQueryDto,  
   feedWindowQuerySchema,  
   gridCursorPaginationSchema,  
+  homeFeedBeforeQuerySchema,  
   HomeFeedQueryDto,  
   homeFeedQuerySchema,  
   LikesCursorPaginationDto,  
@@ -95,8 +96,17 @@ export class PostController {
   }
 
   /**
-   * @desc    Get personalized home feed posts with cursor-based pagination
-   * @route   GET /api/posts/feed/home?cursor=<postId>&limit=20
+   * @desc    Get personalized home feed posts for the authenticated user.
+   *
+   *          Usage:
+   *          - GET /api/posts/feed/home
+   *          - GET /api/posts/feed/home?cursor=<lastPostId>&limit=20
+   *
+   *          Notes:
+   *          - Initial request: call without cursor & limit
+   *          - Paginated request: pass cursor & limit for next results
+   *
+   * @route   GET /api/posts/feed/home
    * @access  Private (Authenticated User Required)
    */
   getHomeFeedHandler = async (
@@ -128,6 +138,47 @@ export class PostController {
       });
     } catch (error) {
       logger.error(error, "Error in getHomeFeedHandler");
+      next(error);
+    }
+  };
+
+  /**
+   * @desc    Get newer home feed posts before the current top cursor for refresh
+   *          Usage:
+   *          - GET /api/posts/feed/home/before?cursor=<topPostId>&limit=20
+   * 
+   * @route   GET /api/posts/feed/home/before
+   * @access  Private (Authenticated users only)
+   */
+  getHomeFeedBeforeHandler = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const safeQuery = homeFeedBeforeQuerySchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getHomeFeedBefore(userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getHomeFeedBeforeHandler");
       next(error);
     }
   };

@@ -16,6 +16,7 @@ const postRoutes = (postController: PostController) => {
   router.route('/me').get(isAuthenticatedRedis, postController.getMyPostsHandler);
   
   router.route('/feed/home').get(isAuthenticatedRedis, postController.getHomeFeedHandler);
+  router.route('/feed/home/before').get(isAuthenticatedRedis, postController.getHomeFeedBeforeHandler);
 
   router.route('/user/:profileUserId/grid/cursor').get(postController.getUserGridPostsCursorHandler); // cursor pagination end point
   router.route("/user/:profileUserId/feed/window").get(postController.getUserFeedWindowHandler);

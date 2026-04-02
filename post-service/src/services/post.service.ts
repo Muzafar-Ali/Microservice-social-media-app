@@ -112,6 +112,51 @@ export class PostService {
     };
   }
 
+  async getHomeFeedBefore( currentUserId: string,  query: { limit?: number; cursor: string } ) {
+
+    const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
+
+    const result = await this.postRepository.findHomeFeedBefore({
+      cursor: query.cursor,
+      limit,
+    });
+
+    const authorIds = [...new Set(result.posts.map((post) => post.authorId))];
+    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
+
+    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
+      cachedProfiles.map((profile: any) => [profile.userId, profile])
+    );
+
+    return {
+      items: result.posts.map((post) => {
+        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
+        const isUnknownUser =
+          !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+
+        return {
+          ...mapUserFeedPost(post),
+          author: {
+            userId: post.authorId,
+            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
+            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+            status: cachedProfile?.status ?? "unknown",
+          },
+          viewer: {
+            userId: currentUserId,
+          },
+        };
+      }),
+      pagination: {
+        limit,
+        hasNewer: result.hasNewer,
+        fetchedCount: result.posts.length,
+        topCursor: result.posts.length > 0 ? result.posts[0].id : query.cursor,
+      },
+    };
+  }
+
   async getUserGridPostsCursor( profileUserId: string, query: { limit?: number; cursor?: string } ) {
     
     const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);

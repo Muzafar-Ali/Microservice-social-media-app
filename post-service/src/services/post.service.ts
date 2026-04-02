@@ -4,7 +4,7 @@ import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { postCreatedCounter } from "../monitoring/metrics.js";
 import { PostEventPublisher } from '../events/post-events.producer.js';
 import { MediaType } from '../generated/prisma/enums.js';
-import mapUserFeedPost from '../utils/mapUserFeedPost .js';
+import mapUserFeedPost from '../utils/mapUserFeedPost.js';
 import { UserProfileCacheSummary } from '../types/post.types.js';
 
 
@@ -67,6 +67,49 @@ export class PostService {
         hasPrevious: page > 1
       }
     }
+  }
+
+  async getHomeFeed( currentUserId: string, query: { limit?: number; cursor?: string } ) {
+
+    const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
+
+    const result = await this.postRepository.findHomeFeed({
+      limit,
+      cursor: query.cursor,
+    });
+
+    const authorIds = [...new Set(result.posts.map((post: any) => post.authorId))];
+    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
+
+    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
+      cachedProfiles.map((profile: any) => [profile.userId, profile])
+    );
+
+    return {
+      items: result.posts.map((post) => {
+        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+
+        return {
+          ...mapUserFeedPost(post),
+          author: {
+            userId: post.authorId,
+            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
+            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+            status: cachedProfile?.status ?? "unknown",
+          },
+          viewer: {
+            userId: currentUserId,
+          },
+        };
+      }),
+      pagination: {
+        limit,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
   }
 
   async getUserGridPostsCursor( profileUserId: string, query: { limit?: number; cursor?: string } ) {

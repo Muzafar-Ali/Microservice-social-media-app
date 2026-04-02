@@ -91,6 +91,43 @@ export class PostRepository {
     });
   }
 
+  async findHomeFeed(options: { limit: number; cursor?: string }): Promise<{
+    posts: UserFeedPost[];
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
+    const { limit, cursor } = options;
+
+    const posts = await this.prisma.post.findMany({
+      orderBy: [
+        { createdAt: "desc" },
+        { id: "desc" },
+      ],
+      take: limit + 1,
+      ...(cursor
+        ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+        : {}),
+      select: userFeedPostSelect,
+    });
+
+    const hasNextPage = posts.length > limit;
+    const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
+
+    const nextCursor =
+      hasNextPage && slicedPosts.length > 0
+        ? slicedPosts[slicedPosts.length - 1].id
+        : null;
+
+    return {
+      posts: slicedPosts,
+      nextCursor,
+      hasNextPage,
+    };
+  }
+
   async findPostLikes(
     postId: string,
     options: { cursor?: string; limit: number }

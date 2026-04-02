@@ -12,6 +12,8 @@ import {
   FeedWindowQueryDto,  
   feedWindowQuerySchema,  
   gridCursorPaginationSchema,  
+  HomeFeedQueryDto,  
+  homeFeedQuerySchema,  
   LikesCursorPaginationDto,  
   likesCursorPaginationSchema,  
   PostIdParamsDto,  
@@ -91,6 +93,44 @@ export class PostController {
       next(error);
     }
   }
+
+  /**
+   * @desc    Get personalized home feed posts with cursor-based pagination
+   * @route   GET /api/posts/feed/home?cursor=<postId>&limit=20
+   * @access  Private (Authenticated User Required)
+   */
+  getHomeFeedHandler = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const safeQuery = homeFeedQuerySchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getHomeFeed(userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error, "Error in getHomeFeedHandler");
+      next(error);
+    }
+  };
 
   /**
    * @desc    Get all posts with pagination support

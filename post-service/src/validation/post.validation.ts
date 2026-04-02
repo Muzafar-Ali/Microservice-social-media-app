@@ -183,15 +183,15 @@ export const commentsCursorPaginationSchema = z.object({
 
 export const feedWindowQuerySchema = z.object({
   postId: z
-  .string()
-  .trim()
-  .min(1, "Post ID is required"),
+    .string()
+    .trim()
+    .min(1, "Post ID is required"),
   limit: z.coerce.number()
-  .int("limit must be an integer")
-  .positive()
-  .max(20, "limit can not exceed 20")
-  .optional()
-  .default(10),
+    .int("limit must be an integer")
+    .positive()
+    .max(20, "limit can not exceed 20")
+    .optional()
+    .default(10),
 });
 
 export const feedAfterQuerySchema = z.object({
@@ -206,6 +206,21 @@ export const feedAfterQuerySchema = z.object({
     .optional()
     .default(10),
 });
+
+export const homeFeedQuerySchema = z.object({
+  limit: z.coerce.number()
+    .int("limit must be an integer")
+    .positive()
+    .max(50, "limit can not exceed 50")
+    .optional()
+    .default(20),
+  cursor: z
+    .string()
+    .trim()
+    .min(1, "cursor can not be empty")
+    .optional(),
+});
+
 
 export const createPostCommentSchema = z.object({
   content: z
@@ -228,3 +243,4 @@ export type FeedWindowQueryDto = z.infer<typeof feedWindowQuerySchema>;
 export type FeedAfterQueryDto = z.infer<typeof feedAfterQuerySchema>;
 export type CreatePostCommentDto = z.infer<typeof createPostCommentSchema>;
 export type CommentsCursorPaginationDto = z.infer<typeof commentsCursorPaginationSchema>;
+export type HomeFeedQueryDto = z.infer<typeof homeFeedQuerySchema>;

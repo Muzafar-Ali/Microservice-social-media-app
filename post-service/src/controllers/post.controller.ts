@@ -299,14 +299,25 @@ export class PostController {
    * @access  Private (Authenticated users only)
    */
   getMyPostsHandler = async(
-    req: Request<{ id: string }>, 
-    res: Response, 
+    req: Request,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+
+      const posts = await this.postService.getMyPosts(userId);
+
+      res.status(200).json({
+        success: true,
+        data: posts,
+      });
     } catch (error) {
-      logger.error(error, 'Error in getMyPostsHandler');
+      logger.error(error, "Error in getMyPostsHandler");
       next(error);
     }
   }

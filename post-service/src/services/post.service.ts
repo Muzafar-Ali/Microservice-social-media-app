@@ -69,6 +69,10 @@ export class PostService {
     }
   }
 
+  async getMyPosts(userId: string) {
+    return this.postRepository.findPostsByUserId(userId);
+  }
+
   async getHomeFeed( currentUserId: string, query: { limit?: number; cursor?: string } ) {
 
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);

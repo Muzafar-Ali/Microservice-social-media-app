@@ -1,12 +1,17 @@
 import { Socket } from "socket.io";
-import { redis } from "../config/redisClient.js";
 import cookie from "cookie";
+import { redis } from "../config/redisClient.js";
 
-/**
- * This middleware runs BEFORE the socket is considered "connected".
- * If we reject here, the connection won't be established.
- */
-export async function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void) {
+type SocketSessionPayload = {
+  userId: string | number;
+  ip?: string;
+  userAgent?: string;
+};
+
+export async function socketAuthMiddleware(
+  socket: Socket,
+  next: (err?: Error) => void
+) {
   try {
     const cookieHeader = socket.handshake.headers.cookie;
 
@@ -28,18 +33,25 @@ export async function socketAuthMiddleware(socket: Socket, next: (err?: Error) =
       return next(new Error("Unauthorized: session expired"));
     }
 
-    const session = JSON.parse(sessionJson) as { userId: number; ip?: string; userAgent?: string };
+    const session = JSON.parse(sessionJson) as SocketSessionPayload;
+
+    if (session.userId === undefined || session.userId === null) {
+      return next(new Error("Unauthorized: invalid session user"));
+    }
 
     /**
-     * Optional hardening (same idea as your HTTP middleware):
+     * Optional hardening:
      * - Bind session to IP and/or User-Agent for extra protection.
-     * NOTE: With proxies, IP binding can break; be careful in production.
+     * NOTE:
+     * - IP binding can break behind proxies/load balancers
+     * - User-Agent matching can also be brittle
      */
     // if (session.ip && session.ip !== socket.handshake.address) {
     //   return next(new Error("Unauthorized: IP mismatch"));
     // }
-    // const ua = socket.handshake.headers["user-agent"];
-    // if (session.userAgent && session.userAgent !== ua) {
+
+    // const userAgent = socket.handshake.headers["user-agent"];
+    // if (session.userAgent && session.userAgent !== userAgent) {
     //   return next(new Error("Unauthorized: User-Agent mismatch"));
     // }
 

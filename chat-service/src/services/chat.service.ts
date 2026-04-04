@@ -1,42 +1,87 @@
 import { StatusCodes } from "http-status-codes";
+import {
+  AttachmentType,
+  MessageType,
+  Prisma,
+} from "../generated/prisma/client.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import { ChatRepository } from "../respositories/chat.repository.js";
-import { BaseConversationDto, ConversationResponseDto } from "../types/chat.types.js";
+import {
+  BaseConversationDto,
+  ConversationListItemDto,
+  MessageResponseDto,
+  PaginatedMessagesResponseDto,
+} from "../types/chat.types.js";
 import mapConversation from "../utils/mapConversion.js";
 
 export class ChatService {
   constructor(private readonly chatRepository: ChatRepository) {}
+
+  private mapMessage(message: any): MessageResponseDto {
+    return {
+      id: message.id,
+      conversationId: message.conversationId,
+      senderId: message.senderId,
+      type: message.type,
+      body: message.body ?? null,
+      metadata: message.metadata ?? null,
+      clientMessageId: message.clientMessageId ?? null,
+      replyToMessageId: message.replyToMessageId ?? null,
+      attachments: (message.attachments ?? []).map((attachment: any) => ({
+        id: attachment.id,
+        type: attachment.type,
+        url: attachment.url,
+        thumbnailUrl: attachment.thumbnailUrl ?? null,
+        mimeType: attachment.mimeType ?? null,
+        fileName: attachment.fileName ?? null,
+        sizeBytes: attachment.sizeBytes ?? null,
+        width: attachment.width ?? null,
+        height: attachment.height ?? null,
+        durationSec: attachment.durationSec ?? null,
+        sortOrder: attachment.sortOrder,
+      })),
+      createdAt: message.createdAt.toISOString(),
+      editedAt: message.editedAt ? message.editedAt.toISOString() : null,
+      deletedAt: message.deletedAt ? message.deletedAt.toISOString() : null,
+    };
+  }
 
   async createDirectConversation(params: {
     creatorUserId: string;
     type: "DIRECT";
     participantUserId?: string;
   }): Promise<BaseConversationDto> {
-
     if (!params.participantUserId) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "participantUserId is required for DIRECT chat");
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "participantUserId is required for DIRECT chat"
+      );
     }
 
     if (params.participantUserId === params.creatorUserId) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "You cannot create a DIRECT chat with yourself");
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "You cannot create a DIRECT chat with yourself"
+      );
     }
 
-    const existing = await this.chatRepository.findExistingDirectConversation(
-      params.creatorUserId,
-      params.participantUserId
-    );
+    const existingConversation =
+      await this.chatRepository.findExistingDirectConversation(
+        params.creatorUserId,
+        params.participantUserId
+      );
 
-    // If direct conversation already exists, return it instead of creating duplicate.
-    if (existing) {
-      return mapConversation(existing);
+    if (existingConversation) {
+      return mapConversation(existingConversation);
     }
 
-    const created = await this.chatRepository.createDirectConversation(
-      params.creatorUserId,
-      params.participantUserId
-    );
+    const createdConversation =
+      await this.chatRepository.createDirectConversation(
+        params.creatorUserId,
+        params.participantUserId
+      );
 
-    return mapConversation(created);
+    return mapConversation(createdConversation);
   }
 
   async createGroupConversation(params: {
@@ -45,98 +90,168 @@ export class ChatService {
     title?: string;
     participantUserIds?: string[];
   }): Promise<BaseConversationDto> {
-
     const participantUserIds = params.participantUserIds ?? [];
 
     if (participantUserIds.length === 0) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "participantUserIds is required for GROUP chat");
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "participantUserIds is required for GROUP chat"
+      );
     }
 
-    const created = await this.chatRepository.createGroupConversation({
-      creatorUserId: params.creatorUserId,
-      title: params.title,
-      participantUserIds,
-    });
+    const createdConversation =
+      await this.chatRepository.createGroupConversation({
+        creatorUserId: params.creatorUserId,
+        title: params.title,
+        participantUserIds,
+      });
 
-    return mapConversation(created);
+    return mapConversation(createdConversation);
   }
 
-  // async listMyConversations(userId: string) {
-  //   const conversations = await this.chatRepository.listUserConversations(userId);
-  //   return conversations.map((c: any) => mapConversation(c));
-  // }
-
-  async listMyConversations(userId: string) {
+  async listMyConversations(userId: string): Promise<ConversationListItemDto[]> {
     const conversations = await this.chatRepository.listUserConversations(userId);
 
-    const response = [];
-    for (const conversation of conversations as any[]) {
-      const participant = conversation.participants?.find((p: any) => p.userId === userId);
-      const lastReadAt = participant?.lastReadAt ?? null;
+    const conversationListItems = await Promise.all(
+      conversations.map(async (conversation: any) => {
+        const currentParticipant = await this.chatRepository.findParticipant(
+          conversation.id,
+          userId
+        );
 
-      const unreadCount = await this.chatRepository.countUnreadMessages({
-        conversationId: conversation.id,
-        userId,
-        lastReadAt,
-      });
+        const unreadCount = await this.chatRepository.countUnreadMessages({
+          conversationId: conversation.id,
+          userId,
+          lastReadAt: currentParticipant?.lastReadAt ?? null,
+        });
 
-      const lastMessage = await this.chatRepository.getLastMessage(conversation.id);
+        return {
+          ...mapConversation(conversation),
+          lastMessageAt: conversation.lastMessageAt
+            ? conversation.lastMessageAt.toISOString()
+            : null,
+          unreadCount,
+          lastMessage: conversation.lastMessage
+            ? {
+                id: conversation.lastMessage.id,
+                senderId: conversation.lastMessage.senderId,
+                type: conversation.lastMessage.type,
+                body: conversation.lastMessage.body ?? null,
+                createdAt: conversation.lastMessage.createdAt.toISOString(),
+              }
+            : null,
+        };
+      })
+    );
 
-      response.push({
-        ...mapConversation(conversation),
-        unreadCount,
-        lastMessage: lastMessage
-          ? {
-              id: lastMessage.id,
-              senderId: lastMessage.senderId,
-              body: lastMessage.body,
-              createdAt: lastMessage.createdAt.toISOString(),
-            }
-          : null,
-      });
-    }
-
-    return response;
+    return conversationListItems;
   }
 
   async sendMessage(params: {
     senderId: string;
     conversationId: string;
-    body: string;
-    metadata?: any;
-  }) {
-    const isMember = await this.chatRepository.isUserParticipant(params.conversationId, params.senderId);
-    if (!isMember) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    type: MessageType;
+    body?: string | null;
+    metadata?: Prisma.InputJsonValue | null;
+    clientMessageId: string;
+    replyToMessageId?: string | null;
+    attachments?: Array<{
+      type: AttachmentType;
+      url: string;
+      thumbnailUrl?: string | null;
+      mimeType?: string | null;
+      fileName?: string | null;
+      sizeBytes?: number | null;
+      width?: number | null;
+      height?: number | null;
+      durationSec?: number | null;
+      sortOrder?: number;
+    }>;
+  }): Promise<MessageResponseDto> {
+    const isParticipant = await this.chatRepository.isUserParticipant(
+      params.conversationId,
+      params.senderId
+    );
+
+    if (!isParticipant) {
+      throw new ApiErrorHandler(
+        StatusCodes.FORBIDDEN,
+        "You are not a participant of this conversation"
+      );
     }
 
-    const message = await this.chatRepository.createMessage({
+    if (params.type === MessageType.SYSTEM) {
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "SYSTEM messages cannot be created directly by clients"
+      );
+    }
+
+    const existingMessage =
+      await this.chatRepository.findMessageByClientMessageId({
+        conversationId: params.conversationId,
+        clientMessageId: params.clientMessageId,
+      });
+
+    if (existingMessage) {
+      return this.mapMessage(existingMessage);
+    }
+
+    if (params.replyToMessageId) {
+      const replyTargetMessage = await this.chatRepository.findMessageById(
+        params.replyToMessageId
+      );
+
+      if (!replyTargetMessage) {
+        throw new ApiErrorHandler(
+          StatusCodes.NOT_FOUND,
+          "Reply target message not found"
+        );
+      }
+
+      if (replyTargetMessage.conversationId !== params.conversationId) {
+        throw new ApiErrorHandler(
+          StatusCodes.BAD_REQUEST,
+          "Reply target message does not belong to this conversation"
+        );
+      }
+    }
+
+    const normalizedBody =
+      typeof params.body === "string" && params.body.trim().length > 0
+        ? params.body.trim()
+        : null;
+
+    const createdMessage = await this.chatRepository.createMessage({
       conversationId: params.conversationId,
       senderId: params.senderId,
-      body: params.body,
-      metadata: params.metadata,
+      type: params.type,
+      body: normalizedBody,
+      metadata: params.metadata ?? null,
+      clientMessageId: params.clientMessageId,
+      replyToMessageId: params.replyToMessageId ?? null,
+      attachments: params.attachments ?? [],
     });
 
-    return {
-      id: message.id,
-      conversationId: message.conversationId,
-      senderId: message.senderId,
-      body: message.body,
-      metadata: message.metadata,
-      createdAt: message.createdAt.toISOString(),
-    };
+    return this.mapMessage(createdMessage);
   }
 
-  // message history method
   async getConversationMessages(params: {
     userId: string;
     conversationId: string;
     limit: number;
     cursorMessageId?: string;
-  }) {
-    const isMember = await this.chatRepository.isUserParticipant(params.conversationId, params.userId);
-    if (!isMember) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+  }): Promise<PaginatedMessagesResponseDto> {
+    const isParticipant = await this.chatRepository.isUserParticipant(
+      params.conversationId,
+      params.userId
+    );
+
+    if (!isParticipant) {
+      throw new ApiErrorHandler(
+        StatusCodes.FORBIDDEN,
+        "You are not a participant of this conversation"
+      );
     }
 
     const messages = await this.chatRepository.listMessagesByConversation({
@@ -145,38 +260,144 @@ export class ChatService {
       cursorMessageId: params.cursorMessageId,
     });
 
-    const items = messages.map((m: any) => ({
-      id: m.id,
-      conversationId: m.conversationId,
-      senderId: m.senderId,
-      body: m.body,
-      metadata: m.metadata ?? null,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const items = messages.map((message: any) => this.mapMessage(message));
+    const nextCursor =
+      items.length === params.limit ? items[items.length - 1].id : null;
 
-    const nextCursor = items.length === params.limit ? items[items.length - 1].id : null;
-
-    return { items, nextCursor };
+    return {
+      items,
+      nextCursor,
+    };
   }
 
-  // mark-as-read method
-  async markConversationRead(params: { userId: string; conversationId: string }) {
-    const isMember = await this.chatRepository.isUserParticipant(params.conversationId, params.userId);
-    if (!isMember) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+  async markConversationRead(params: {
+    userId: string;
+    conversationId: string;
+    lastReadMessageId: string;
+  }) {
+    const isParticipant = await this.chatRepository.isUserParticipant(
+      params.conversationId,
+      params.userId
+    );
+
+    if (!isParticipant) {
+      throw new ApiErrorHandler(
+        StatusCodes.FORBIDDEN,
+        "You are not a participant of this conversation"
+      );
     }
 
-    const readAt = new Date();
-    await this.chatRepository.updateParticipantLastReadAt({
+    const targetMessage = await this.chatRepository.findMessageById(
+      params.lastReadMessageId
+    );
+
+    if (!targetMessage) {
+      throw new ApiErrorHandler(
+        StatusCodes.NOT_FOUND,
+        "lastReadMessageId not found"
+      );
+    }
+
+    if (targetMessage.conversationId !== params.conversationId) {
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "lastReadMessageId does not belong to this conversation"
+      );
+    }
+
+    const currentParticipant = await this.chatRepository.findParticipant(
+      params.conversationId,
+      params.userId
+    );
+
+    if (!currentParticipant) {
+      throw new ApiErrorHandler(
+        StatusCodes.FORBIDDEN,
+        "You are not a participant of this conversation"
+      );
+    }
+
+    if (
+      currentParticipant.lastReadAt &&
+      currentParticipant.lastReadAt.getTime() >= targetMessage.createdAt.getTime()
+    ) {
+      return {
+        conversationId: params.conversationId,
+        userId: params.userId,
+        lastReadMessageId:
+          currentParticipant.lastReadMessageId ?? params.lastReadMessageId,
+        lastReadAt: currentParticipant.lastReadAt.toISOString(),
+      };
+    }
+
+    const updatedParticipant =
+      await this.chatRepository.updateParticipantReadState({
+        conversationId: params.conversationId,
+        userId: params.userId,
+        lastReadMessageId: params.lastReadMessageId,
+        lastReadAt: targetMessage.createdAt,
+      });
+
+    return {
       conversationId: params.conversationId,
       userId: params.userId,
-      readAt,
-    });
-
-    return { conversationId: params.conversationId, userId: params.userId, lastReadAt: readAt.toISOString() };
+      lastReadMessageId: updatedParticipant.lastReadMessageId,
+      lastReadAt: updatedParticipant.lastReadAt?.toISOString() ?? null,
+    };
   }
 
   async isParticipant(conversationId: string, userId: string) {
     return this.chatRepository.isUserParticipant(conversationId, userId);
+  }
+
+  async markMessageDelivered(params: {
+    userId: string;
+    conversationId: string;
+    messageId: string;
+  }) {
+    const isParticipant = await this.chatRepository.isUserParticipant(
+      params.conversationId,
+      params.userId
+    );
+
+    if (!isParticipant) {
+      throw new ApiErrorHandler(
+        StatusCodes.FORBIDDEN,
+        "You are not a participant of this conversation"
+      );
+    }
+
+    const targetMessage = await this.chatRepository.findConversationMessageById({
+      conversationId: params.conversationId,
+      messageId: params.messageId,
+    });
+
+    if (!targetMessage) {
+      throw new ApiErrorHandler(
+        StatusCodes.NOT_FOUND,
+        "Message not found in this conversation"
+      );
+    }
+
+    if (targetMessage.senderId === params.userId) {
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "Sender cannot mark own message as delivered"
+      );
+    }
+
+    const deliveredReceipt =
+      await this.chatRepository.upsertMessageDeliveryReceipt({
+        messageId: params.messageId,
+        userId: params.userId,
+        deliveredAt: new Date(),
+      });
+
+    return {
+      conversationId: params.conversationId,
+      messageId: params.messageId,
+      userId: params.userId,
+      deliveredAt: deliveredReceipt.deliveredAt?.toISOString() ?? null,
+    };
   }
 }

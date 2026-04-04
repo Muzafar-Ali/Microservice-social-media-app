@@ -17,45 +17,150 @@ enum ParticipantRole {
   ADMIN
 }
 
-model Conversation {
-  id          String            @id @default(uuid())
-  type        ConversationType
-  title       String?           // for GROUP chats
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+  SYSTEM
+  SHARED_POST
+}
 
-  participants Participant[]
-  messages     Message[]
+enum AttachmentType {
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+}
+
+model Conversation {
+  id             String            @id @default(uuid())
+  type           ConversationType
+  title          String?
+  createdBy      String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  lastMessageId  String?
+  lastMessageAt  DateTime?
+
+  participants   Participant[]
+  messages       Message[]
+  lastMessage    Message?          @relation("ConversationLastMessage", fields: [lastMessageId], references: [id], onDelete: SetNull)
 
   @@index([type])
   @@index([updatedAt])
+  @@index([lastMessageAt])
 }
 
 model Participant {
-  id             String          @id @default(uuid())
-  conversationId String
-  userId         String          // user-service userId (stored as string)
-  role           ParticipantRole @default(MEMBER)
-  joinedAt       DateTime        @default(now())
-  lastReadAt     DateTime?       // last time user read this conversation
+  id                String           @id @default(uuid())
+  conversationId    String
+  userId            String
+  role              ParticipantRole  @default(MEMBER)
+  joinedAt          DateTime         @default(now())
 
-  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  lastReadAt        DateTime?
+  lastReadMessageId String?
+
+  mutedUntil        DateTime?
+  archivedAt        DateTime?
+  deletedAt         DateTime?
+
+  conversation      Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  lastReadMessage   Message?         @relation("ParticipantLastReadMessage", fields: [lastReadMessageId], references: [id], onDelete: SetNull)
 
   @@unique([conversationId, userId])  // user can join a conversation only once
   @@index([userId])
   @@index([conversationId])
+  @@index([lastReadMessageId])
 }
 
 model Message {
-  id             String       @id @default(uuid())
-  conversationId String
-  senderId       String       // userId of sender (from user-service)
-  body           String
-  metadata       Json?        // optional: attachments info, links, etc.
-  createdAt      DateTime     @default(now())
+  id                    String              @id @default(uuid())
+  conversationId        String
+  senderId              String
+  type                  MessageType         @default(TEXT)
 
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  body                  String?
+  metadata              Json?
+
+  clientMessageId       String?
+  replyToMessageId      String?
+
+  createdAt             DateTime            @default(now())
+  editedAt              DateTime?
+  deletedAt             DateTime?
+
+  conversation          Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  replyToMessage        Message?            @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies               Message[]           @relation("MessageReplies")
+
+  attachments           MessageAttachment[]
+  reactions             MessageReaction[]
+  receipts              MessageReceipt[]
+
+  conversationLastRef   Conversation[]      @relation("ConversationLastMessage")
+  participantReadRefs   Participant[]       @relation("ParticipantLastReadMessage")
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+  @@index([replyToMessageId])
+  @@index([clientMessageId])
+  @@unique([conversationId, clientMessageId])
+}
+
+model MessageAttachment {
+  id             String          @id @default(uuid())
+  messageId      String
+  type           AttachmentType
+
+  url            String
+  thumbnailUrl   String?
+  mimeType       String?
+  fileName       String?
+
+  sizeBytes      Int?
+  width          Int?
+  height         Int?
+  durationSec    Int?
+
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+
+  message        Message         @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+  @@index([type])
+  @@unique([messageId, sortOrder])
+}
+
+model MessageReaction {
+  id           String       @id @default(uuid())
+  messageId    String
+  userId       String
+  reaction     String
+  createdAt    DateTime     @default(now())
+
+  message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, reaction])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model MessageReceipt {
+  id          String   @id @default(uuid())
+  messageId   String
+  userId      String
+  deliveredAt DateTime?
+  seenAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  message     Message   @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
 }

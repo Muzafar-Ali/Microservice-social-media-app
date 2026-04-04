@@ -40,6 +40,15 @@ export class ChatService {
         durationSec: attachment.durationSec ?? null,
         sortOrder: attachment.sortOrder,
       })),
+      receipts: (message.receipts ?? []).map((receipt: any) => ({
+        userId: receipt.userId,
+        deliveredAt: receipt.deliveredAt
+          ? receipt.deliveredAt.toISOString()
+          : null,
+        seenAt: receipt.seenAt
+          ? receipt.seenAt.toISOString()
+          : null,
+      })),
       createdAt: message.createdAt.toISOString(),
       editedAt: message.editedAt ? message.editedAt.toISOString() : null,
       deletedAt: message.deletedAt ? message.deletedAt.toISOString() : null,

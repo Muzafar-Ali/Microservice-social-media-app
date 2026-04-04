@@ -20,10 +20,10 @@ export type MessageAttachmentDto = {
   sortOrder: number;
 };
 
-export type MessageReactionDto = {
-  reaction: string;
-  count: number;
-  reactedByMe: boolean;
+export type MessageReceiptDto = {
+  userId: string;
+  deliveredAt: string | null;
+  seenAt: string | null;
 };
 
 export type MessageResponseDto = {
@@ -36,27 +36,10 @@ export type MessageResponseDto = {
   clientMessageId: string | null;
   replyToMessageId: string | null;
   attachments: MessageAttachmentDto[];
+  receipts: MessageReceiptDto[];
   createdAt: string;
   editedAt: string | null;
   deletedAt: string | null;
-};
-
-export type ConversationListItemDto = {
-  id: string;
-  type: "DIRECT" | "GROUP";
-  title: string | null;
-  createdAt: string;
-  updatedAt: string;
-  lastMessageAt: string | null;
-  unreadCount: number;
-  participants: ParticipantDto[];
-  lastMessage: {
-    id: string;
-    senderId: string;
-    type: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE" | "SYSTEM" | "SHARED_POST";
-    body: string | null;
-    createdAt: string;
-  } | null;
 };
 
 export type BaseConversationDto = {
@@ -67,6 +50,17 @@ export type BaseConversationDto = {
   updatedAt: string;
   lastMessageAt: string | null;
   participants: ParticipantDto[];
+};
+
+export type ConversationListItemDto = BaseConversationDto & {
+  unreadCount: number;
+  lastMessage: null | {
+    id: string;
+    senderId: string;
+    type: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE" | "SYSTEM" | "SHARED_POST";
+    body: string | null;
+    createdAt: string;
+  };
 };
 
 export type PaginatedMessagesResponseDto = {

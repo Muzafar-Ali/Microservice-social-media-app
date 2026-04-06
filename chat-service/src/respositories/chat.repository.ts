@@ -399,4 +399,65 @@ export class ChatRepository {
       },
     });
   }
+
+  async markMessagesSeenUpTo(params: {
+    conversationId: string;
+    userId: string;
+    seenAt: Date;
+  }) {
+    const messagesToMarkSeen = await this.prisma.message.findMany({
+      where: {
+        conversationId: params.conversationId,
+        deletedAt: null,
+        senderId: {
+          not: params.userId,
+        },
+        createdAt: {
+          lte: params.seenAt,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (messagesToMarkSeen.length === 0) {
+      return [];
+    }
+
+    const receiptOperations = messagesToMarkSeen.map((message) =>
+      this.prisma.messageReceipt.upsert({
+        where: {
+          messageId_userId: {
+            messageId: message.id,
+            userId: params.userId,
+          },
+        },
+        update: {
+          seenAt: params.seenAt,
+          deliveredAt: params.seenAt,
+        },
+        create: {
+          messageId: message.id,
+          userId: params.userId,
+          deliveredAt: params.seenAt,
+          seenAt: params.seenAt,
+        },
+      })
+    );
+
+    return this.prisma.$transaction(receiptOperations);
+  }
+
+  async getMessageReceiptSummary(messageId: string) {
+    return this.prisma.messageReceipt.findMany({
+      where: {
+        messageId,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+  }
+  
 }

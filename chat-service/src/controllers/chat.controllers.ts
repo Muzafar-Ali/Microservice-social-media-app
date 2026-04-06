@@ -3,44 +3,30 @@ import { StatusCodes } from "http-status-codes";
 import { ChatService } from "../services/chat.service.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import {
+  ConversationParamsDto,
   conversationParamsSchema,
-  createDirectConversationSchema,
-  createGroupConversationSchema,
+  CreateDirectConversationDto,
+  CreateGroupConversationDto,
   cursorPaginationSchema,
-  markConversationReadSchema,
-  sendMessageSchema,
+  MarkConversationReadDto,
+  SendMessageDto,
 } from "../validations/chat.validation.js";
 
-type AuthenticatedRequest = Request & {
-  userId?: string;
-};
 
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  private getAuthenticatedUserId(request: AuthenticatedRequest): string {
-    if (!request.userId) {
-      throw new ApiErrorHandler(
-        StatusCodes.UNAUTHORIZED,
-        "Unauthorized user"
-      );
-    }
-
-    return request.userId;
-  }
-
   getMe = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const userId = this.getAuthenticatedUserId(request);
 
-      response.status(StatusCodes.OK).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         data: {
-          userId,
+          userId: req.userId,
         },
       });
     } catch (error) {
@@ -49,30 +35,26 @@ export class ChatController {
   };
 
   createDirectConversation = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request<Record<string, never>, any, CreateDirectConversationDto>,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const creatorUserId = this.getAuthenticatedUserId(request);
-
-      const parsedBody = createDirectConversationSchema.safeParse(request.body);
-
-      if (!parsedBody.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          parsedBody.error.issues[0]?.message ?? "Invalid request body"
-        );
+      const { userId } = req;
+      const participantUserId = req.body.participantUserId
+      
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
       }
 
       const createdConversation =
         await this.chatService.createDirectConversation({
-          creatorUserId,
+          creatorUserId: userId,
           type: "DIRECT",
-          participantUserId: parsedBody.data.participantUserId,
+          participantUserId
         });
 
-      response.status(StatusCodes.CREATED).json({
+      res.status(StatusCodes.CREATED).json({
         success: true,
         message: "Direct conversation created successfully",
         data: createdConversation,
@@ -83,31 +65,27 @@ export class ChatController {
   };
 
   createGroupConversation = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request<Record<string, never>, any, CreateGroupConversationDto>,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const creatorUserId = this.getAuthenticatedUserId(request);
+      const { userId } = req;
+      const { title, participantUserIds } = req.body;
 
-      const parsedBody = createGroupConversationSchema.safeParse(request.body);
-
-      if (!parsedBody.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          parsedBody.error.issues[0]?.message ?? "Invalid request body"
-        );
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
       }
 
       const createdConversation =
         await this.chatService.createGroupConversation({
-          creatorUserId,
+          creatorUserId: userId,
           type: "GROUP",
-          title: parsedBody.data.title,
-          participantUserIds: parsedBody.data.participantUserIds,
+          title,
+          participantUserIds,
         });
 
-      response.status(StatusCodes.CREATED).json({
+      res.status(StatusCodes.CREATED).json({
         success: true,
         message: "Group conversation created successfully",
         data: createdConversation,
@@ -118,16 +96,20 @@ export class ChatController {
   };
 
   listMyConversations = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const userId = this.getAuthenticatedUserId(request);
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
 
       const conversations = await this.chatService.listMyConversations(userId);
 
-      response.status(StatusCodes.OK).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         data: conversations,
       });
@@ -137,40 +119,43 @@ export class ChatController {
   };
 
   getConversationMessages = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request<ConversationParamsDto>,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const userId = this.getAuthenticatedUserId(request);
+      const { userId } = req
+      
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
+      }
+      
+      const safeParams = conversationParamsSchema.safeParse(req.params);
 
-      const parsedParams = conversationParamsSchema.safeParse(request.params);
-
-      if (!parsedParams.success) {
+      if (!safeParams.success) {
         throw new ApiErrorHandler(
           StatusCodes.BAD_REQUEST,
-          parsedParams.error.issues[0]?.message ?? "Invalid route params"
+          safeParams.error.issues[0]?.message ?? "Invalid route params"
         );
       }
 
-      const parsedQuery = cursorPaginationSchema.safeParse(request.query);
+      const safeQuery = cursorPaginationSchema.safeParse(req.query);
 
-      if (!parsedQuery.success) {
+      if (!safeQuery.success) {
         throw new ApiErrorHandler(
           StatusCodes.BAD_REQUEST,
-          parsedQuery.error.issues[0]?.message ?? "Invalid query params"
+          safeQuery.error.issues[0]?.message ?? "Invalid query params"
         );
       }
 
-      const paginatedMessages =
-        await this.chatService.getConversationMessages({
+      const paginatedMessages = await this.chatService.getConversationMessages({
           userId,
-          conversationId: parsedParams.data.conversationId,
-          limit: parsedQuery.data.limit,
-          cursorMessageId: parsedQuery.data.cursor,
+          conversationId: safeParams.data.conversationId,
+          limit: safeQuery.data.limit,
+          cursorMessageId: safeQuery.data.cursor,
         });
 
-      response.status(StatusCodes.OK).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         data: paginatedMessages,
       });
@@ -180,43 +165,46 @@ export class ChatController {
   };
 
   sendMessage = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request<ConversationParamsDto, any, SendMessageDto>,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const senderId = this.getAuthenticatedUserId(request);
+      const { userId } = req;
 
-      const parsedParams = conversationParamsSchema.safeParse(request.params);
-
-      if (!parsedParams.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          parsedParams.error.issues[0]?.message ?? "Invalid route params"
-        );
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
       }
 
-      const parsedBody = sendMessageSchema.safeParse(request.body);
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+      const {
+        attachments,
+        clientMessageId,
+        type, 
+        body,
+        metadata,
+        replyToMessageId
+      } = req.body;
 
-      if (!parsedBody.success) {
+      if (!safeParams.success) {
         throw new ApiErrorHandler(
           StatusCodes.BAD_REQUEST,
-          parsedBody.error.issues[0]?.message ?? "Invalid request body"
+          safeParams.error.issues[0]?.message ?? "Invalid route params"
         );
       }
 
       const createdMessage = await this.chatService.sendMessage({
-        senderId,
-        conversationId: parsedParams.data.conversationId,
-        type: parsedBody.data.type,
-        body: parsedBody.data.body ?? null,
-        metadata: parsedBody.data.metadata as any,
-        clientMessageId: parsedBody.data.clientMessageId,
-        replyToMessageId: parsedBody.data.replyToMessageId ?? null,
-        attachments: parsedBody.data.attachments ?? [],
+        senderId: userId,
+        conversationId: safeParams.data.conversationId,
+        type,
+        body: body ?? null,
+        metadata,
+        clientMessageId,
+        replyToMessageId: replyToMessageId ?? null,
+        attachments: attachments ?? [],
       });
 
-      response.status(StatusCodes.CREATED).json({
+      res.status(StatusCodes.CREATED).json({
         success: true,
         message: "Message sent successfully",
         data: createdMessage,
@@ -227,38 +215,33 @@ export class ChatController {
   };
 
   markConversationRead = async (
-    request: AuthenticatedRequest,
-    response: Response,
+    req: Request<ConversationParamsDto, any, MarkConversationReadDto>,
+    res: Response,
     next: NextFunction
   ) => {
     try {
-      const userId = this.getAuthenticatedUserId(request);
-
-      const parsedParams = conversationParamsSchema.safeParse(request.params);
-
-      if (!parsedParams.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          parsedParams.error.issues[0]?.message ?? "Invalid route params"
-        );
+      const { userId } = req;
+      const { lastReadMessageId } = req.body;
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+      
+      if (!userId) {
+        throw new ApiErrorHandler(401, "Unauthorized");
       }
 
-      const parsedBody = markConversationReadSchema.safeParse(request.body);
-
-      if (!parsedBody.success) {
+      if (!safeParams.success) {
         throw new ApiErrorHandler(
           StatusCodes.BAD_REQUEST,
-          parsedBody.error.issues[0]?.message ?? "Invalid request body"
+          safeParams.error.issues[0]?.message ?? "Invalid route params"
         );
       }
 
       const readState = await this.chatService.markConversationRead({
         userId,
-        conversationId: parsedParams.data.conversationId,
-        lastReadMessageId: parsedBody.data.lastReadMessageId,
+        conversationId: safeParams.data.conversationId,
+        lastReadMessageId,
       });
 
-      response.status(StatusCodes.OK).json({
+      res.status(StatusCodes.OK).json({
         success: true,
         message: "Conversation marked as read",
         data: readState,

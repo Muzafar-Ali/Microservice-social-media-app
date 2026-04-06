@@ -347,6 +347,12 @@ export class ChatService {
         lastReadAt: targetMessage.createdAt,
       });
 
+    await this.chatRepository.markMessagesSeenUpTo({
+      conversationId: params.conversationId,
+      userId: params.userId,
+      seenAt: targetMessage.createdAt,
+    });
+
     return {
       conversationId: params.conversationId,
       userId: params.userId,

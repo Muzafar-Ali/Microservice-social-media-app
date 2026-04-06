@@ -32,7 +32,11 @@ const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunc
       return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Session expired, please login again"));
     }
 
-    const session = JSON.parse(sessionJson) as { userId: number; ip?: string; userAgent?: string };
+    const session = JSON.parse(sessionJson) as { 
+      userId: number; 
+      ip?: string; 
+      userAgent?: string 
+    };
 
     req.userId = String(session.userId);
 

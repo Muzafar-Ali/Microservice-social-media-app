@@ -67,3 +67,11 @@ export type PaginatedMessagesResponseDto = {
   items: MessageResponseDto[];
   nextCursor: string | null;
 };
+
+export type DeleteMessageResponseDto = {
+  conversationId: string;
+  messageId: string;
+  deletedBy: string;
+  deletedAt: string;
+  forEveryone: boolean;
+};

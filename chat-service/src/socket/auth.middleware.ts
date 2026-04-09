@@ -12,6 +12,7 @@ export async function socketAuthMiddleware(
   socket: Socket,
   next: (err?: Error) => void
 ) {
+  
   try {
     const cookieHeader = socket.handshake.headers.cookie;
 

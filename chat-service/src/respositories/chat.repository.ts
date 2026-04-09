@@ -215,7 +215,7 @@ export class ChatRepository {
   }
 
   async createMessage(params: CreateMessageInput) {
-    return this.prisma.$transaction(async (transactionClient) => {
+    return this.prisma.$transaction(async (transactionClient: any) => {
       const createdMessage = await transactionClient.message.create({
         data: {
           conversationId: params.conversationId,
@@ -425,7 +425,7 @@ export class ChatRepository {
       return [];
     }
 
-    const receiptOperations = messagesToMarkSeen.map((message) =>
+    const receiptOperations = messagesToMarkSeen.map((message: any) =>
       this.prisma.messageReceipt.upsert({
         where: {
           messageId_userId: {
@@ -457,6 +457,50 @@ export class ChatRepository {
       orderBy: {
         createdAt: "asc",
       },
+    });
+  }
+
+  async softDeleteMessage(messageId: string) {
+    return this.prisma.message.update({
+      where: {
+        id: messageId,
+      },
+      data: {
+        body: null,
+        metadata: Prisma.JsonNull,
+        deletedAt: new Date(),
+      },
+      include: {
+        attachments: {
+          orderBy: {
+            sortOrder: "asc",
+          },
+        },
+        receipts: true,
+        reactions: true,
+      },
+    });
+  }
+
+  async updateConversationLastMessageFromLatest(conversationId: string) {
+    return this.prisma.$transaction(async (transactionClient: any) => {
+      const latestMessage = await transactionClient.message.findFirst({
+        where: {
+          conversationId,
+          deletedAt: null,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+
+      return transactionClient.conversation.update({
+        where: {
+          id: conversationId,
+        },
+        data: {
+          lastMessageId: latestMessage?.id ?? null,
+          lastMessageAt: latestMessage?.createdAt ?? null,
+        },
+      });
     });
   }
   

@@ -8,9 +8,13 @@ import {
   CreateDirectConversationDto,
   CreateGroupConversationDto,
   cursorPaginationSchema,
+  DeleteMessageDto,
   MarkConversationReadDto,
+  MessageParamsDto,
+  messageParamsSchema,
   SendMessageDto,
 } from "../validations/chat.validation.js";
+import formatZodError from "../utils/formatZodError.js";
 
 
 export class ChatController {
@@ -44,21 +48,21 @@ export class ChatController {
       const participantUserId = req.body.participantUserId
       
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
       }
 
-      const createdConversation =
-        await this.chatService.createDirectConversation({
-          creatorUserId: userId,
-          type: "DIRECT",
-          participantUserId
-        });
+      const createdConversation = await this.chatService.createDirectConversation({
+        creatorUserId: userId,
+        type: "DIRECT",
+        participantUserId
+      });
 
       res.status(StatusCodes.CREATED).json({
         success: true,
         message: "Direct conversation created successfully",
         data: createdConversation,
       });
+
     } catch (error) {
       next(error);
     }
@@ -74,22 +78,22 @@ export class ChatController {
       const { title, participantUserIds } = req.body;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
       }
 
-      const createdConversation =
-        await this.chatService.createGroupConversation({
-          creatorUserId: userId,
-          type: "GROUP",
-          title,
-          participantUserIds,
-        });
+      const createdConversation = await this.chatService.createGroupConversation({
+        creatorUserId: userId,
+        type: "GROUP",
+        title,
+        participantUserIds,
+      });
 
       res.status(StatusCodes.CREATED).json({
         success: true,
         message: "Group conversation created successfully",
         data: createdConversation,
       });
+
     } catch (error) {
       next(error);
     }
@@ -104,7 +108,7 @@ export class ChatController {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
       }
 
       const conversations = await this.chatService.listMyConversations(userId);
@@ -113,6 +117,7 @@ export class ChatController {
         success: true,
         data: conversations,
       });
+
     } catch (error) {
       next(error);
     }
@@ -127,38 +132,35 @@ export class ChatController {
       const { userId } = req
       
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
       }
       
       const safeParams = conversationParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          safeParams.error.issues[0]?.message ?? "Invalid route params"
-        );
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler( StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const safeQuery = cursorPaginationSchema.safeParse(req.query);
 
       if (!safeQuery.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          safeQuery.error.issues[0]?.message ?? "Invalid query params"
-        );
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler( StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const paginatedMessages = await this.chatService.getConversationMessages({
-          userId,
-          conversationId: safeParams.data.conversationId,
-          limit: safeQuery.data.limit,
-          cursorMessageId: safeQuery.data.cursor,
-        });
+        userId,
+        conversationId: safeParams.data.conversationId,
+        limit: safeQuery.data.limit,
+        cursorMessageId: safeQuery.data.cursor,
+      });
 
       res.status(StatusCodes.OK).json({
         success: true,
         data: paginatedMessages,
       });
+
     } catch (error) {
       next(error);
     }
@@ -173,7 +175,7 @@ export class ChatController {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
       }
 
       const safeParams = conversationParamsSchema.safeParse(req.params);
@@ -187,10 +189,8 @@ export class ChatController {
       } = req.body;
 
       if (!safeParams.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          safeParams.error.issues[0]?.message ?? "Invalid route params"
-        );
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler( StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const createdMessage = await this.chatService.sendMessage({
@@ -198,7 +198,7 @@ export class ChatController {
         conversationId: safeParams.data.conversationId,
         type,
         body: body ?? null,
-        metadata,
+        metadata: metadata ?? null,
         clientMessageId,
         replyToMessageId: replyToMessageId ?? null,
         attachments: attachments ?? [],
@@ -209,6 +209,7 @@ export class ChatController {
         message: "Message sent successfully",
         data: createdMessage,
       });
+
     } catch (error) {
       next(error);
     }
@@ -225,14 +226,12 @@ export class ChatController {
       const safeParams = conversationParamsSchema.safeParse(req.params);
       
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
       }
 
       if (!safeParams.success) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          safeParams.error.issues[0]?.message ?? "Invalid route params"
-        );
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const readState = await this.chatService.markConversationRead({
@@ -246,6 +245,44 @@ export class ChatController {
         message: "Conversation marked as read",
         data: readState,
       });
+
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteMessage = async (
+    req: Request<MessageParamsDto, any, DeleteMessageDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+      const { forEveryone } = req.body;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = messageParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
+      }
+
+      const deletedMessage = await this.chatService.deleteMessage({
+        userId,
+        messageId: safeParams.data.messageId,
+        forEveryone,
+      });
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Message deleted successfully",
+        data: deletedMessage,
+      });
+
     } catch (error) {
       next(error);
     }

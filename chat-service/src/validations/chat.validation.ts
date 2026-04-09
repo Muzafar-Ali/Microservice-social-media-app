@@ -191,53 +191,54 @@ export const sendMessageSchema = z.object({
     .max(10, "attachments cannot exceed 10 items")
     .default([]),
 }).superRefine((value, context) => {
-  const hasBody = typeof value.body === "string" && value.body.trim().length > 0;
+    const hasBody =
+      typeof value.body === "string" && value.body.trim().length > 0;
 
-  const hasAttachments = value.attachments.length > 0;
+    const hasAttachments = value.attachments.length > 0;
 
-  if (!hasBody && !hasAttachments) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["body"],
-      message: "Message must contain body or at least one attachment",
-    });
-  }
+    if (!hasBody && !hasAttachments) {
+      context.addIssue({
+        code: "custom",
+        path: ["body"],
+        message: "Message must contain body or at least one attachment",
+      });
+    }
 
-  if (value.type === "TEXT" && hasAttachments) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["attachments"],
-      message: "TEXT messages cannot include attachments",
-    });
-  }
+    if (value.type === "TEXT" && hasAttachments) {
+      context.addIssue({
+        code: "custom",
+        path: ["attachments"],
+        message: "TEXT messages cannot include attachments",
+      });
+    }
 
-  if (
-    ["IMAGE", "VIDEO", "AUDIO", "FILE"].includes(value.type) &&
-    !hasAttachments
-  ) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["attachments"],
-      message: `${value.type} messages must include at least one attachment`,
-    });
-  }
+    if (
+      ["IMAGE", "VIDEO", "AUDIO", "FILE"].includes(value.type) &&
+      !hasAttachments
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["attachments"],
+        message: `${value.type} messages must include at least one attachment`,
+      });
+    }
 
-  if (value.type === "SYSTEM") {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["type"],
-      message: "SYSTEM messages cannot be created directly by clients",
-    });
-  }
+    if (value.type === "SYSTEM") {
+      context.addIssue({
+        code: "custom",
+        path: ["type"],
+        message: "SYSTEM messages cannot be created directly by clients",
+      });
+    }
 
-  if (value.type === "SHARED_POST" && !value.metadata) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["metadata"],
-      message: "SHARED_POST messages must include metadata",
-    });
-  }
-});
+    if (value.type === "SHARED_POST" && value.metadata == null) {
+      context.addIssue({
+        code: "custom",
+        path: ["metadata"],
+        message: "SHARED_POST messages must include metadata",
+      });
+    }
+  });
 
 export const editMessageSchema = z.object({
   body: z

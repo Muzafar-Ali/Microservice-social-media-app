@@ -9,6 +9,7 @@ import { ChatRepository } from "../respositories/chat.repository.js";
 import {
   BaseConversationDto,
   ConversationListItemDto,
+  DeleteMessageResponseDto,
   MessageResponseDto,
   PaginatedMessagesResponseDto,
 } from "../types/chat.types.js";
@@ -60,18 +61,13 @@ export class ChatService {
     type: "DIRECT";
     participantUserId?: string;
   }): Promise<BaseConversationDto> {
+
     if (!params.participantUserId) {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "participantUserId is required for DIRECT chat"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "participantUserId is required for DIRECT chat");
     }
 
     if (params.participantUserId === params.creatorUserId) {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "You cannot create a DIRECT chat with yourself"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "You cannot create a DIRECT chat with yourself");
     }
 
     const existingConversation =
@@ -99,26 +95,24 @@ export class ChatService {
     title?: string;
     participantUserIds?: string[];
   }): Promise<BaseConversationDto> {
+
     const participantUserIds = params.participantUserIds ?? [];
 
     if (participantUserIds.length === 0) {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "participantUserIds is required for GROUP chat"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "participantUserIds is required for GROUP chat");
     }
 
-    const createdConversation =
-      await this.chatRepository.createGroupConversation({
-        creatorUserId: params.creatorUserId,
-        title: params.title,
-        participantUserIds,
-      });
+    const createdConversation = await this.chatRepository.createGroupConversation({
+      creatorUserId: params.creatorUserId,
+      title: params.title,
+      participantUserIds,
+    });
 
     return mapConversation(createdConversation);
   }
 
   async listMyConversations(userId: string): Promise<ConversationListItemDto[]> {
+
     const conversations = await this.chatRepository.listUserConversations(userId);
 
     const conversationListItems = await Promise.all(
@@ -177,23 +171,18 @@ export class ChatService {
       sortOrder?: number;
     }>;
   }): Promise<MessageResponseDto> {
+
     const isParticipant = await this.chatRepository.isUserParticipant(
       params.conversationId,
       params.senderId
     );
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(
-        StatusCodes.FORBIDDEN,
-        "You are not a participant of this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
     }
 
     if (params.type === MessageType.SYSTEM) {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "SYSTEM messages cannot be created directly by clients"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "SYSTEM messages cannot be created directly by clients");
     }
 
     const existingMessage =
@@ -207,22 +196,14 @@ export class ChatService {
     }
 
     if (params.replyToMessageId) {
-      const replyTargetMessage = await this.chatRepository.findMessageById(
-        params.replyToMessageId
-      );
+      const replyTargetMessage = await this.chatRepository.findMessageById(params.replyToMessageId);
 
       if (!replyTargetMessage) {
-        throw new ApiErrorHandler(
-          StatusCodes.NOT_FOUND,
-          "Reply target message not found"
-        );
+        throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Reply target message not found");
       }
 
       if (replyTargetMessage.conversationId !== params.conversationId) {
-        throw new ApiErrorHandler(
-          StatusCodes.BAD_REQUEST,
-          "Reply target message does not belong to this conversation"
-        );
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Reply target message does not belong to this conversation");
       }
     }
 
@@ -251,16 +232,14 @@ export class ChatService {
     limit: number;
     cursorMessageId?: string;
   }): Promise<PaginatedMessagesResponseDto> {
+
     const isParticipant = await this.chatRepository.isUserParticipant(
       params.conversationId,
       params.userId
     );
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(
-        StatusCodes.FORBIDDEN,
-        "You are not a participant of this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
     }
 
     const messages = await this.chatRepository.listMessagesByConversation({
@@ -270,8 +249,8 @@ export class ChatService {
     });
 
     const items = messages.map((message: any) => this.mapMessage(message));
-    const nextCursor =
-      items.length === params.limit ? items[items.length - 1].id : null;
+
+    const nextCursor = items.length === params.limit ? items[items.length - 1].id : null;
 
     return {
       items,
@@ -284,34 +263,24 @@ export class ChatService {
     conversationId: string;
     lastReadMessageId: string;
   }) {
+
     const isParticipant = await this.chatRepository.isUserParticipant(
       params.conversationId,
       params.userId
     );
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(
-        StatusCodes.FORBIDDEN,
-        "You are not a participant of this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
     }
 
-    const targetMessage = await this.chatRepository.findMessageById(
-      params.lastReadMessageId
-    );
+    const targetMessage = await this.chatRepository.findMessageById(params.lastReadMessageId);
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(
-        StatusCodes.NOT_FOUND,
-        "lastReadMessageId not found"
-      );
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "lastReadMessageId not found");
     }
 
     if (targetMessage.conversationId !== params.conversationId) {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "lastReadMessageId does not belong to this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "lastReadMessageId does not belong to this conversation");
     }
 
     const currentParticipant = await this.chatRepository.findParticipant(
@@ -320,32 +289,26 @@ export class ChatService {
     );
 
     if (!currentParticipant) {
-      throw new ApiErrorHandler(
-        StatusCodes.FORBIDDEN,
-        "You are not a participant of this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
     }
 
     if (
-      currentParticipant.lastReadAt &&
-      currentParticipant.lastReadAt.getTime() >= targetMessage.createdAt.getTime()
+      currentParticipant.lastReadAt && currentParticipant.lastReadAt.getTime() >= targetMessage.createdAt.getTime()
     ) {
       return {
         conversationId: params.conversationId,
         userId: params.userId,
-        lastReadMessageId:
-          currentParticipant.lastReadMessageId ?? params.lastReadMessageId,
+        lastReadMessageId: currentParticipant.lastReadMessageId ?? params.lastReadMessageId,
         lastReadAt: currentParticipant.lastReadAt.toISOString(),
       };
     }
 
-    const updatedParticipant =
-      await this.chatRepository.updateParticipantReadState({
-        conversationId: params.conversationId,
-        userId: params.userId,
-        lastReadMessageId: params.lastReadMessageId,
-        lastReadAt: targetMessage.createdAt,
-      });
+    const updatedParticipant = await this.chatRepository.updateParticipantReadState({
+      conversationId: params.conversationId,
+      userId: params.userId,
+      lastReadMessageId: params.lastReadMessageId,
+      lastReadAt: targetMessage.createdAt,
+    });
 
     await this.chatRepository.markMessagesSeenUpTo({
       conversationId: params.conversationId,
@@ -370,16 +333,14 @@ export class ChatService {
     conversationId: string;
     messageId: string;
   }) {
+
     const isParticipant = await this.chatRepository.isUserParticipant(
       params.conversationId,
       params.userId
     );
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(
-        StatusCodes.FORBIDDEN,
-        "You are not a participant of this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
     }
 
     const targetMessage = await this.chatRepository.findConversationMessageById({
@@ -388,31 +349,65 @@ export class ChatService {
     });
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(
-        StatusCodes.NOT_FOUND,
-        "Message not found in this conversation"
-      );
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found in this conversation");
     }
 
     if (targetMessage.senderId === params.userId) {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "Sender cannot mark own message as delivered"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Sender cannot mark own message as delivered");
     }
 
-    const deliveredReceipt =
-      await this.chatRepository.upsertMessageDeliveryReceipt({
-        messageId: params.messageId,
-        userId: params.userId,
-        deliveredAt: new Date(),
-      });
+    const deliveredReceipt = await this.chatRepository.upsertMessageDeliveryReceipt({
+      messageId: params.messageId,
+      userId: params.userId,
+      deliveredAt: new Date(),
+    });
 
     return {
       conversationId: params.conversationId,
       messageId: params.messageId,
       userId: params.userId,
       deliveredAt: deliveredReceipt.deliveredAt?.toISOString() ?? null,
+    };
+  }
+
+  async deleteMessage(params: {
+    userId: string;
+    messageId: string;
+    forEveryone: boolean;
+  }): Promise<DeleteMessageResponseDto> {
+    
+    if (!params.forEveryone) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only forEveryone delete is supported right now");
+    }
+
+    const targetMessage = await this.chatRepository.findMessageById(params.messageId);
+
+    if (!targetMessage) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found");
+    }
+
+    if (targetMessage.senderId !== params.userId) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You can only delete your own messages");
+    }
+
+    if (targetMessage.deletedAt) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Message is already deleted");
+    }
+
+    const deletedMessage = await this.chatRepository.softDeleteMessage(params.messageId);
+
+    const conversation = await this.chatRepository.findConversationById(deletedMessage.conversationId);
+
+    if (conversation?.lastMessageId === deletedMessage.id) {
+      await this.chatRepository.updateConversationLastMessageFromLatest(deletedMessage.conversationId);
+    }
+
+    return {
+      conversationId: deletedMessage.conversationId,
+      messageId: deletedMessage.id,
+      deletedBy: params.userId,
+      deletedAt: deletedMessage.deletedAt!.toISOString(),
+      forEveryone: true,
     };
   }
 }

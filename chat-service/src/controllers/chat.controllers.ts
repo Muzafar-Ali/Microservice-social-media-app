@@ -17,6 +17,7 @@ import {
   SendMessageDto,
 } from "../validations/chat.validation.js";
 import formatZodError from "../utils/formatZodError.js";
+import { getSocketServer } from "../socket/index.js";
 
 
 export class ChatController {
@@ -206,6 +207,16 @@ export class ChatController {
         attachments: attachments ?? [],
       });
 
+      const io = getSocketServer();
+
+      io.to(`conversation:${safeParams.data.conversationId}`).emit("chat:message:new", createdMessage);
+
+      io.to(`conversation:${safeParams.data.conversationId}`).emit("conversation:update", {
+        conversationId: safeParams.data.conversationId,
+        lastMessageId: createdMessage.id,
+        lastMessageAt: createdMessage.createdAt,
+      });
+
       res.status(StatusCodes.CREATED).json({
         success: true,
         message: "Message sent successfully",
@@ -357,7 +368,7 @@ export class ChatController {
         message: "Reaction removed successfully",
         data: removedReaction,
       });
-      
+
     } catch (error) {
       next(error);
     }

@@ -18,6 +18,7 @@ async function bootstrap() {
     httpServer.listen(config.port, () => {
       logger.info(`[chat-service] listening on http://localhost:${config.port}`);
     });
+    
   } catch (error) {
     logger.error({ error }, "❌ Failed to start chat-service");
     process.exit(1);

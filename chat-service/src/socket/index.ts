@@ -7,6 +7,16 @@ import config from "../config/config.js";
 import { ChatService } from "../services/chat.service.js";
 import { registerChatSocketHandlers } from "./chat.socket.js";
 
+let ioInstance: Server | null = null;
+
+export function getSocketServer() {
+  if (!ioInstance) {
+    throw new Error("Socket.IO server is not initialized");
+  }
+
+  return ioInstance;
+}
+
 /**
  * Socket server bootstrapping:
  * - Attach to same HTTP server
@@ -27,6 +37,8 @@ export function initSocketServer(
     },
   });
 
+  ioInstance = io;
+  
   const presenceService = new PresenceService();
 
   io.use(socketAuthMiddleware);

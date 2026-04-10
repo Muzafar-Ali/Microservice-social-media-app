@@ -7,11 +7,13 @@ import {
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import { ChatRepository } from "../respositories/chat.repository.js";
 import {
+  AddReactionResponseDto,
   BaseConversationDto,
   ConversationListItemDto,
   DeleteMessageResponseDto,
   MessageResponseDto,
   PaginatedMessagesResponseDto,
+  RemoveReactionResponseDto,
 } from "../types/chat.types.js";
 import mapConversation from "../utils/mapConversion.js";
 
@@ -185,11 +187,10 @@ export class ChatService {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "SYSTEM messages cannot be created directly by clients");
     }
 
-    const existingMessage =
-      await this.chatRepository.findMessageByClientMessageId({
-        conversationId: params.conversationId,
-        clientMessageId: params.clientMessageId,
-      });
+    const existingMessage = await this.chatRepository.findMessageByClientMessageId({
+      conversationId: params.conversationId,
+      clientMessageId: params.clientMessageId,
+    });
 
     if (existingMessage) {
       return this.mapMessage(existingMessage);
@@ -410,4 +411,100 @@ export class ChatService {
       forEveryone: true,
     };
   }
+
+  async addReaction(params: {
+    userId: string;
+    messageId: string;
+    reaction: string;
+  }): Promise<AddReactionResponseDto> {
+
+    const targetMessage = await this.chatRepository.findMessageById(params.messageId);
+
+    if (!targetMessage) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found");
+    }
+
+    if (targetMessage.deletedAt) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Cannot react to a deleted message");
+    }
+
+    const isParticipant = await this.chatRepository.isUserParticipant(
+      targetMessage.conversationId,
+      params.userId
+    );
+
+    if (!isParticipant) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    }
+
+    const existingReaction = await this.chatRepository.findReaction({
+      messageId: params.messageId,
+      userId: params.userId,
+      reaction: params.reaction,
+    });
+
+    if (existingReaction) {
+      return {
+        id: existingReaction.id,
+        conversationId: targetMessage.conversationId,
+        messageId: existingReaction.messageId,
+        userId: existingReaction.userId,
+        reaction: existingReaction.reaction,
+        createdAt: existingReaction.createdAt.toISOString(),
+      };
+    }
+
+    const createdReaction = await this.chatRepository.addReaction({
+      messageId: params.messageId,
+      userId: params.userId,
+      reaction: params.reaction,
+    });
+
+    return {
+      id: createdReaction.id,
+      conversationId: targetMessage.conversationId,
+      messageId: createdReaction.messageId,
+      userId: createdReaction.userId,
+      reaction: createdReaction.reaction,
+      createdAt: createdReaction.createdAt.toISOString(),
+    };
+  }
+
+  async removeReaction(params: {
+    userId: string;
+    messageId: string;
+    reaction: string;
+  }): Promise<RemoveReactionResponseDto> {
+
+    const targetMessage = await this.chatRepository.findMessageById(params.messageId);
+
+    if (!targetMessage) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found");
+    }
+
+    const isParticipant = await this.chatRepository.isUserParticipant(
+      targetMessage.conversationId,
+      params.userId
+    );
+
+    if (!isParticipant) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    }
+
+    const deleteResult = await this.chatRepository.removeReaction({
+      messageId: params.messageId,
+      userId: params.userId,
+      reaction: params.reaction,
+    });
+
+    return {
+      conversationId: targetMessage.conversationId,
+      messageId: params.messageId,
+      userId: params.userId,
+      reaction: params.reaction,
+      removed: deleteResult.count > 0,
+      removedAt: new Date().toISOString(),
+    };
+  }
+
 }

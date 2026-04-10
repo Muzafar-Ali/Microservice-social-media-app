@@ -75,3 +75,29 @@ export type DeleteMessageResponseDto = {
   deletedAt: string;
   forEveryone: boolean;
 };
+
+export type MessageReactionDto = {
+  id: string;
+  messageId: string;
+  userId: string;
+  reaction: string;
+  createdAt: string;
+};
+
+export type AddReactionResponseDto = {
+  id: string;
+  conversationId: string;
+  messageId: string;
+  userId: string;
+  reaction: string;
+  createdAt: string;
+};
+
+export type RemoveReactionResponseDto = {
+  conversationId: string;
+  messageId: string;
+  userId: string;
+  reaction: string;
+  removed: boolean;
+  removedAt: string;
+};

@@ -8,6 +8,7 @@ import {
   sendMessageSchema,
   typingEventSchema,
 } from "../validations/chat.validation.js";
+import formatZodError from "../utils/formatZodError.js";
 
 type AuthenticatedSocket = Socket & {
   data: {
@@ -51,6 +52,7 @@ export function registerChatSocketHandlers(
   socket: AuthenticatedSocket,
   chatService: ChatService
 ) {
+  
   const currentUserId = socket.data.userId;
 
   // ---- Ensure authenticated socket connection ----
@@ -118,58 +120,13 @@ export function registerChatSocketHandlers(
   });
 
   // ---- Send message (validate payload + persist message + broadcast updates) ----
-  socket.on(
-    "chat:message:send",
-    async (payload, acknowledgement?: SocketAcknowledgement) => {
-      try {
-        const parsedPayload = socketSendMessageSchema.safeParse(payload);
+  socket.on( "chat:message:send", async (payload, acknowledgement?: SocketAcknowledgement) => {
+    try {
+      const parsedPayload = socketSendMessageSchema.safeParse(payload);
 
-        if (!parsedPayload.success) {
-          const errorMessage =
-            parsedPayload.error.issues[0]?.message ?? "Invalid payload";
-
-          emitSocketError(socket, "chat:message:send", errorMessage);
-
-          acknowledgement?.({
-            success: false,
-            message: errorMessage,
-          });
-
-          return;
-        }
-
-        const createdMessage = await chatService.sendMessage({
-          senderId: currentUserId,
-          conversationId: parsedPayload.data.conversationId,
-          type: parsedPayload.data.type,
-          body: parsedPayload.data.body ?? null,
-          metadata: parsedPayload.data.metadata as any,
-          clientMessageId: parsedPayload.data.clientMessageId,
-          replyToMessageId: parsedPayload.data.replyToMessageId ?? null,
-          attachments: parsedPayload.data.attachments ?? [],
-        });
-
-        io.to(`conversation:${parsedPayload.data.conversationId}`).emit(
-          "chat:message:new",
-          createdMessage
-        );
-
-        io.to(`conversation:${parsedPayload.data.conversationId}`).emit(
-          "conversation:update",
-          {
-            conversationId: parsedPayload.data.conversationId,
-            lastMessageId: createdMessage.id,
-            lastMessageAt: createdMessage.createdAt,
-          }
-        );
-
-        acknowledgement?.({
-          success: true,
-          data: createdMessage,
-        });
-      } catch (error: any) {
-        const errorMessage =
-          error?.message ?? "Unexpected error while sending message";
+      if (!parsedPayload.success) {
+        const errorMessages = formatZodError(parsedPayload.error)
+        const errorMessage =  errorMessages ?? "Invalid payload";
 
         emitSocketError(socket, "chat:message:send", errorMessage);
 
@@ -177,12 +134,51 @@ export function registerChatSocketHandlers(
           success: false,
           message: errorMessage,
         });
+
+        return;
       }
+
+      const createdMessage = await chatService.sendMessage({
+        senderId: currentUserId,
+        conversationId: parsedPayload.data.conversationId,
+        type: parsedPayload.data.type,
+        body: parsedPayload.data.body ?? null,
+        metadata: parsedPayload.data.metadata as any,
+        clientMessageId: parsedPayload.data.clientMessageId,
+        replyToMessageId: parsedPayload.data.replyToMessageId ?? null,
+        attachments: parsedPayload.data.attachments ?? [],
+      });
+
+      io.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:message:new", createdMessage);
+
+      io.to(`conversation:${parsedPayload.data.conversationId}`).emit("conversation:update",
+        {
+          conversationId: parsedPayload.data.conversationId,
+          lastMessageId: createdMessage.id,
+          lastMessageAt: createdMessage.createdAt,
+        }
+      );
+
+      acknowledgement?.({
+        success: true,
+        data: createdMessage,
+      });
+
+    } catch (error: any) {
+      const errorMessage = error?.message ?? "Unexpected error while sending message";
+
+      emitSocketError(socket, "chat:message:send", errorMessage);
+
+      acknowledgement?.({
+        success: false,
+        message: errorMessage,
+      });
     }
-  );
+  });
 
   // ---- Typing start indicator (validate + membership check + notify room) ----
   socket.on("chat:typing:start", async (payload) => {
+
     const parsedPayload = typingEventSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
@@ -208,8 +204,7 @@ export function registerChatSocketHandlers(
       return;
     }
 
-    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit(
-      "chat:typing:update",
+    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:typing:update",
       {
         conversationId: parsedPayload.data.conversationId,
         userId: currentUserId,
@@ -220,13 +215,16 @@ export function registerChatSocketHandlers(
 
   // ---- Typing stop indicator (validate + membership check + notify room) ----
   socket.on("chat:typing:stop", async (payload) => {
+
     const parsedPayload = typingEventSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
+      const errorMessages = formatZodError(parsedPayload.error);
+
       emitSocketError(
         socket,
         "chat:typing:stop",
-        parsedPayload.error.issues[0]?.message ?? "Invalid payload"
+        errorMessages ?? "Invalid payload"
       );
       return;
     }
@@ -245,8 +243,7 @@ export function registerChatSocketHandlers(
       return;
     }
 
-    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit(
-      "chat:typing:update",
+    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:typing:update",
       {
         conversationId: parsedPayload.data.conversationId,
         userId: currentUserId,
@@ -256,46 +253,13 @@ export function registerChatSocketHandlers(
   });
 
   // ---- Mark conversation as read (validate + update read state + notify others) ----
-  socket.on(
-    "chat:message:read",
-    async (payload, acknowledgement?: SocketAcknowledgement) => {
-      try {
-        const parsedPayload = messageReadSchema.safeParse(payload);
+  socket.on("chat:message:read", async (payload, acknowledgement?: SocketAcknowledgement) => {
+    try {
+      const parsedPayload = messageReadSchema.safeParse(payload);
 
-        if (!parsedPayload.success) {
-          const errorMessage =
-            parsedPayload.error.issues[0]?.message ?? "Invalid payload";
-
-          emitSocketError(socket, "chat:message:read", errorMessage);
-
-          acknowledgement?.({
-            success: false,
-            message: errorMessage,
-          });
-
-          return;
-        }
-
-        const readState = await chatService.markConversationRead({
-          userId: currentUserId,
-          conversationId: parsedPayload.data.conversationId,
-          lastReadMessageId: parsedPayload.data.lastReadMessageId,
-        });
-
-        socket.to(`conversation:${parsedPayload.data.conversationId}`).emit(
-          "chat:message:read:update",
-          readState
-        );
-
-        socket.emit("chat:message:read:ack", readState);
-
-        acknowledgement?.({
-          success: true,
-          data: readState,
-        });
-      } catch (error: any) {
-        const errorMessage =
-          error?.message ?? "Unexpected error while marking conversation read";
+      if (!parsedPayload.success) {
+        const errorMessages = formatZodError(parsedPayload.error);
+        const errorMessage = errorMessages ?? "Invalid payload";
 
         emitSocketError(socket, "chat:message:read", errorMessage);
 
@@ -303,50 +267,44 @@ export function registerChatSocketHandlers(
           success: false,
           message: errorMessage,
         });
+
+        return;
       }
+
+      const readState = await chatService.markConversationRead({
+        userId: currentUserId,
+        conversationId: parsedPayload.data.conversationId,
+        lastReadMessageId: parsedPayload.data.lastReadMessageId,
+      });
+
+      socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:message:read:update", readState);
+
+      socket.emit("chat:message:read:ack", readState);
+
+      acknowledgement?.({
+        success: true,
+        data: readState,
+      });
+
+    } catch (error: any) {
+      const errorMessage = error?.message ?? "Unexpected error while marking conversation read";
+
+      emitSocketError(socket, "chat:message:read", errorMessage);
+
+      acknowledgement?.({
+        success: false,
+        message: errorMessage,
+      });
     }
-  );
+  });
 
-  socket.on(
-    "chat:message:delivered",
-    async (payload, acknowledgement?: SocketAcknowledgement) => {
-      try {
-        const parsedPayload = messageDeliveredSchema.safeParse(payload);
+  socket.on("chat:message:delivered", async (payload, acknowledgement?: SocketAcknowledgement) => {
+    try {
+      const parsedPayload = messageDeliveredSchema.safeParse(payload);
 
-        if (!parsedPayload.success) {
-          const errorMessage =
-            parsedPayload.error.issues[0]?.message ?? "Invalid payload";
-
-          emitSocketError(socket, "chat:message:delivered", errorMessage);
-
-          acknowledgement?.({
-            success: false,
-            message: errorMessage,
-          });
-
-          return;
-        }
-
-        const deliveryState = await chatService.markMessageDelivered({
-          userId: currentUserId,
-          conversationId: parsedPayload.data.conversationId,
-          messageId: parsedPayload.data.messageId,
-        });
-
-        socket.to(`conversation:${parsedPayload.data.conversationId}`).emit(
-          "chat:message:delivered:update",
-          deliveryState
-        );
-
-        socket.emit("chat:message:delivered:ack", deliveryState);
-
-        acknowledgement?.({
-          success: true,
-          data: deliveryState,
-        });
-      } catch (error: any) {
-        const errorMessage =
-          error?.message ?? "Unexpected error while marking message delivered";
+      if (!parsedPayload.success) {
+        const errorMessages = formatZodError(parsedPayload.error);
+        const errorMessage = errorMessages ?? "Invalid payload";
 
         emitSocketError(socket, "chat:message:delivered", errorMessage);
 
@@ -354,7 +312,34 @@ export function registerChatSocketHandlers(
           success: false,
           message: errorMessage,
         });
+
+        return;
       }
+
+      const deliveryState = await chatService.markMessageDelivered({
+        userId: currentUserId,
+        conversationId: parsedPayload.data.conversationId,
+        messageId: parsedPayload.data.messageId,
+      });
+
+      socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:message:delivered:update", deliveryState);
+
+      socket.emit("chat:message:delivered:ack", deliveryState);
+
+      acknowledgement?.({
+        success: true,
+        data: deliveryState,
+      });
+
+    } catch (error: any) {
+      const errorMessage =  error?.message ?? "Unexpected error while marking message delivered";
+
+      emitSocketError(socket, "chat:message:delivered", errorMessage);
+
+      acknowledgement?.({
+        success: false,
+        message: errorMessage,
+      });
     }
-  );
+  });
 }

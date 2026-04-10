@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { ChatService } from "../services/chat.service.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import {
+  AddReactionDto,
   ConversationParamsDto,
   conversationParamsSchema,
   CreateDirectConversationDto,
@@ -12,6 +13,7 @@ import {
   MarkConversationReadDto,
   MessageParamsDto,
   messageParamsSchema,
+  RemoveReactionDto,
   SendMessageDto,
 } from "../validations/chat.validation.js";
 import formatZodError from "../utils/formatZodError.js";
@@ -287,4 +289,78 @@ export class ChatController {
       next(error);
     }
   };
+
+  addReaction = async (
+    req: Request<MessageParamsDto, any, AddReactionDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = messageParamsSchema.safeParse(req.params);
+    
+      if (!safeParams.success) {
+        const errorMessage = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessage);
+      }
+
+      const reaction = await this.chatService.addReaction({
+        userId,
+        messageId: safeParams.data.messageId,
+        reaction: req.body.reaction,
+      });
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Reaction added successfully",
+        data: reaction,
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  removeReaction = async (
+    req: Request<MessageParamsDto, any, RemoveReactionDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+      const { reaction } = req.body;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = messageParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
+      }
+
+      const removedReaction = await this.chatService.removeReaction({
+        userId,
+        messageId: safeParams.data.messageId,
+        reaction,
+      });
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Reaction removed successfully",
+        data: removedReaction,
+      });
+      
+    } catch (error) {
+      next(error);
+    }
+  };
+
 }

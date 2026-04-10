@@ -314,7 +314,6 @@ export const messageReadSchema = z.object({
     .min(1, "lastReadMessageId is required"),
 });
 
-
 export type ConversationType = z.infer<typeof conversationTypeSchema>;
 export type ParticipantRole = z.infer<typeof participantRoleSchema>;
 export type MessageType = z.infer<typeof messageTypeSchema>;

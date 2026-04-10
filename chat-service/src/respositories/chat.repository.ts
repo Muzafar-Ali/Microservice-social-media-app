@@ -503,5 +503,47 @@ export class ChatRepository {
       });
     });
   }
+
+  async findReaction(params: {
+    messageId: string;
+    userId: string;
+    reaction: string;
+  }) {
+    return this.prisma.messageReaction.findFirst({
+      where: {
+        messageId: params.messageId,
+        userId: params.userId,
+        reaction: params.reaction,
+      },
+    });
+  }
+
+  async addReaction(params: {
+    messageId: string;
+    userId: string;
+    reaction: string;
+  }) {
+    return this.prisma.messageReaction.create({
+      data: {
+        messageId: params.messageId,
+        userId: params.userId,
+        reaction: params.reaction,
+      },
+    });
+  }
+
+  async removeReaction(params: {
+    messageId: string;
+    userId: string;
+    reaction: string;
+  }) {
+    return this.prisma.messageReaction.deleteMany({
+      where: {
+        messageId: params.messageId,
+        userId: params.userId,
+        reaction: params.reaction,
+      },
+    });
+  }
   
 }

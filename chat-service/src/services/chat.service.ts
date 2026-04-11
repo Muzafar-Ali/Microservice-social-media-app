@@ -8,6 +8,7 @@ import {
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import { ChatRepository } from "../respositories/chat.repository.js";
 import {
+  AddParticipantsResponseDto,
   AddReactionResponseDto,
   BaseConversationDto,
   ConversationListItemDto,
@@ -545,6 +546,61 @@ export class ChatService {
       title: updatedConversation.title ?? null,
       updatedBy: params.userId,
       updatedAt: updatedConversation.updatedAt.toISOString(),
+    };
+  }
+
+  async addParticipants(params: {
+    userId: string;
+    conversationId: string;
+    participantUserIds: string[];
+  }): Promise<AddParticipantsResponseDto> {
+    const conversation =
+      await this.chatRepository.findConversationByIdWithParticipants(
+        params.conversationId
+      );
+
+    if (!conversation) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+    }
+
+    if (conversation.type !== "GROUP") {
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        "Only group conversations can add participants"
+      );
+    }
+
+    const currentParticipant = conversation.participants.find(
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+    );
+
+    if (!currentParticipant) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    }
+
+    if (currentParticipant.role !== ParticipantRole.ADMIN) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "Only group admins can add participants");
+    }
+
+    const uniqueParticipantUserIds = Array.from(
+      new Set(
+        params.participantUserIds
+          .map((participantUserId) => participantUserId.trim())
+          .filter(Boolean)
+          .filter((participantUserId) => participantUserId !== params.userId)
+      )
+    );
+
+    const createdParticipants = await this.chatRepository.addParticipantsToConversation({
+        conversationId: params.conversationId,
+        participantUserIds: uniqueParticipantUserIds,
+      });
+
+    return {
+      conversationId: params.conversationId,
+      participantUserIds: createdParticipants.map( (participant: any) => participant.userId ),
+      addedBy: params.userId,
+      addedAt: new Date().toISOString(),
     };
   }
 

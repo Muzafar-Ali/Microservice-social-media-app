@@ -108,3 +108,10 @@ export type GroupConversationUpdateResponseDto = {
   updatedBy: string;
   updatedAt: string;
 };
+
+export type AddParticipantsResponseDto = {
+  conversationId: string;
+  participantUserIds: string[];
+  addedBy: string;
+  addedAt: string;
+};

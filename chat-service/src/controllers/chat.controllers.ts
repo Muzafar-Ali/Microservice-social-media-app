@@ -3,6 +3,7 @@ import { StatusCodes } from "http-status-codes";
 import { ChatService } from "../services/chat.service.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import {
+  AddParticipantsDto,
   AddReactionDto,
   ConversationParamsDto,
   conversationParamsSchema,
@@ -409,6 +410,53 @@ export class ChatController {
         message: "Group title updated successfully",
         data: updatedConversation,
       });
+
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  addParticipants = async (
+    req: Request<ConversationParamsDto, any, AddParticipantsDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+      const { participantUserIds } = req.body;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
+      }
+
+      const addParticipantsResult = await this.chatService.addParticipants({
+        userId,
+        conversationId: safeParams.data.conversationId,
+        participantUserIds,
+      });
+
+      const io = getSocketServer();
+
+      io.to(`conversation:${addParticipantsResult.conversationId}`).emit("chat:group:participant:added", addParticipantsResult);
+
+      for (const participantUserId of addParticipantsResult.participantUserIds) {
+        io.to(`user:${participantUserId}`).emit("chat:group:participant:added", addParticipantsResult);
+      }
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Participants added successfully",
+        data: addParticipantsResult,
+      });
+      
     } catch (error) {
       next(error);
     }

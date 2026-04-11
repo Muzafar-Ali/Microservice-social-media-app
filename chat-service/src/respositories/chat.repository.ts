@@ -577,5 +577,56 @@ export class ChatRepository {
       },
     });
   }
+
+  async addParticipantsToConversation(params: {
+    conversationId: string;
+    participantUserIds: string[];
+  }) {
+    const existingParticipants = await this.prisma.participant.findMany({
+      where: {
+        conversationId: params.conversationId,
+        userId: {
+          in: params.participantUserIds,
+        },
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    const existingUserIds = new Set(
+      existingParticipants.map((participant: any) => participant.userId)
+    );
+
+    const newUserIds = params.participantUserIds.filter(
+      (userId) => !existingUserIds.has(userId)
+    );
+
+    if (newUserIds.length === 0) {
+      return [];
+    }
+
+    await this.prisma.participant.createMany({
+      data: newUserIds.map((userId) => ({
+        conversationId: params.conversationId,
+        userId,
+        role: ParticipantRole.MEMBER,
+      })),
+      skipDuplicates: true,
+    });
+
+    return this.prisma.participant.findMany({
+      where: {
+        conversationId: params.conversationId,
+        userId: {
+          in: newUserIds,
+        },
+        deletedAt: null,
+      },
+      orderBy: {
+        joinedAt: "asc",
+      },
+    });
+  }
   
 }

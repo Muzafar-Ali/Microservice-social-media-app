@@ -313,6 +313,17 @@ export const messageReadSchema = z.object({
     .min(1, "lastReadMessageId is required"),
 });
 
+export const conversationParticipantParamsSchema = z.object({
+  conversationId: z
+    .string()
+    .trim()
+    .min(1, "conversationId is required"),
+  participantUserId: z
+    .string()
+    .trim()
+    .min(1, "participantUserId is required"),
+});
+
 export type ConversationType = z.infer<typeof conversationTypeSchema>;
 export type ParticipantRole = z.infer<typeof participantRoleSchema>;
 export type MessageType = z.infer<typeof messageTypeSchema>;
@@ -321,6 +332,7 @@ export type AttachmentType = z.infer<typeof attachmentTypeSchema>;
 export type CreateDirectConversationDto = z.infer<typeof createDirectConversationSchema>;
 export type CreateGroupConversationDto = z.infer<typeof createGroupConversationSchema>;
 export type UpdateGroupConversationDto = z.infer<typeof updateGroupConversationSchema>;
+export type ConversationParticipantParamsDto = z.infer<typeof conversationParticipantParamsSchema>;
 export type AddParticipantsDto = z.infer<typeof addParticipantsSchema>;
 export type RemoveParticipantDto = z.infer<typeof removeParticipantSchema>;
 export type CursorPaginationDto = z.infer<typeof cursorPaginationSchema>;

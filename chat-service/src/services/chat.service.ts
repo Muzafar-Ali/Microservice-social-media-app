@@ -16,6 +16,7 @@ import {
   GroupConversationUpdateResponseDto,
   MessageResponseDto,
   PaginatedMessagesResponseDto,
+  RemoveParticipantResponseDto,
   RemoveReactionResponseDto,
 } from "../types/chat.types.js";
 import mapConversation from "../utils/mapConversion.js";
@@ -554,20 +555,15 @@ export class ChatService {
     conversationId: string;
     participantUserIds: string[];
   }): Promise<AddParticipantsResponseDto> {
-    const conversation =
-      await this.chatRepository.findConversationByIdWithParticipants(
-        params.conversationId
-      );
+
+    const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
 
     if (!conversation) {
       throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
     }
 
     if (conversation.type !== "GROUP") {
-      throw new ApiErrorHandler(
-        StatusCodes.BAD_REQUEST,
-        "Only group conversations can add participants"
-      );
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations can add participants");
     }
 
     const currentParticipant = conversation.participants.find(
@@ -591,16 +587,89 @@ export class ChatService {
       )
     );
 
+    const activeParticipantUserIds = new Set(
+      conversation.participants
+        .filter((participant: any) => participant.deletedAt === null)
+        .map((participant: any) => participant.userId)
+    );
+  
+    const alreadyExistingParticipantUserIds = uniqueParticipantUserIds.filter(
+      (participantUserId) => activeParticipantUserIds.has(participantUserId)
+    );
+
+    if (alreadyExistingParticipantUserIds.length > 0) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, `User(s) already exist in the conversation: ${alreadyExistingParticipantUserIds.join(", ")}`);
+    }
+    
     const createdParticipants = await this.chatRepository.addParticipantsToConversation({
-        conversationId: params.conversationId,
-        participantUserIds: uniqueParticipantUserIds,
-      });
+      conversationId: params.conversationId,
+      participantUserIds: uniqueParticipantUserIds,
+    });
 
     return {
       conversationId: params.conversationId,
       participantUserIds: createdParticipants.map( (participant: any) => participant.userId ),
       addedBy: params.userId,
       addedAt: new Date().toISOString(),
+    };
+  }
+
+  async removeParticipant(params: {
+    userId: string;
+    conversationId: string;
+    participantUserId: string;
+  }): Promise<RemoveParticipantResponseDto> {
+
+    const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
+
+    if (!conversation) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+    }
+
+    if (conversation.type !== "GROUP") {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations can remove participants");
+    }
+
+    const currentParticipant = conversation.participants.find(
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+    );
+
+    if (!currentParticipant) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    }
+
+    if (currentParticipant.role !== ParticipantRole.ADMIN) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "Only group admins can remove participants");
+    }
+
+    const targetParticipant = conversation.participants.find(
+      (participant: any) => participant.userId === params.participantUserId && participant.deletedAt === null
+    );
+
+    if (!targetParticipant) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Participant not found in this conversation");
+    }
+
+    if (targetParticipant.role === ParticipantRole.ADMIN) {
+      const adminCount = await this.chatRepository.countConversationAdmins(
+        params.conversationId
+      );
+
+      if (adminCount <= 1) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Cannot remove the last admin from the group");
+      }
+    }
+
+    await this.chatRepository.removeParticipantFromConversation({
+      conversationId: params.conversationId,
+      participantUserId: params.participantUserId,
+    });
+
+    return {
+      conversationId: params.conversationId,
+      participantUserId: params.participantUserId,
+      removedBy: params.userId,
+      removedAt: new Date().toISOString(),
     };
   }
 

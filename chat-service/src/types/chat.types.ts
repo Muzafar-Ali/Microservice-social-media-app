@@ -115,3 +115,10 @@ export type AddParticipantsResponseDto = {
   addedBy: string;
   addedAt: string;
 };
+
+export type RemoveParticipantResponseDto = {
+  conversationId: string;
+  participantUserId: string;
+  removedBy: string;
+  removedAt: string;
+};

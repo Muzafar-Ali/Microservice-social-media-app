@@ -598,9 +598,7 @@ export class ChatRepository {
       existingParticipants.map((participant: any) => participant.userId)
     );
 
-    const newUserIds = params.participantUserIds.filter(
-      (userId) => !existingUserIds.has(userId)
-    );
+    const newUserIds = params.participantUserIds.filter((userId) => !existingUserIds.has(userId));
 
     if (newUserIds.length === 0) {
       return [];
@@ -625,6 +623,33 @@ export class ChatRepository {
       },
       orderBy: {
         joinedAt: "asc",
+      },
+    });
+  }
+
+  async removeParticipantFromConversation(params: {
+    conversationId: string;
+    participantUserId: string;
+  }) {
+    return this.prisma.participant.update({
+      where: {
+        conversationId_userId: {
+          conversationId: params.conversationId,
+          userId: params.participantUserId,
+        },
+      },
+      data: {
+        deletedAt: new Date(),
+      },
+    });
+  }
+
+  async countConversationAdmins(conversationId: string) {
+    return this.prisma.participant.count({
+      where: {
+        conversationId,
+        role: ParticipantRole.ADMIN,
+        deletedAt: null,
       },
     });
   }

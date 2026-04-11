@@ -7,6 +7,8 @@ import {
   AddReactionDto,
   ConversationParamsDto,
   conversationParamsSchema,
+  ConversationParticipantParamsDto,
+  conversationParticipantParamsSchema,
   CreateDirectConversationDto,
   CreateGroupConversationDto,
   cursorPaginationSchema,
@@ -444,7 +446,6 @@ export class ChatController {
       });
 
       const io = getSocketServer();
-
       io.to(`conversation:${addParticipantsResult.conversationId}`).emit("chat:group:participant:added", addParticipantsResult);
 
       for (const participantUserId of addParticipantsResult.participantUserIds) {
@@ -457,6 +458,46 @@ export class ChatController {
         data: addParticipantsResult,
       });
       
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  removeParticipant = async (
+    req: Request<ConversationParticipantParamsDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = conversationParticipantParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
+      }
+
+      const removeParticipantResult = await this.chatService.removeParticipant({
+        userId,
+        conversationId: safeParams.data.conversationId,
+        participantUserId: safeParams.data.participantUserId,
+      });
+
+      const io = getSocketServer();
+      io.to(`conversation:${removeParticipantResult.conversationId}`).emit("chat:group:participant:removed", removeParticipantResult);
+      io.to(`user:${removeParticipantResult.participantUserId}`).emit("chat:group:participant:removed", removeParticipantResult);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Participant removed successfully",
+        data: removeParticipantResult,
+      });
+
     } catch (error) {
       next(error);
     }

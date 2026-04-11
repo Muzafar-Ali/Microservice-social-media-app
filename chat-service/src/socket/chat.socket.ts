@@ -61,6 +61,7 @@ export function registerChatSocketHandlers(
       event: "socket:auth",
       message: "Unauthorized socket connection",
     });
+    
     socket.disconnect(true);
     return;
   }
@@ -182,11 +183,10 @@ export function registerChatSocketHandlers(
     const parsedPayload = typingEventSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
-      emitSocketError(
-        socket,
-        "chat:typing:start",
-        parsedPayload.error.issues[0]?.message ?? "Invalid payload"
-      );
+      const errorMessages = formatZodError(parsedPayload.error);
+      const errorMessage =  errorMessages ?? "Invalid payload"
+
+      emitSocketError(socket, "chat:typing:start", errorMessage);
       return;
     }
 
@@ -196,11 +196,7 @@ export function registerChatSocketHandlers(
     );
 
     if (!isParticipant) {
-      emitSocketError(
-        socket,
-        "chat:typing:start",
-        "You are not a participant of this conversation"
-      );
+      emitSocketError(socket, "chat:typing:start", "You are not a participant of this conversation");
       return;
     }
 
@@ -221,11 +217,7 @@ export function registerChatSocketHandlers(
     if (!parsedPayload.success) {
       const errorMessages = formatZodError(parsedPayload.error);
 
-      emitSocketError(
-        socket,
-        "chat:typing:stop",
-        errorMessages ?? "Invalid payload"
-      );
+      emitSocketError(socket, "chat:typing:stop", errorMessages ?? "Invalid payload");
       return;
     }
 
@@ -235,11 +227,7 @@ export function registerChatSocketHandlers(
     );
 
     if (!isParticipant) {
-      emitSocketError(
-        socket,
-        "chat:typing:stop",
-        "You are not a participant of this conversation"
-      );
+      emitSocketError(socket, "chat:typing:stop", "You are not a participant of this conversation");
       return;
     }
 
@@ -259,13 +247,12 @@ export function registerChatSocketHandlers(
 
       if (!parsedPayload.success) {
         const errorMessages = formatZodError(parsedPayload.error);
-        const errorMessage = errorMessages ?? "Invalid payload";
 
-        emitSocketError(socket, "chat:message:read", errorMessage);
+        emitSocketError(socket, "chat:message:read", errorMessages ?? "Invalid payload");
 
         acknowledgement?.({
           success: false,
-          message: errorMessage,
+          message: errorMessages,
         });
 
         return;

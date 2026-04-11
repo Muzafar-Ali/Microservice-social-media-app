@@ -2,7 +2,7 @@ import { Router } from "express";
 import { ChatController } from "../controllers/chat.controllers.js";
 import isAuthenticatedRedis from "../middlewares/isAuthenticatedRedis.middleware.js";
 import validateRequestBody from "../middlewares/validateRequestBody.middleware.js";
-import { addReactionSchema, createDirectConversationSchema, createGroupConversationSchema, deleteMessageSchema, markConversationReadSchema, removeReactionSchema, sendMessageSchema } from "../validations/chat.validation.js";
+import { addReactionSchema, createDirectConversationSchema, createGroupConversationSchema, deleteMessageSchema, markConversationReadSchema, removeReactionSchema, sendMessageSchema, updateGroupConversationSchema } from "../validations/chat.validation.js";
 
 
 export default function chatRoutes(chatController: ChatController) {
@@ -18,6 +18,7 @@ export default function chatRoutes(chatController: ChatController) {
     .get(isAuthenticatedRedis, chatController.getConversationMessages)
     .post(isAuthenticatedRedis, validateRequestBody(sendMessageSchema), chatController.sendMessage);
   router.route("/conversations/:conversationId/read").post(isAuthenticatedRedis, validateRequestBody(markConversationReadSchema), chatController.markConversationRead);
+  router.route("/conversations/:conversationId").patch(isAuthenticatedRedis, validateRequestBody(updateGroupConversationSchema), chatController.updateGroupConversation);
   
   router.route("/messages/:messageId/reactions")
     .post(isAuthenticatedRedis, validateRequestBody(addReactionSchema), chatController.addReaction)

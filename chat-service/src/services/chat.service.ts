@@ -3,6 +3,7 @@ import {
   AttachmentType,
   MessageType,
   Prisma,
+  ParticipantRole
 } from "../generated/prisma/client.js";
 import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 import { ChatRepository } from "../respositories/chat.repository.js";
@@ -11,6 +12,7 @@ import {
   BaseConversationDto,
   ConversationListItemDto,
   DeleteMessageResponseDto,
+  GroupConversationUpdateResponseDto,
   MessageResponseDto,
   PaginatedMessagesResponseDto,
   RemoveReactionResponseDto,
@@ -293,9 +295,7 @@ export class ChatService {
       throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
     }
 
-    if (
-      currentParticipant.lastReadAt && currentParticipant.lastReadAt.getTime() >= targetMessage.createdAt.getTime()
-    ) {
+    if (currentParticipant.lastReadAt && currentParticipant.lastReadAt.getTime() >= targetMessage.createdAt.getTime()) {
       return {
         conversationId: params.conversationId,
         userId: params.userId,
@@ -504,6 +504,47 @@ export class ChatService {
       reaction: params.reaction,
       removed: deleteResult.count > 0,
       removedAt: new Date().toISOString(),
+    };
+  }
+
+  async updateGroupConversation(params: {
+    userId: string;
+    conversationId: string;
+    title: string;
+  }): Promise<GroupConversationUpdateResponseDto> {
+
+    const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
+
+    if (!conversation) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+    }
+
+    if (conversation.type !== "GROUP") {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations can be updated");
+    }
+
+    const currentParticipant = conversation.participants.find(
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+    );
+
+    if (!currentParticipant) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    }
+
+    if (currentParticipant.role !== ParticipantRole.ADMIN) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN,"Only group admins can update group title");
+    }
+
+    const updatedConversation = await this.chatRepository.updateGroupConversationTitle({
+        conversationId: params.conversationId,
+        title: params.title.trim(),
+      });
+
+    return {
+      conversationId: updatedConversation.id,
+      title: updatedConversation.title ?? null,
+      updatedBy: params.userId,
+      updatedAt: updatedConversation.updatedAt.toISOString(),
     };
   }
 

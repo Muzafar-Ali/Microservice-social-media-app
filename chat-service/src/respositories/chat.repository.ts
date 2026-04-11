@@ -545,5 +545,37 @@ export class ChatRepository {
       },
     });
   }
+
+  async findConversationByIdWithParticipants(conversationId: string) {
+    return this.prisma.conversation.findUnique({
+      where: {
+        id: conversationId,
+      },
+      include: {
+        participants: {
+          where: {
+            deletedAt: null,
+          },
+          orderBy: {
+            joinedAt: "asc",
+          },
+        },
+      },
+    });
+  }
+
+  async updateGroupConversationTitle(params: {
+    conversationId: string;
+    title: string;
+  }) {
+    return this.prisma.conversation.update({
+      where: {
+        id: params.conversationId,
+      },
+      data: {
+        title: params.title,
+      },
+    });
+  }
   
 }

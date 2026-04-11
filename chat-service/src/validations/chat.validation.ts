@@ -84,7 +84,6 @@ export const updateGroupConversationSchema = z.object({
     .trim()
     .min(1, "title is required")
     .max(80, "title cannot exceed 80 characters")
-    .optional(),
 });
 
 export const addParticipantsSchema = z.object({

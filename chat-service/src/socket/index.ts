@@ -49,11 +49,10 @@ export function initSocketServer(
     logger.info({ userId, socketId: socket.id }, "✅ socket connected");
 
     const presenceOnline = await presenceService.markOnline(userId, socket.id);
+
     io.emit("presence:update", presenceOnline);
 
-    // Join personal room immediately
-    await socket.join(`user:${userId}`);
-
+  
     try {
       const myConversations = await chatService.listMyConversations(userId);
 
@@ -61,20 +60,16 @@ export function initSocketServer(
         await socket.join(`conversation:${conversation.id}`);
       }
 
-      logger.info(
-        { userId, roomsJoined: myConversations.length },
-        "🏠 auto-joined conversation rooms"
-      );
+      logger.info({ userId, roomsJoined: myConversations.length }, "🏠 auto-joined conversation rooms");
+      
     } catch (error) {
-      logger.warn(
-        { userId, error },
-        "⚠️ failed to auto-join conversation rooms"
-      );
+      logger.warn({ userId, error }, "⚠️ failed to auto-join conversation rooms");
     }
 
     registerChatSocketHandlers(io, socket as any, chatService);
 
     socket.on("disconnect", async () => {
+      
       logger.info({ userId, socketId: socket.id }, "❌ socket disconnected");
 
       const presenceOffline = await presenceService.markOfflineIfLastSocket(

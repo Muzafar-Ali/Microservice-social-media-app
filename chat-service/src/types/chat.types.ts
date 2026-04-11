@@ -101,3 +101,10 @@ export type RemoveReactionResponseDto = {
   removed: boolean;
   removedAt: string;
 };
+
+export type GroupConversationUpdateResponseDto = {
+  conversationId: string;
+  title: string | null;
+  updatedBy: string;
+  updatedAt: string;
+};

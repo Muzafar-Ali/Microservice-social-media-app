@@ -15,6 +15,7 @@ import {
   messageParamsSchema,
   RemoveReactionDto,
   SendMessageDto,
+  UpdateGroupConversationDto,
 } from "../validations/chat.validation.js";
 import formatZodError from "../utils/formatZodError.js";
 import { getSocketServer } from "../socket/index.js";
@@ -369,6 +370,45 @@ export class ChatController {
         data: removedReaction,
       });
 
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateGroupConversation = async (
+    req: Request<ConversationParamsDto, any, UpdateGroupConversationDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+      const { title } = req.body;
+      
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error)
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
+      }
+
+      const updatedConversation = await this.chatService.updateGroupConversation({
+        userId,
+        conversationId: safeParams.data.conversationId,
+        title,
+      });
+
+      const io = getSocketServer();
+      io.to(`conversation:${updatedConversation.conversationId}`).emit("chat:group:updated", updatedConversation);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "Group title updated successfully",
+        data: updatedConversation,
+      });
     } catch (error) {
       next(error);
     }

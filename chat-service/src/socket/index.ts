@@ -44,6 +44,7 @@ export function initSocketServer(
   io.use(socketAuthMiddleware);
 
   io.on("connection", async (socket) => {
+    
     const userId = socket.data.userId as string;
 
     logger.info({ userId, socketId: socket.id }, "✅ socket connected");
@@ -52,6 +53,7 @@ export function initSocketServer(
 
     io.emit("presence:update", presenceOnline);
 
+    await socket.join(`user:${userId}`);
   
     try {
       const myConversations = await chatService.listMyConversations(userId);

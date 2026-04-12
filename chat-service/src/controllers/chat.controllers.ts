@@ -22,6 +22,7 @@ import {
 } from "../validations/chat.validation.js";
 import formatZodError from "../utils/formatZodError.js";
 import { getSocketServer } from "../socket/index.js";
+import removeUserFromConversationRoom from "../utils/removeUserFromConversationRoom.js";
 
 
 export class ChatController {
@@ -489,6 +490,12 @@ export class ChatController {
       });
 
       const io = getSocketServer();
+      
+      removeUserFromConversationRoom({
+        userId: removeParticipantResult.participantUserId,
+        conversationId: removeParticipantResult.conversationId,
+      });
+      
       io.to(`conversation:${removeParticipantResult.conversationId}`).emit("chat:group:participant:removed", removeParticipantResult);
       io.to(`user:${removeParticipantResult.participantUserId}`).emit("chat:group:participant:removed", removeParticipantResult);
 
@@ -528,6 +535,12 @@ export class ChatController {
       });
 
       const io = getSocketServer();
+
+      removeUserFromConversationRoom({
+        userId: leaveGroupResult.userId,
+        conversationId: leaveGroupResult.conversationId,
+      });
+      
       io.to(`conversation:${leaveGroupResult.conversationId}`).emit("chat:group:left", leaveGroupResult);
       io.to(`user:${leaveGroupResult.userId}`).emit("chat:group:left", leaveGroupResult);
 

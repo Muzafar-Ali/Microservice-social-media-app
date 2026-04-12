@@ -503,4 +503,43 @@ export class ChatController {
     }
   };
 
+  leaveGroupConversation = async (
+    req: Request<ConversationParamsDto>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+      }
+
+      const safeParams = conversationParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        const errorMessages = formatZodError(safeParams.error);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
+      }
+
+      const leaveGroupResult = await this.chatService.leaveGroupConversation({
+        userId,
+        conversationId: safeParams.data.conversationId,
+      });
+
+      const io = getSocketServer();
+      io.to(`conversation:${leaveGroupResult.conversationId}`).emit("chat:group:left", leaveGroupResult);
+      io.to(`user:${leaveGroupResult.userId}`).emit("chat:group:left", leaveGroupResult);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: "You left the group successfully",
+        data: leaveGroupResult,
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  };
+
 }

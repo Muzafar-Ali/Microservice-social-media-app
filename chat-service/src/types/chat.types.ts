@@ -122,3 +122,9 @@ export type RemoveParticipantResponseDto = {
   removedBy: string;
   removedAt: string;
 };
+
+export type LeaveGroupResponseDto = {
+  conversationId: string;
+  userId: string;
+  leftAt: string;
+};

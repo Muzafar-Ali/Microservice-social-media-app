@@ -14,6 +14,7 @@ import {
   ConversationListItemDto,
   DeleteMessageResponseDto,
   GroupConversationUpdateResponseDto,
+  LeaveGroupResponseDto,
   MessageResponseDto,
   PaginatedMessagesResponseDto,
   RemoveParticipantResponseDto,
@@ -670,6 +671,51 @@ export class ChatService {
       participantUserId: params.participantUserId,
       removedBy: params.userId,
       removedAt: new Date().toISOString(),
+    };
+  }
+
+  async leaveGroupConversation(params: {
+    userId: string;
+    conversationId: string;
+  }): Promise<LeaveGroupResponseDto> {
+
+    const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
+    console.log('conversation', conversation);
+    
+
+    if (!conversation) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+    }
+
+    if (conversation.type !== "GROUP") {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations support leave");
+    }
+
+    const currentParticipant = conversation.participants.find(
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+    );
+
+    if (!currentParticipant) {
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+    }
+
+    if (currentParticipant.role === ParticipantRole.ADMIN) {
+      const adminCount = await this.chatRepository.countConversationAdmins(params.conversationId);
+
+      if (adminCount < 1) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Last admin cannot leave the group");
+      }
+    }
+
+    await this.chatRepository.removeParticipantFromConversation({
+      conversationId: params.conversationId,
+      participantUserId: params.userId,
+    });
+
+    return {
+      conversationId: params.conversationId,
+      userId: params.userId,
+      leftAt: new Date().toISOString(),
     };
   }
 

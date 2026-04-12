@@ -18,6 +18,7 @@ export default function chatRoutes(chatController: ChatController) {
     .get(isAuthenticatedRedis, chatController.getConversationMessages)
     .post(isAuthenticatedRedis, validateRequestBody(sendMessageSchema), chatController.sendMessage);
   router.route("/conversations/:conversationId/read").post(isAuthenticatedRedis, validateRequestBody(markConversationReadSchema), chatController.markConversationRead);
+  router.route("/conversations/:conversationId/leave").post(isAuthenticatedRedis, chatController.leaveGroupConversation);
   router.route("/conversations/:conversationId/participants").post(isAuthenticatedRedis, validateRequestBody(addParticipantsSchema), chatController.addParticipants);
   router.route("/conversations/:conversationId/participants/:participantUserId").delete(isAuthenticatedRedis, chatController.removeParticipant);
   router.route("/conversations/:conversationId").patch(isAuthenticatedRedis, validateRequestBody(updateGroupConversationSchema), chatController.updateGroupConversation);

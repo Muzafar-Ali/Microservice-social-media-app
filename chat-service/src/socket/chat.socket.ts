@@ -71,11 +71,14 @@ export function registerChatSocketHandlers(
     const parsedPayload = joinConversationRoomSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
+      const errorMessages = formatZodError(parsedPayload.error);
+
       emitSocketError(
         socket,
         "chat:room:join",
-        parsedPayload.error.issues[0]?.message ?? "Invalid payload"
+        errorMessages ?? "Invalid payload"
       );
+
       return;
     }
 
@@ -95,9 +98,8 @@ export function registerChatSocketHandlers(
 
     socket.join(`conversation:${parsedPayload.data.conversationId}`);
 
-    socket.emit("chat:room:joined", {
-      conversationId: parsedPayload.data.conversationId,
-    });
+    socket.emit("chat:room:joined", { conversationId: parsedPayload.data.conversationId });
+
   });
 
   // ---- Leave a conversation room after payload validation ----
@@ -105,19 +107,21 @@ export function registerChatSocketHandlers(
     const parsedPayload = leaveConversationRoomSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
+      const errorMessages = formatZodError(parsedPayload.error);
+
       emitSocketError(
         socket,
         "chat:room:leave",
-        parsedPayload.error.issues[0]?.message ?? "Invalid payload"
+        errorMessages ?? "Invalid payload"
       );
+
       return;
     }
 
     socket.leave(`conversation:${parsedPayload.data.conversationId}`);
 
-    socket.emit("chat:room:left", {
-      conversationId: parsedPayload.data.conversationId,
-    });
+    socket.emit("chat:room:left", {conversationId: parsedPayload.data.conversationId});
+
   });
 
   // ---- Send message (validate payload + persist message + broadcast updates) ----
@@ -248,7 +252,11 @@ export function registerChatSocketHandlers(
       if (!parsedPayload.success) {
         const errorMessages = formatZodError(parsedPayload.error);
 
-        emitSocketError(socket, "chat:message:read", errorMessages ?? "Invalid payload");
+        emitSocketError(
+          socket, 
+          "chat:message:read", 
+          errorMessages ?? "Invalid payload"
+        );
 
         acknowledgement?.({
           success: false,
@@ -285,6 +293,7 @@ export function registerChatSocketHandlers(
     }
   });
 
+  // ---- Mark conversation as delivered (validate + update read state + notify others) ----
   socket.on("chat:message:delivered", async (payload, acknowledgement?: SocketAcknowledgement) => {
     try {
       const parsedPayload = messageDeliveredSchema.safeParse(payload);

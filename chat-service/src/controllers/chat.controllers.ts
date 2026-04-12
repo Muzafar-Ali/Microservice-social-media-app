@@ -258,6 +258,10 @@ export class ChatController {
         lastReadMessageId,
       });
 
+      const io = getSocketServer();
+      io.to(`conversation:${safeParams.data.conversationId}`).emit("chat:message:read:update", readState);
+      io.emit("chat:message:read:ack", readState);
+
       res.status(StatusCodes.OK).json({
         success: true,
         message: "Conversation marked as read",
@@ -445,11 +449,14 @@ export class ChatController {
         conversationId: safeParams.data.conversationId,
         participantUserIds,
       });
+      
 
       const io = getSocketServer();
+      
       io.to(`conversation:${addParticipantsResult.conversationId}`).emit("chat:group:participant:added", addParticipantsResult);
-
+      
       for (const participantUserId of addParticipantsResult.participantUserIds) {
+        io.in(`user:${participantUserId}`).socketsJoin(`conversation:${addParticipantsResult.conversationId}`);
         io.to(`user:${participantUserId}`).emit("chat:group:participant:added", addParticipantsResult);
       }
 

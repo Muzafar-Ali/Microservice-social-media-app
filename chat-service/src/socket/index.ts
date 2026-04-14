@@ -54,19 +54,21 @@ export function initSocketServer(
     io.emit("presence:update", presenceOnline);
 
     await socket.join(`user:${userId}`);
+    
+    logger.info({ userId, socketId: socket.id, room: `user:${userId}` }, "👤 joined user room");
   
-    try {
-      const myConversations = await chatService.listMyConversations(userId);
+    // try {
+    //   const myConversations = await chatService.listMyConversations(userId);
 
-      for (const conversation of myConversations) {
-        await socket.join(`conversation:${conversation.id}`);
-      }
+    //   for (const conversation of myConversations) {
+    //     await socket.join(`conversation:${conversation.id}`);
+    //   }
 
-      logger.info({ userId, roomsJoined: myConversations.length }, "🏠 auto-joined conversation rooms");
+    //   logger.info({ userId, roomsJoined: myConversations.length }, "🏠 auto-joined conversation rooms");
       
-    } catch (error) {
-      logger.warn({ userId, error }, "⚠️ failed to auto-join conversation rooms");
-    }
+    // } catch (error) {
+    //   logger.warn({ userId, error }, "⚠️ failed to auto-join conversation rooms");
+    // }
 
     registerChatSocketHandlers(io, socket as any, chatService);
 

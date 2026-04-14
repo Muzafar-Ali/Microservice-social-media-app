@@ -9,6 +9,7 @@ import {
   typingEventSchema,
 } from "../validations/chat.validation.js";
 import formatZodError from "../utils/formatZodError.js";
+import logger from "../utils/logger.js";
 
 type AuthenticatedSocket = Socket & {
   data: {
@@ -96,7 +97,16 @@ export function registerChatSocketHandlers(
       return;
     }
 
-    socket.join(`conversation:${parsedPayload.data.conversationId}`);
+    await socket.join(`conversation:${parsedPayload.data.conversationId}`);
+
+    logger.info(
+      {
+        userId: currentUserId,
+        conversationId: parsedPayload.data.conversationId,
+        socketId: socket.id,
+      },
+      "📥 joined conversation room"
+    );
 
     socket.emit("chat:room:joined", { conversationId: parsedPayload.data.conversationId });
 
@@ -118,7 +128,16 @@ export function registerChatSocketHandlers(
       return;
     }
 
-    socket.leave(`conversation:${parsedPayload.data.conversationId}`);
+    await socket.leave(`conversation:${parsedPayload.data.conversationId}`);
+
+    logger.info(
+      {
+        userId: currentUserId,
+        conversationId: parsedPayload.data.conversationId,
+        socketId: socket.id,
+      },
+      "📤 left conversation room"
+    );
 
     socket.emit("chat:room:left", {conversationId: parsedPayload.data.conversationId});
 

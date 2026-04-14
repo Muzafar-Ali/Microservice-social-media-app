@@ -161,6 +161,24 @@ services:
     networks:
       - backend-network
 
+  social-graph-db:
+    image: postgres:16
+    restart: always
+    env_file:
+      - ./social-graph-service/.env.db
+    ports:
+      - "5436:5432"
+    volumes:
+      - social-graph_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend-network
+
   # =================================================================
   #                       👤 Business Services
   # =================================================================
@@ -240,6 +258,27 @@ services:
       - ./chat-service/.env.docker
     networks:
       - backend-network
+
+  social-graph-service:
+    build: 
+      context: ./social-graph-service
+      args:
+        DATABASE_URL: ${DATABASE_URL_SOCIAL_GRAPH}
+    ports:
+      - "4005:4005"
+    depends_on:
+      social-graph-db:
+       condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/server.js"
+    env_file:
+      - ./social-graph-service/.env.docker
+    networks:
+      - backend-network
    
   # =================================================================
   #                   🚪 API Gateways (routing-only)
@@ -254,11 +293,13 @@ services:
       MEDIA_SERVICE_URL: "http://media-service:4002"
       POST_SERVICE_URL: "http://post-service:4003"
       CHAT_SERVICE_URL: "http://chat-service:4004"
+      SOCIAL_GRAPH_SERVICE_URL: "http://chat-service:4005"
     depends_on:
       - user-service
       - media-service
       - post-service
       - chat-service
+      - social-graph-service
     networks:
       - backend-network
 
@@ -272,6 +313,8 @@ volumes:
     driver: local
   chat_db_data:
     driver: local
+  social_graph_db_data:
+    driver: local
   grafana_data:
     driver: local
   kafka_data:
@@ -280,140 +323,3 @@ volumes:
     driver: local
   prometheus_data:
   redis_data:
-
-
-# services:
-#   # =================================================================
-#   #                   🧱 Infra / Shared Components
-#   # =================================================================
-#   rabbitmq-broker:
-#     image: rabbitmq:4.2.0-management
-#     restart: always
-#     ports:
-#       - "5672:5672"
-#       - "15672:15672"
-#     environment:
-#       RABBITMQ_DEFAULT_USER: appuser
-#       RABBITMQ_DEFAULT_PASS: supersecret
-#     volumes:
-#       - rabbitmq_data:/var/lib/rabbitmq
-#       - rabbitmq_log:/var/log/rabbitmq
-#     healthcheck:
-#       test: ["CMD", "rabbitmq-diagnostics", "check_running"]
-#       interval: 5s
-#       timeout: 5s
-#       retries: 5
-  
-#   redis-cache:
-#     image: redis:7
-#     restart: always
-#     ports:
-#       - "6379:6379"
-#     volumes:
-#       - redis_data:/data
-#     healthcheck:
-#       test: ["CMD", "redis-cli", "ping"]
-#       interval: 3s
-#       timeout: 3s
-#       retries: 5
-
-#   prometheus:
-#     image: prom/prometheus
-#     restart: always
-#     ports:
-#       - "9090:9090"
-#     volumes:
-#       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-#     depends_on:
-#       - user-service
-#       - auth-service
-
-#   grafana:
-#     image: grafana/grafana-oss
-#     restart: always
-#     ports:
-#       - "5000:3000"
-#     depends_on:
-#       - prometheus
-#     volumes:
-#       - grafana_data:/var/lib/grafana 
-  
-#   # =================================================================
-#   #                         🗄 Databases
-#   # =================================================================
-#   user-db:
-#     image: postgres:16
-#     restart: always
-#     env_file:
-#       - ./user-service/.env.db
-#     ports:
-#       - "5433:5432"
-#     volumes:
-#       - user_db_data:/var/lib/postgresql/data
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-#       interval: 30s
-#       timeout: 10s
-#       retries: 5
-#       start_period: 30s
-
-#   auth-db:
-#     image: postgres:16
-#     restart: always
-#     env_file:
-#       - ./auth-service/.env.db
-#     ports:
-#       - "5434:5432"
-#     volumes:
-#       - auth_db_data:/var/lib/postgresql/data
-#     healthcheck:
-#       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-#       interval: 30s
-#       timeout: 10s
-#       retries: 5
-#       start_period: 30s
-#   # =================================================================
-#   #                       👤 Business Services
-#   # =================================================================
-#   user-service:
-#     build: ./user-service
-#     ports:
-#       - "4001:4001"
-#     depends_on:
-#       user-db:
-#         condition: service_healthy
-#       rabbitmq-broker:
-#         condition: service_healthy
-#       redis-cache:
-#         condition: service_healthy
-#     command: >
-#       sh -c "npx prisma migrate deploy && node dist/server.js"
-#     env_file:
-#       - ./user-service/.env.app
-
-#   auth-service:
-#     build: ./auth-service
-#     ports:
-#       - "4002:4002"
-#     depends_on:
-#       auth-db:
-#         condition: service_healthy
-#       rabbitmq-broker:
-#         condition: service_healthy
-#       redis-cache:
-#         condition: service_healthy
-#     command: >
-#       sh -c "npx prisma migrate deploy && node dist/server.js"
-#     env_file:
-#       - ./auth-service/.env.app
-
-# volumes:
-#   rabbitmq_data:
-#   rabbitmq_log:
-#   redis_data:
-#   user_db_data:
-#     driver: local
-#   auth_db_data:
-#     driver: local
-#   grafana_data:
-#     driver: local

@@ -1,0 +1,21 @@
+# Node modules and build artifacts
+node_modules
+dist
+npm-debug.log
+
+# Git files
+.git
+.gitignore
+
+# Environment files
+.env*
+.env.*
+
+# System junk
+.DS_Store
+*.log
+.tmp
+.cache
+
+# Prisma (optional dev DB only)
+# prisma/dev.db

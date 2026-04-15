@@ -12,10 +12,10 @@
     "skipLibCheck": true
   },
   "exclude": [
-    "node_modules",
-    "tests",
-    "jest.config.ts",
-    "coverage",
+    "node_modules", 
+    "tests", 
+    "jest.config.ts", 
+    "coverage", 
     "prisma.config.ts"
   ]
 }

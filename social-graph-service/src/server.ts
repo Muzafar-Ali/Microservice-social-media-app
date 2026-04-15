@@ -1,5 +1,5 @@
-import { createApp } from "./app.js";
-import config from "./config/config.js";
+import { createApp } from './app.js';
+import config from './config/config.js';
 
 const PORT = config.port;
 
@@ -18,9 +18,8 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`Social graph service is listening at ${PORT}`);
     });
-
   } catch (err) {
-    console.error("❌ Failed to start social-graph-service", err);
+    console.error('❌ Failed to start social-graph-service', err);
     process.exit(1);
   }
 }

@@ -1,10 +1,11 @@
 class ApiErrorHandler extends Error {
-
-  constructor(public statusCode: number, public message: string) {
+  constructor(
+    public statusCode: number,
+    public message: string,
+  ) {
     super(message);
-    this.statusCode =  statusCode
+    this.statusCode = statusCode;
   }
-
-};
+}
 
 export default ApiErrorHandler;

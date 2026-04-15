@@ -2,7 +2,7 @@ import express from 'express';
 import { PostController } from '../controllers/post.controller.js';
 import validateRequestBody from '../middlewares/validaterequestBody.middleware.js';
 import { createPostCommentSchema, createPostSchema, updatePostSchema } from '../validation/post.validation.js';
-import isAuthenticatedRedis from '../middlewares/isAUthenticatedRedis.js';
+import isAuthenticatedRedis from '../middlewares/isAuthenticatedRedis.js';
 
 
 const postRoutes = (postController: PostController) => {

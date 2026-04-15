@@ -1,12 +1,12 @@
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client.js";
-import config from "./config.js";
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../generated/prisma/client.js';
+import config from './config.js';
 
 // 1. Get the connection string from env
 const connectionString = process.env.DATABASE_URL ?? config.dataBaseUrl;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not set in environment variables");
+  throw new Error('DATABASE_URL is not set in environment variables');
 }
 
 // 2. Create the adapter

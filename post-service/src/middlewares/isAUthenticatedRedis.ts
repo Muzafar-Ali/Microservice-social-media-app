@@ -1,8 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
-
 import ApiErrorHandler from "../utils/apiErrorHanlderClass.js";
 import { redis } from "../config/redisClient.js";
+
+type SessionPayload = {
+  userId: number; 
+  ip?: string; 
+  userAgent?: string 
+}
 
 declare global {
   namespace Express {
@@ -27,7 +32,7 @@ const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunc
       return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Session expired, please login again"));
     }
 
-    const session = JSON.parse(sessionJson) as { userId: number; ip?: string; userAgent?: string };
+    const session = JSON.parse(sessionJson) as SessionPayload;
     
     // Optional hardening (recommended): bind session to IP/User-Agent
     // if (session.ip && session.ip !== req.ip) { ... }

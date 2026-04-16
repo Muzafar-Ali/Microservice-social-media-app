@@ -5,7 +5,7 @@ import {
   followTargetParamsSchema,
 } from '../validations/socialGraph.validation.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
-import formatZodError from '../utils/test.js';
+import formatZodError from '../utils/formatZodError.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
 import { StatusCodes } from 'http-status-codes';
 

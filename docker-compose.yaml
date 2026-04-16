@@ -169,7 +169,7 @@ services:
     ports:
       - "5436:5432"
     volumes:
-      - social-graph_db_data:/var/lib/postgresql/data
+      - social_graph_db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 30s
@@ -293,7 +293,7 @@ services:
       MEDIA_SERVICE_URL: "http://media-service:4002"
       POST_SERVICE_URL: "http://post-service:4003"
       CHAT_SERVICE_URL: "http://chat-service:4004"
-      SOCIAL_GRAPH_SERVICE_URL: "http://chat-service:4005"
+      SOCIAL_GRAPH_SERVICE_URL: "http://scoial-graph-service:4005"
     depends_on:
       - user-service
       - media-service

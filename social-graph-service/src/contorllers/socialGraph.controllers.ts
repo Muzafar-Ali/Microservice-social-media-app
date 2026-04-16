@@ -1,9 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { SocialGraphService } from '../services/socialGraph.service.ts.js';
-import {
-  FollowTargetParamsDto,
-  followTargetParamsSchema,
-} from '../validations/socialGraph.validation.js';
+import { FollowTargetParamsDto, followTargetParamsSchema } from '../validations/socialGraph.validation.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import formatZodError from '../utils/formatZodError.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
@@ -26,16 +23,12 @@ export class SocialGraphController {
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(safeParams.error));
       }
 
-      const followResult = await this.socialGraphService.followUser(
-        authenticatedUserId,
-        safeParams.data.targetUserId,
-      );
+      const followResult = await this.socialGraphService.followUser(authenticatedUserId, safeParams.data.targetUserId);
 
       res.status(StatusCodes.CREATED).json({
         success: true,
-        message: followResult.status === FollowStatus.PENDING
-            ? 'Follow request sent successfully'
-            : 'Followed successfully',
+        message:
+          followResult.status === FollowStatus.PENDING ? 'Follow request sent successfully' : 'Followed successfully',
         data: {
           followerId: followResult.followerId,
           followeeId: followResult.followeeId,

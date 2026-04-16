@@ -1,9 +1,4 @@
-import {
-  Follow,
-  FollowStatus,
-  PrismaClient,
-  UserProfileCache,
-} from '../generated/prisma/client.js';
+import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
 
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}
@@ -15,11 +10,7 @@ export class SocialGraphRepository {
   };
 
   createFollow() {}
-  createFollowRelation = async (
-    followerId: string,
-    followeeId: string,
-    status: FollowStatus,
-  ): Promise<Follow> => {
+  createFollowRelation = async (followerId: string, followeeId: string, status: FollowStatus): Promise<Follow> => {
     return this.prisma.follow.create({
       data: {
         followerId,

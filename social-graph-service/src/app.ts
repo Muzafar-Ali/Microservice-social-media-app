@@ -19,10 +19,7 @@ export const createApp = async () => {
 
   const socialGraphRepository = new SocialGraphRepository(prisma);
   const socialGraphEventPublisher = new SocialGraphEventPublisher(producer);
-  const socialGraphService = new SocialGraphService(
-    socialGraphRepository,
-    socialGraphEventPublisher,
-  );
+  const socialGraphService = new SocialGraphService(socialGraphRepository, socialGraphEventPublisher);
   const socialGraphController = new SocialGraphController(socialGraphService);
 
   const app = express();

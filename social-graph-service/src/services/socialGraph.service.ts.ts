@@ -19,14 +19,10 @@ export class SocialGraphService {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot follow yourself');
     }
 
-    const targetUserProfileCache =
-      await this.socialGraphRepository.findUserProfileCacheByUserId(targetUserId);
+    const targetUserProfileCache = await this.socialGraphRepository.findUserProfileCacheByUserId(targetUserId);
 
     if (!targetUserProfileCache) {
-      throw new ApiErrorHandler(
-        StatusCodes.NOT_FOUND,
-        'Target user is not available in social graph cache yet',
-      );
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Target user is not available in social graph cache yet');
     }
 
     if (targetUserProfileCache.status !== 'ACTIVE') {
@@ -42,9 +38,7 @@ export class SocialGraphService {
       throw new ApiErrorHandler(StatusCodes.CONFLICT, 'Follow relation already exists');
     }
 
-    const relationStatus = targetUserProfileCache.isPrivate
-      ? FollowStatus.PENDING
-      : FollowStatus.ACTIVE;
+    const relationStatus = targetUserProfileCache.isPrivate ? FollowStatus.PENDING : FollowStatus.ACTIVE;
 
     const createdFollowRelation = await this.socialGraphRepository.createFollowRelation(
       authenticatedUserId,

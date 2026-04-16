@@ -7,7 +7,7 @@ const getKafkaProducer = async () => {
   if (!producer) {
     producer = kafka.producer();
     await producer.connect();
-    console.log('[Kafka] Producer connected (post-service)');
+    console.log('[Kafka] Producer connected (social-graph-service)');
   }
 
   return producer;

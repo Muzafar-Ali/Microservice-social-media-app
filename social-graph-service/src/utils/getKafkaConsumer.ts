@@ -6,11 +6,11 @@ let consumer: Consumer | null = null;
 const getKafkaConsumer = async () => {
   if (!consumer) {
     consumer = kafka.consumer({
-      groupId: 'post-service-group',
+      groupId: 'social-graph-service-group',
     });
 
     await consumer.connect();
-    console.log('[Kafka] Consumer connected (post-service)');
+    console.log('[Kafka] Consumer connected (social-graph-service)');
   }
 
   return consumer;

@@ -51,6 +51,14 @@ app.use("/api/chat", createProxyMiddleware({
   })
 );
 
+// Route: /api/social-graph/* -> social graph service/*
+app.use("/api/social-graph", createProxyMiddleware({
+    target: config.socialGraphServiceUrl,
+    changeOrigin: true,
+    pathRewrite: (path, _req) => `/api/social-graph${path}`,  // ✅ adds prefix back
+  })
+);
+
 const port = Number(process.env.PORT ?? 8088);
 
 
@@ -61,6 +69,7 @@ const server = app.listen(port, () => {
   console.log(`  /api/media -> ${config.mediaServiceUrl}`);
   console.log(`  /api/posts -> ${config.postServiceLUrl}`);
   console.log(`  /api/chat  -> ${config.chatServiceUrl}`);
+  console.log(`  /api/social-graph  -> ${config.socialGraphServiceUrl}`);
 });
 
 // Graceful shutdown

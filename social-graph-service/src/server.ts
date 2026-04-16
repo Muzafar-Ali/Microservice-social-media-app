@@ -1,11 +1,12 @@
 import { createApp } from './app.js';
 import config from './config/config.js';
+import { initRedis } from './config/redisClient.js';
 
 const PORT = config.port;
 
 async function bootstrap() {
   try {
-    // await initRedis();
+    await initRedis();
     const { app } = await createApp();
 
     // try {

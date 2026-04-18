@@ -252,6 +252,29 @@ export const createPostCommentSchema = z.object({
   .max(1000, "Comment must not exceed 1000 characters"),
 });
 
+export const userCreatedPayloadSchema = z.object({
+  userId: z.string().min(1),
+  username: z.string().min(1),
+  displayName: z.string().nullable(),
+  avatarUrl: z.object({
+    secureUrl: z.string().url(),
+    publicId: z.string().min(1),
+  }).nullable(),
+  status: z.string().min(1),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime().optional(),
+});
+
+export const userCreatedEventSchema = z.object({
+  eventId: z.string().min(1),
+  eventName: z.literal("user.created"),
+  eventVersion: z.number().int().positive(),
+  occurredAt: z.string().datetime(),
+  producerService: z.string().min(1),
+  partitionKey: z.string().min(1),
+  data: userCreatedPayloadSchema,
+});
+
 export type CreatePostDto = z.infer<typeof createPostSchema>;
 export type UpdatePostDto = z.infer<typeof updatePostSchema>;
 export type PostIdParamsDto = z.infer<typeof postIdParamsSchema>
@@ -268,3 +291,4 @@ export type CommentsCursorPaginationDto = z.infer<typeof commentsCursorPaginatio
 export type HomeFeedQueryDto = z.infer<typeof homeFeedQuerySchema>;
 export type HomeFeedBeforeQueryDto = z.infer<typeof homeFeedBeforeQuerySchema>;
 export type HomeFeedAfterQueryDto = z.infer<typeof homeFeedAfterQuerySchema>;
+export type UserCreatedEvent = z.infer<typeof userCreatedEventSchema>;

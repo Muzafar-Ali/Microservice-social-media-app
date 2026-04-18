@@ -494,15 +494,14 @@ export class PostService {
     };
   }
 
-  async upsertUserProfileCache(data: {
+  async upsertUserProfileCache(input: {
     userId: string;
     username: string;
     displayName: string | null;
     avatarUrl: string | null;
     status: string;
   }) {
-    
-    return this.postRepository.upsertUserProfileCache(data);
+    return this.postRepository.upsertUserProfileCache(input);
   }
 
   async   createPostComment(

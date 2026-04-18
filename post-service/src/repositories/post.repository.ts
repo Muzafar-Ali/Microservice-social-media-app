@@ -581,7 +581,7 @@ export class PostRepository {
     });
   }
 
-  async upsertUserProfileCache(data: {
+  async upsertUserProfileCache(input: {
     userId: string;
     username: string;
     displayName: string | null;
@@ -589,19 +589,19 @@ export class PostRepository {
     status: string;
   }) {
     return this.prisma.userProfileCache.upsert({
-      where: { userId: data.userId },
+      where: { userId: input.userId },
       update: {
-        username: data.username,
-        displayName: data.displayName,
-        avatarUrl: data.avatarUrl,
-        status: data.status,
+        username: input.username,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        status: input.status,
       },
       create: {
-        userId: data.userId,
-        username: data.username,
-        displayName: data.displayName,
-        avatarUrl: data.avatarUrl,
-        status: data.status,
+        userId: input.userId,
+        username: input.username,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        status: input.status,
       },
     });
   }

@@ -1,5 +1,6 @@
 import { Producer } from "kafkajs";
-import kafka from "../config/kafkaClient.js";
+import kafka from "../../config/kafkaClient.js";
+
 
 let producer: Producer | null = null;
 

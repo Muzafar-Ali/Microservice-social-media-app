@@ -1,23 +1,11 @@
 import { Consumer, Producer } from "kafkajs";
-import { PostService } from "../services/post.service.js";
-import {
-  KAFKA_TOPICS,
-  MEDIA_EVENT_NAMES,
-  USER_EVENT_NAMES,
-} from "./topics.js";
-import logger from "../utils/logger.js";
+import { PostService } from "../../services/post.service.js";
+import { KAFKA_TOPICS, USER_EVENT_NAMES } from "../topics.js";
+import logger from "../../utils/logger.js";
 import {
   userCreatedEventSchema,
   type UserCreatedEvent,
-} from "../validation/post.validation.js";
-
-type MediaUploadCompletedPayload = {
-  userId: string;
-  postId: string;
-  secureUrl: string;
-  publicId: string;
-  mediaType: "image" | "video";
-};
+} from "../../validation/post.validation.js";
 
 type FailedMessageContext = {
   topic: string;
@@ -27,7 +15,7 @@ type FailedMessageContext = {
   reason: string;
 };
 
-class PostEventConsumer {
+class UserEventConsumer {
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
@@ -35,11 +23,6 @@ class PostEventConsumer {
   ) {}
 
   public async start(): Promise<void> {
-    await this.consumer.subscribe({
-      topic: KAFKA_TOPICS.MEDIA_EVENTS,
-      fromBeginning: false,
-    });
-
     await this.consumer.subscribe({
       topic: KAFKA_TOPICS.USER_EVENTS,
       fromBeginning: false,
@@ -64,18 +47,6 @@ class PostEventConsumer {
           const parsedJson = JSON.parse(rawValue);
 
           switch (parsedJson.eventName) {
-            case MEDIA_EVENT_NAMES.MEDIA_UPLOAD_COMPLETED: {
-              await this.handleMediaUploadCompleted(parsedJson);
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-
-            case MEDIA_EVENT_NAMES.MEDIA_DELETED: {
-              await this.handleMediaDeleted(parsedJson);
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-
             case USER_EVENT_NAMES.USER_CREATED: {
               const parsedEvent = userCreatedEventSchema.safeParse(parsedJson);
 
@@ -105,7 +76,7 @@ class PostEventConsumer {
                   offset: message.offset,
                   eventName: parsedJson.eventName,
                 },
-                "Ignoring unknown event"
+                "Ignoring unknown user event"
               );
 
               await this.commitNextOffset(topic, partition, message.offset);
@@ -121,57 +92,13 @@ class PostEventConsumer {
               offset: message.offset,
               rawValue,
             },
-            "Failed to process Kafka message"
+            "Failed to process user Kafka message"
           );
 
-          // No offset commit here.
-          // This allows Kafka to redeliver the message for retry.
+          // No offset commit here: allows retry/redelivery
         }
       },
     });
-  }
-
-  private async handleMediaUploadCompleted(event: {
-    eventName: string;
-    data: MediaUploadCompletedPayload;
-  }): Promise<void> {
-    const data = event.data;
-
-    logger.info(
-      {
-        eventName: event.eventName,
-        postId: data.postId,
-        mediaType: data.mediaType,
-      },
-      "Handling media.upload.completed event"
-    );
-
-    // await this.postService.attachMediaToPost(data.postId, {
-    //   mediaId: data.publicId,
-    //   secureUrl: data.secureUrl,
-    //   mediaType: data.mediaType,
-    // });
-  }
-
-  private async handleMediaDeleted(event: {
-    eventName: string;
-    data: {
-      postId: string;
-      mediaId: string;
-    };
-  }): Promise<void> {
-    const data = event.data;
-
-    logger.info(
-      {
-        eventName: event.eventName,
-        postId: data.postId,
-        mediaId: data.mediaId,
-      },
-      "Handling media.deleted event"
-    );
-
-    // await this.postService.detachMediaFromPost(data.postId, data.mediaId);
   }
 
   private async handleUserCreated(event: UserCreatedEvent): Promise<void> {
@@ -187,7 +114,6 @@ class PostEventConsumer {
       "Handling user.created event in post-service"
     );
 
-    // Must be idempotent
     await this.postService.upsertUserProfileCache({
       userId: data.userId,
       username: data.username,
@@ -213,12 +139,8 @@ class PostEventConsumer {
     ]);
 
     logger.info(
-      {
-        topic,
-        partition,
-        committedOffset: nextOffset,
-      },
-      "Committed Kafka offset"
+      { topic, partition, committedOffset: nextOffset },
+      "Committed user Kafka offset"
     );
   }
 
@@ -237,13 +159,14 @@ class PostEventConsumer {
             rawValue: context.rawValue,
             reason: context.reason,
             consumerService: "post-service",
+            consumerGroup: "post-service-user-events",
           }),
         },
       ],
     });
 
-    logger.error(context, "Sent message to DLQ");
+    logger.error(context, "Sent user event to DLQ");
   }
 }
 
-export default PostEventConsumer;
+export default UserEventConsumer;

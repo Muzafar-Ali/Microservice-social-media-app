@@ -1,26 +1,40 @@
 import { createApp } from "./app.js";
 import config from "./config/config.js";
 import { initRedis } from "./config/redisClient.js";
+import logger from "./utils/logger.js";
 
 const PORT = config.port;
 
 async function bootstrap() {
   try {
+    // 1. Init external dependencies first
     await initRedis();
-    const { app, postEventConsumer } = await createApp();
 
+    // 2. Create app and Kafka consumer
+    const { app, userEventConsumer, mediaEventConsumer } = await createApp();
+
+    // 3. Start Kafka consumer
     try {
-      await postEventConsumer.start();
-      console.log("[Kafka] PostEventConsumer started");
+      await userEventConsumer.start();
+      logger.info("[Kafka] UserEventConsumer started");
     } catch (error) {
-      console.error("[Kafka] Failed to start PostEventConsumer", error);
+      logger.error({ error }, "[Kafka] Failed to start UserEventConsumer");
     }
 
+    try {
+      await mediaEventConsumer.start();
+      logger.info("[Kafka] MediaEventConsumer started");
+    } catch (error) {
+      logger.error({ error }, "[Kafka] Failed to start MediaEventConsumer");
+    }
+
+    // 4. Start HTTP server
     app.listen(PORT, () => {
-      console.log(`Post service is listening at ${PORT}`);
+      logger.info(`Post service is listening at ${PORT}`);
     });
+
   } catch (err) {
-    console.error("❌ Failed to start post-service", err);
+    logger.error({ err }, "❌ Failed to start post-service");
     process.exit(1);
   }
 }

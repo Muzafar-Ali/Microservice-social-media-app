@@ -5,26 +5,32 @@ import cookieParser from "cookie-parser";
 import globalErrorHandler from "./middlewares/globalErrorHandler.middleware.js";
 import notFoundHandler from "./middlewares/notFoundHandler.middleware.js";
 import { metricsHandler, metricsMiddleware } from "./monitoring/metrics.js"; // Monitoring needs to be added later
-import getKafkaProducer from "./utils/getKafkaProducer.js";
 import postRoutes from "./routes/post.routes.js";
 import { PostRepository } from "./repositories/post.repository.js";
 import { PostService } from "./services/post.service.js";
 import { PostController } from "./controllers/post.controller.js";
 import prisma from "./config/prismaClient.js";
 import { PostEventPublisher } from "./events/post-events.producer.js";
-import PostEventConsumer from "./events/post-events.consumer.js";
-import getKafkaConsumer from "./utils/getKafkaConsumer.js";
+
+import getUserKafkaConsumer from "./utils/kafka/getUserKafkaConsumer.js";
+import getMediaKafkaConsumer from "./utils/kafka/getMediaKafkaConsumer.js";
+import getKafkaProducer from "./utils/kafka/getKafkaProducer.js";
+import UserEventConsumer from "./events/consumers/user-event.consumer.js";
+import MediaEventConsumer from "./events/consumers/media-event.consumer.js";
+
 
 
 export async function createApp() {
   const producer = await getKafkaProducer();
-  const consumer = await getKafkaConsumer();
+  const userKafkaConsumer = await getUserKafkaConsumer();
+  const mediaKafkaConsumer = await getMediaKafkaConsumer();
 
   const postRepository = new PostRepository(prisma);
   const postEventPublisher = new PostEventPublisher(producer);
   const postService = new PostService(postRepository, postEventPublisher); // Producer might be used in service for events
   const postController = new PostController(postService);
-  const postEventConsumer = new PostEventConsumer(consumer, postService);
+  const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, postService);
+  const mediaEventConsumer = new MediaEventConsumer(mediaKafkaConsumer, producer, postService);
 
   const app = express();
 
@@ -57,6 +63,7 @@ export async function createApp() {
 
   return {
     app,
-    postEventConsumer 
+    userEventConsumer,
+    mediaEventConsumer
   }
 }

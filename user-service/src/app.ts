@@ -10,7 +10,7 @@ import { UserController } from "./modules/user/user.controllers.js";
 import userRoutes from "./modules/user/user.routes.js";
 import { metricsHandler, metricsMiddleware } from "./monitoring/metrics.js";
 import prisma from "./config/prismaClient.js";
-import getKafkaProducer from "./utils/getKafkaProducer.js";
+import getKafkaProducer from "./utils/kafka/getKafkaProducer.js";
 import { UserEventPublisher } from "./events/producers.js";
 import authRoutes from "./modules/auth/auth.routes.js";
 import { AuthRepository } from "./modules/auth/auth.repository.js";

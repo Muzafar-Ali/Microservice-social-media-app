@@ -2,12 +2,12 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import socialGrpahRoutes from './routes/socialGraph.routes.js';
+import socialGraphRoutes from './routes/socialGraph.routes.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.middleware.js';
 import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
 import { SocialGraphRepository } from './repository/socialGraph.repository.js';
 import { SocialGraphEventPublisher } from './events/socialGraph-producer.js';
-import { SocialGraphService } from './services/socialGraph.service.ts.js';
+import { SocialGraphService } from './services/socialGraph.service.js';
 import { SocialGraphController } from './contorllers/socialGraph.controllers.js';
 import prisma from './config/prismaClinet.js';
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
@@ -46,7 +46,7 @@ export const createApp = async () => {
     res.send('social graps service Health is ok');
   });
 
-  app.use('/api/social-graph', socialGrpahRoutes(socialGraphController));
+  app.use('/api/social-graph', socialGraphRoutes(socialGraphController));
 
   app.use(notFoundHandler);
   app.use(globalErrorHandler);

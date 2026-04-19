@@ -8,7 +8,7 @@
 // } from "../../validation/user-event.validation.js";
 
 import { Consumer, Producer } from 'kafkajs';
-import { SocialGraphService } from '../../services/socialGraph.service.ts.js';
+import { SocialGraphService } from '../../services/socialGraph.service.js';
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from '../socialGraph-event.topics.js';
 import logger from '../../utils/logger.js';
 import { UserCreatedEvent, userCreatedEventSchema } from '../../validations/socialGraph.validation.js';
@@ -118,7 +118,7 @@ class UserEventConsumer {
       'Handling user.created event in social-graph-service',
     );
 
-    await this.socialGraphService.upsertUserProjection({
+    await this.socialGraphService.upsertUserProfileCache({
       userId: data.userId,
       username: data.username,
       displayName: data.displayName ?? null,

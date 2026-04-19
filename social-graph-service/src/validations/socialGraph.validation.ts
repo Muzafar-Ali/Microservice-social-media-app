@@ -1,33 +1,32 @@
 import { z } from 'zod';
 
-export const followTargetParamsSchema = z.object({
+export const followUserParamsSchema = z.object({
   targetUserId: z.uuid('targetUserId must be a valid cuid'),
 });
-
 export const userCreatedPayloadSchema = z.object({
-  userId: z.string().min(1),
-  username: z.string().min(1),
+  userId: z.string().min(1, { error: 'userId is required' }),
+  username: z.string().min(1, { error: 'username is required' }),
   displayName: z.string().nullable(),
   avatarUrl: z
     .object({
-      secureUrl: z.string().url(),
-      publicId: z.string().min(1),
+      secureUrl: z.url({ error: 'secureUrl must be a valid URL' }),
+      publicId: z.string().min(1, { error: 'publicId is required' }),
     })
     .nullable(),
-  status: z.string().min(1),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime().optional(),
+  status: z.string().min(1, { error: 'status is required' }),
+  createdAt: z.iso.datetime({ error: 'createdAt must be a valid ISO datetime' }),
+  updatedAt: z.iso.datetime({ error: 'updatedAt must be a valid ISO datetime' }).optional(),
 });
 
 export const userCreatedEventSchema = z.object({
-  eventId: z.string().min(1),
+  eventId: z.string().min(1, { error: 'eventId is required' }),
   eventName: z.literal('user.created'),
   eventVersion: z.number().int().positive(),
-  occurredAt: z.string().datetime(),
-  producerService: z.string().min(1),
-  partitionKey: z.string().min(1),
+  occurredAt: z.iso.datetime({ error: 'occurredAt must be a valid ISO datetime' }),
+  producerService: z.string().min(1, { error: 'producerService is required' }),
+  partitionKey: z.string().min(1, { error: 'partitionKey is required' }),
   data: userCreatedPayloadSchema,
 });
 
-export type FollowTargetParamsDto = z.infer<typeof followTargetParamsSchema>;
+export type FollowUserParamsDto = z.infer<typeof followUserParamsSchema>;
 export type UserCreatedEvent = z.infer<typeof userCreatedEventSchema>;

@@ -3,8 +3,9 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
+import { FollowUserResultDto, UnfollowUserResponseDto } from '../types/social-graph.types.js';
 
-type UpsertUserProjectionInput = {
+type UpsertUserProfileCacheInput = {
   userId: string;
   username: string;
   displayName: string | null;
@@ -18,7 +19,7 @@ export class SocialGraphService {
     private socialGraphEventPublisher: SocialGraphEventPublisher,
   ) {}
 
-  followUser = async (authenticatedUserId: string, targetUserId: string) => {
+  followUser = async (authenticatedUserId: string, targetUserId: string): Promise<FollowUserResultDto> => {
     if (!authenticatedUserId) {
       throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
     }
@@ -64,14 +65,51 @@ export class SocialGraphService {
     return createdFollowRelation;
   };
 
-  async upsertUserProjection(input: UpsertUserProjectionInput) {
-    return this.socialGraphRepository.upsertUserProjection(input);
+  async upsertUserProfileCache(input: UpsertUserProfileCacheInput) {
+    return this.socialGraphRepository.upsertUserProfileCache(input);
   }
-  unfollowUser(authenticatedUserId: string, targetUserId: string) {}
+
+  unfollowUser = async (authenticatedUserId: string, targetUserId: string): Promise<UnfollowUserResponseDto> => {
+    if (!authenticatedUserId) {
+      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
+    }
+
+    if (authenticatedUserId === targetUserId) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot unfollow yourself');
+    }
+
+    const deletedFollowRelation = await this.socialGraphRepository.deleteFollowRelation(
+      authenticatedUserId,
+      targetUserId,
+    );
+
+    if (!deletedFollowRelation) {
+      return {
+        followerId: authenticatedUserId,
+        followeeId: targetUserId,
+        wasFollowing: false,
+        removedAt: null,
+      };
+    }
+
+    // if (deletedFollowRelation.status === FollowStatus.ACTIVE) {
+    //   await this.socialGraphEventPublisher.publishFollowRemoved({
+    //     followerId: deletedFollowRelation.followerId,
+    //     followeeId: deletedFollowRelation.followeeId,
+    //     removedAt: new Date(),
+    //   });
+    // }
+
+    return {
+      followerId: deletedFollowRelation.followerId,
+      followeeId: deletedFollowRelation.followeeId,
+      wasFollowing: true,
+      removedAt: new Date(),
+    };
+  };
   getFollowStatus(viewerUserId: string, targetUserId: string) {}
   getFollowers(userId: string, query: { cursor?: string; limit?: number }) {}
   getFollowing(userId: string, query: { cursor?: string; limit?: number }) {}
   getCounts(userId: string) {}
   getFollowingUserIds(userId: string) {}
-  upsertUserProfileCache(payload: any) {}
 }

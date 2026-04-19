@@ -66,7 +66,7 @@ export class UserService {
         publicId: string;
       } | null,
       status: user.status,
-      createdAt: user.createdAt
+      createdAt: user.createdAt.toISOString()
     })
     
     return safeUser

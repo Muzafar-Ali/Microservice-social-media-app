@@ -10,17 +10,19 @@ import { SocialGraphEventPublisher } from './events/socialGraph-producer.js';
 import { SocialGraphService } from './services/socialGraph.service.ts.js';
 import { SocialGraphController } from './contorllers/socialGraph.controllers.js';
 import prisma from './config/prismaClinet.js';
-import getKafkaProducer from './utils/getKafkaProducer.js';
-import getKafkaConsumer from './utils/getKafkaConsumer.js';
+import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
+import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';
+import UserEventConsumer from './events/consumers/user-event.consumer.js';
 
 export const createApp = async () => {
   const producer = await getKafkaProducer();
-  const consumer = await getKafkaConsumer();
+  const userKafkaConsumer = await getUserKafkaConsumer();
 
   const socialGraphRepository = new SocialGraphRepository(prisma);
   const socialGraphEventPublisher = new SocialGraphEventPublisher(producer);
   const socialGraphService = new SocialGraphService(socialGraphRepository, socialGraphEventPublisher);
   const socialGraphController = new SocialGraphController(socialGraphService);
+  const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, socialGraphService);
 
   const app = express();
 
@@ -51,5 +53,6 @@ export const createApp = async () => {
 
   return {
     app,
+    userEventConsumer,
   };
 };

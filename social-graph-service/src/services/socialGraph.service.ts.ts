@@ -4,6 +4,14 @@ import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
 
+type UpsertUserProjectionInput = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  status: string;
+};
+
 export class SocialGraphService {
   constructor(
     private socialGraphRepository: SocialGraphRepository,
@@ -50,12 +58,15 @@ export class SocialGraphService {
       followerId: createdFollowRelation.followerId,
       followeeId: createdFollowRelation.followeeId,
       status: createdFollowRelation.status,
-      createdAt: createdFollowRelation.createdAt,
+      createdAt: createdFollowRelation.createdAt.toISOString(),
     });
 
     return createdFollowRelation;
   };
 
+  async upsertUserProjection(input: UpsertUserProjectionInput) {
+    return this.socialGraphRepository.upsertUserProjection(input);
+  }
   unfollowUser(authenticatedUserId: string, targetUserId: string) {}
   getFollowStatus(viewerUserId: string, targetUserId: string) {}
   getFollowers(userId: string, query: { cursor?: string; limit?: number }) {}

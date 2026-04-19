@@ -1,5 +1,13 @@
 import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
 
+type UpsertUserProjectionInput = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  status: string;
+};
+
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}
 
@@ -37,7 +45,26 @@ export class SocialGraphRepository {
   findFollowing() {}
   countFollowers() {}
   countFollowing() {}
-  upsertUserProfileCache() {}
+  async upsertUserProjection(input: UpsertUserProjectionInput) {
+    return this.prisma.userProfileCache.upsert({
+      where: {
+        userId: input.userId,
+      },
+      update: {
+        username: input.username,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        status: input.status,
+      },
+      create: {
+        userId: input.userId,
+        username: input.username,
+        displayName: input.displayName,
+        avatarUrl: input.avatarUrl,
+        status: input.status,
+      },
+    });
+  }
   findCachedUserById() {}
   findCachedUsersByIds() {}
 }

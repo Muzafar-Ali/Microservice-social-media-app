@@ -92,13 +92,13 @@ export class SocialGraphService {
       };
     }
 
-    // if (deletedFollowRelation.status === FollowStatus.ACTIVE) {
-    //   await this.socialGraphEventPublisher.publishFollowRemoved({
-    //     followerId: deletedFollowRelation.followerId,
-    //     followeeId: deletedFollowRelation.followeeId,
-    //     removedAt: new Date(),
-    //   });
-    // }
+    if (deletedFollowRelation.status === FollowStatus.ACTIVE) {
+      await this.socialGraphEventPublisher.publishFollowRemoved({
+        followerId: deletedFollowRelation.followerId,
+        followeeId: deletedFollowRelation.followeeId,
+        removedAt: new Date().toISOString(),
+      });
+    }
 
     return {
       followerId: deletedFollowRelation.followerId,

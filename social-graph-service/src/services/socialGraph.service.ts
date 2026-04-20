@@ -3,7 +3,7 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
-import { FollowUserResultDto, UnfollowUserResponseDto } from '../types/social-graph.types.js';
+import { FollowUserResultDto, GetFollowersResponseDto, UnfollowUserResponseDto } from '../types/social-graph.types.js';
 
 type UpsertUserProfileCacheInput = {
   userId: string;
@@ -108,7 +108,61 @@ export class SocialGraphService {
     };
   };
   getFollowStatus(viewerUserId: string, targetUserId: string) {}
-  getFollowers(userId: string, query: { cursor?: string; limit?: number }) {}
+
+  getFollowers = async (
+    userId: string,
+    query: { cursor?: string; limit?: number },
+  ): Promise<GetFollowersResponseDto> => {
+    const targetUserProfileCache = await this.socialGraphRepository.findUserProfileCacheByUserId(userId);
+
+    if (!targetUserProfileCache) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Target user is not available in social graph cache yet');
+    }
+
+    const limit = query.limit ?? 20;
+
+    const followerRelations = await this.socialGraphRepository.findFollowers({
+      userId,
+      cursor: query.cursor,
+      limit,
+    });
+
+    const hasMore = followerRelations.length > limit;
+    const paginatedFollowerRelations = hasMore ? followerRelations.slice(0, limit) : followerRelations;
+
+    const followerUserIds = paginatedFollowerRelations.map((relation) => relation.followerId);
+
+    const cachedFollowers = await this.socialGraphRepository.findCachedUsersByIds(followerUserIds);
+
+    const cachedFollowersMap = new Map(cachedFollowers.map((cachedFollower) => [cachedFollower.userId, cachedFollower]));
+
+    const followers = paginatedFollowerRelations
+      .map((relation) => {
+        const cachedFollower = cachedFollowersMap.get(relation.followerId);
+
+        if (!cachedFollower) {
+          return null;
+        }
+
+        return {
+          userId: cachedFollower.userId,
+          username: cachedFollower.username,
+          displayName: cachedFollower.displayName,
+          avatarUrl: cachedFollower.avatarUrl,
+          followedAt: relation.createdAt,
+        };
+      })
+      .filter((follower): follower is NonNullable<typeof follower> => follower !== null);
+
+    const nextCursor = hasMore ? paginatedFollowerRelations[paginatedFollowerRelations.length - 1]?.id ?? null : null;
+
+    return {
+      userId,
+      followers,
+      nextCursor,
+    };
+  };
+
   getFollowing(userId: string, query: { cursor?: string; limit?: number }) {}
   getCounts(userId: string) {}
   getFollowingUserIds(userId: string) {}

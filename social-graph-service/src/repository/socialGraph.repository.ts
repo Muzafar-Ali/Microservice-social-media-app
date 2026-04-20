@@ -8,6 +8,12 @@ type UpsertUserProjectionInput = {
   status: string;
 };
 
+type FindFollowersInput = {
+  userId: string;
+  cursor?: string;
+  limit: number;
+};
+
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}
 
@@ -64,7 +70,23 @@ export class SocialGraphRepository {
     });
   };
 
-  findFollowers() {}
+   findFollowers = async ({ userId, cursor, limit }: FindFollowersInput): Promise<Follow[]> => {
+    return this.prisma.follow.findMany({
+      where: {
+        followeeId: userId,
+        status: FollowStatus.ACTIVE,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor
+        ? {
+            cursor: { id: cursor },
+            skip: 1,
+          }
+        : {}),
+    });
+  };
+
   findFollowing() {}
   countFollowers() {}
   countFollowing() {}
@@ -91,5 +113,18 @@ export class SocialGraphRepository {
   }
 
   findCachedUserById() {}
-  findCachedUsersByIds() {}
+
+  findCachedUsersByIds = async (userIds: string[]): Promise<UserProfileCache[]> => {
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    return this.prisma.userProfileCache.findMany({
+      where: {
+        userId: {
+          in: userIds,
+        },
+      },
+    });
+  };
 }

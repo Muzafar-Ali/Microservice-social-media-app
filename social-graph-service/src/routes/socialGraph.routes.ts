@@ -7,6 +7,7 @@ const socialGraphRoutes = (socialGraphController: SocialGraphController) => {
 
   router.post('/follow/:targetUserId', isAuthenticatedRedis, socialGraphController.followUser);
   router.delete('/follow/:targetUserId', isAuthenticatedRedis, socialGraphController.unfollowUser);
+  router.get('/users/:userId/followers', isAuthenticatedRedis, socialGraphController.getFollowers);
 
   return router;
 };

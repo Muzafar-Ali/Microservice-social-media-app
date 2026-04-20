@@ -14,3 +14,17 @@ export type UnfollowUserResponseDto = {
   wasFollowing: boolean;
   removedAt: Date | null;
 };
+
+export type FollowerListItemDto = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  followedAt: Date;
+};
+
+export type GetFollowersResponseDto = {
+  userId: string;
+  followers: FollowerListItemDto[];
+  nextCursor: string | null;
+};

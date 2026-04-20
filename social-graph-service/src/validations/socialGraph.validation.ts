@@ -28,5 +28,17 @@ export const userCreatedEventSchema = z.object({
   data: userCreatedPayloadSchema,
 });
 
+export const cursorPaginationQuerySchema = z.object({
+  cursor: z.string().trim().optional(),
+  limit: z
+    .coerce
+    .number()
+    .int()
+    .min(1, { error: 'limit must be at least 1' })
+    .max(50, { error: 'limit must be at most 50' })
+    .optional(),
+});
+
 export type FollowUserParamsDto = z.infer<typeof followUserParamsSchema>;
 export type UserCreatedEvent = z.infer<typeof userCreatedEventSchema>;
+export type CursorPaginationQueryDto = z.infer<typeof cursorPaginationQuerySchema>;

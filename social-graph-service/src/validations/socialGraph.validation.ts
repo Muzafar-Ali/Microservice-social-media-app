@@ -30,8 +30,7 @@ export const userCreatedEventSchema = z.object({
 
 export const cursorPaginationQuerySchema = z.object({
   cursor: z.string().trim().optional(),
-  limit: z
-    .coerce
+  limit: z.coerce
     .number()
     .int()
     .min(1, { error: 'limit must be at least 1' })

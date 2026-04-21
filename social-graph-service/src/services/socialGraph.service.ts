@@ -3,7 +3,7 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
-import { FollowUserResultDto, GetFollowersResponseDto, UnfollowUserResponseDto } from '../types/social-graph.types.js';
+import { FollowUserResultDto, GetFollowersResponseDto, UnfollowUserResponseDto } from '../types/social-graph-common.types.js';
 
 type UpsertUserProfileCacheInput = {
   userId: string;
@@ -134,7 +134,9 @@ export class SocialGraphService {
 
     const cachedFollowers = await this.socialGraphRepository.findCachedUsersByIds(followerUserIds);
 
-    const cachedFollowersMap = new Map(cachedFollowers.map((cachedFollower) => [cachedFollower.userId, cachedFollower]));
+    const cachedFollowersMap = new Map(
+      cachedFollowers.map((cachedFollower) => [cachedFollower.userId, cachedFollower]),
+    );
 
     const followers = paginatedFollowerRelations
       .map((relation) => {
@@ -154,7 +156,7 @@ export class SocialGraphService {
       })
       .filter((follower): follower is NonNullable<typeof follower> => follower !== null);
 
-    const nextCursor = hasMore ? paginatedFollowerRelations[paginatedFollowerRelations.length - 1]?.id ?? null : null;
+    const nextCursor = hasMore ? (paginatedFollowerRelations[paginatedFollowerRelations.length - 1]?.id ?? null) : null;
 
     return {
       userId,

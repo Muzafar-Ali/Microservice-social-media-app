@@ -3,32 +3,12 @@ import { Producer } from 'kafkajs';
 import { FollowStatus } from '../generated/prisma/enums.js';
 import { KAFKA_TOPICS, SOCIAL_GRAPH_EVENT_NAMES } from './socialGraph-event.topics.js';
 import logger from '../utils/logger.js';
-
-export type BaseEvent<TData> = {
-  eventId: string;
-  eventName: string;
-  eventVersion: number;
-  occurredAt: string;
-  producerService: string;
-  partitionKey: string;
-  data: TData;
-};
-
-export type FollowCreatedPayload = {
-  followerId: string;
-  followeeId: string;
-  status: FollowStatus;
-  createdAt: string;
-};
-
-export type UnFollowCreatedPayload = {
-  followerId: string;
-  followeeId: string;
-  removedAt: string;
-};
-
-export type FollowCreatedEvent = BaseEvent<FollowCreatedPayload>;
-export type UnFollowCreatedEvent = BaseEvent<UnFollowCreatedPayload>;
+import {
+  FollowCreatedEvent,
+  FollowCreatedPayload,
+  UnFollowCreatedEvent,
+  UnFollowCreatedPayload,
+} from '../types/social-graph-event-publisher.types.js';
 
 export class SocialGraphEventPublisher {
   private readonly producerServiceName = 'social-graph-service';
@@ -114,7 +94,7 @@ export class SocialGraphEventPublisher {
         acks: -1,
         messages: [
           {
-            key: payload.followeeId,
+            key: payload.followerId,
             value: JSON.stringify(event),
             headers: {
               eventName: event.eventName,

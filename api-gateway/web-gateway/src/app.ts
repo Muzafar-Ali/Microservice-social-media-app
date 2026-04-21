@@ -36,10 +36,43 @@ app.use("/api/media", createProxyMiddleware({
 );
 
 // Route: /api/posts/* -> post-service/*
-app.use("/api/posts", createProxyMiddleware({
+app.use(
+  "/api/posts",
+  createProxyMiddleware({
     target: config.postServiceLUrl,
     changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/posts${path}`,  // ✅ adds prefix back
+    pathRewrite: (path) => `/api/posts${path}`,
+    on: {
+      proxyReq: (proxyReq, req: any) => {
+        console.log(
+          `[web-gateway] proxy req ${req.method} ${req.originalUrl} -> ${config.postServiceLUrl}${proxyReq.path}`
+        );
+      },
+      error: (err, req, res: any) => {
+        console.error(
+          `[web-gateway] proxy error for ${req.method} ${req.originalUrl}`,
+          {
+            message: err.message,
+            code: (err as NodeJS.ErrnoException).code,
+            stack: err.stack,
+            target: config.postServiceLUrl,
+          }
+        );
+
+        if (!res.headersSent) {
+          res.writeHead(502, { "Content-Type": "application/json" });
+        }
+
+        res.end(
+          JSON.stringify({
+            success: false,
+            message: "post-service proxy failed",
+            error: err.message,
+            code: (err as NodeJS.ErrnoException).code ?? "UNKNOWN",
+          })
+        );
+      },
+    },
   })
 );
 

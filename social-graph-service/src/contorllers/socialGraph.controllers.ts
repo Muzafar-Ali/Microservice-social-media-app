@@ -1,6 +1,11 @@
 import { NextFunction, Request, response, Response } from 'express';
 import { SocialGraphService } from '../services/socialGraph.service.js';
-import { CursorPaginationQueryDto, cursorPaginationQuerySchema, FollowUserParamsDto, followUserParamsSchema } from '../validations/socialGraph.validation.js';
+import {
+  CursorPaginationQueryDto,
+  cursorPaginationQuerySchema,
+  FollowUserParamsDto,
+  followUserParamsSchema,
+} from '../validations/socialGraph.validation.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import formatZodError from '../utils/formatZodError.js';
 import { FollowStatus } from '../generated/prisma/enums.js';

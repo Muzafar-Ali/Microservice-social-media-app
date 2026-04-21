@@ -70,7 +70,7 @@ export class SocialGraphRepository {
     });
   };
 
-   findFollowers = async ({ userId, cursor, limit }: FindFollowersInput): Promise<Follow[]> => {
+  findFollowers = async ({ userId, cursor, limit }: FindFollowersInput): Promise<Follow[]> => {
     return this.prisma.follow.findMany({
       where: {
         followeeId: userId,

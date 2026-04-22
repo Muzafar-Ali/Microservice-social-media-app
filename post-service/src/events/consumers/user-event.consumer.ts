@@ -4,9 +4,12 @@ import { KAFKA_TOPICS, USER_EVENT_NAMES } from "../topics.js";
 import logger from "../../utils/logger.js";
 import {
   userCreatedEventSchema,
+  UserUpdatedEvent,
+  userUpdatedEventSchema,
   type UserCreatedEvent,
 } from "../../validation/post.validation.js";
 import { FailedMessageContext } from "../../types/post-event-consumer.types..js";
+import formatZodError from "../../utils/formatZodError.js";
 
 class UserEventConsumer {
   constructor(
@@ -42,9 +45,11 @@ class UserEventConsumer {
 
           switch (parsedJson.eventName) {
             case USER_EVENT_NAMES.USER_CREATED: {
-              const parsedEvent = userCreatedEventSchema.safeParse(parsedJson);
+              const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
 
-              if (!parsedEvent.success) {
+              if (!safeEvent.success) {
+                logger.error(formatZodError(safeEvent.error));
+
                 await this.sendToDlq({
                   topic,
                   partition,
@@ -57,7 +62,30 @@ class UserEventConsumer {
                 return;
               }
 
-              await this.handleUserCreated(parsedEvent.data);
+              await this.handleUserCreated(safeEvent.data);
+              await this.commitNextOffset(topic, partition, message.offset);
+              return;
+            }
+
+            case USER_EVENT_NAMES.USER_UPDATED: {
+              const safeEvent = userUpdatedEventSchema.safeParse(parsedJson);
+
+              if (!safeEvent.success) {
+                logger.error(formatZodError(safeEvent.error));
+
+                await this.sendToDlq({
+                  topic,
+                  partition,
+                  offset: message.offset,
+                  rawValue,
+                  reason: 'Invalid user.updated schema',
+                });
+
+                await this.commitNextOffset(topic, partition, message.offset);
+                return;
+              }
+
+              await this.handleUserUpdated(safeEvent.data);
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
@@ -124,6 +152,28 @@ class UserEventConsumer {
       status: data.status,
     });
   }
+
+    private async handleUserUpdated(event: UserUpdatedEvent): Promise<void> {
+      const data = event.data;
+
+      logger.info(
+        {
+          eventName: event.eventName,
+          eventId: event.eventId,
+          userId: data.userId,
+          username: data.username,
+        },
+        "Handling user.updated event in post-service"
+        );
+
+      await this.postService.upsertUserProfileCache({
+        userId: data.userId,
+        username: data.username,
+        displayName: data.displayName,
+        avatarUrl: data.avatarUrl?.secureUrl ?? null,
+        status: data.status,
+      });
+    }
 
   private async commitNextOffset(
     topic: string,

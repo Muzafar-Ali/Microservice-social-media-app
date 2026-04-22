@@ -3,15 +3,7 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
-import { FollowUserResultDto, GetCountsResponseDto, GetFollowersResponseDto, GetFollowingUserIdsResponseDto, UnfollowUserResponseDto } from '../types/social-graph-common.types.js';
-
-type UpsertUserProfileCacheInput = {
-  userId: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  status: string;
-};
+import { FollowUserResultDto, GetCountsResponseDto, GetFollowersResponseDto, GetFollowingUserIdsResponseDto, UnfollowUserResponseDto, UpsertUserProfileCacheInput } from '../types/social-graph-common.types.js';
 
 export class SocialGraphService {
   constructor(

@@ -1,19 +1,5 @@
 import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
 
-type UpsertUserProjectionInput = {
-  userId: string;
-  username: string;
-  displayName: string | null;
-  avatarUrl: string | null;
-  status: string;
-};
-
-type FindFollowersInput = {
-  userId: string;
-  cursor?: string;
-  limit: number;
-};
-
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}
 

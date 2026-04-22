@@ -39,3 +39,34 @@ export type GetFollowingUserIdsResponseDto = {
   userId: string;
   followingUserIds: string[];
 };
+
+export type UpsertUserProfileCacheInput = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  status: string;
+  isPrivate?: boolean;
+};
+
+export type UpsertUserProjectionInput = {
+  userId: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  status: string;
+};
+
+export type FindFollowersInput = {
+  userId: string;
+  cursor?: string;
+  limit: number;
+};
+
+export type FailedMessageContext = {
+  topic: string;
+  partition: number;
+  offset: string;
+  rawValue: string;
+  reason: string;
+};

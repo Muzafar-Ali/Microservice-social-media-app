@@ -24,7 +24,7 @@ const config = {
     },
   },
   redisUrl: process.env.REDIS_URL || "redis://localhost:6379",
-  kafkaBrokers: ["kafka:9092"],
+  kafkaBrokers: ['kafka-1:9092', 'kafka-2:9092', 'kafka-3:9092'],
   // kafkaBrokers: ['localhost:9092']
   // rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost:5672"
   // rabbitmqUrl: process.env.RABBITMQ_URL || "amqp://localhost",

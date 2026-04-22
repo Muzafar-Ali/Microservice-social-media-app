@@ -1,11 +1,14 @@
 import { createApp } from "./app.js";
 import { initRedis } from "./config/redisClient.js";
+import createKafkaTopic from "./utils/kafka/createKafkaTopic.js";
 
 const PORT = process.env.PORT || 4001;
 
 async function bootstrap() {
   try {
     await initRedis();
+    await createKafkaTopic();
+
     const app = await createApp();
 
     app.listen(PORT, () => {

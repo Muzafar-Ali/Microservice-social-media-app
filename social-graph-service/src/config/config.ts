@@ -9,7 +9,7 @@ const config = {
   dataBaseUrl: process.env.DATABASE_URL,
   serviceName: process.env.SERVICE_NAME || 'social-graph-service',
   logLevel: process.env.LOG_LEVEL || 'info',
-  kafkaBrokers: ['kafka:9092'],
+  kafkaBrokers: ['kafka-1:9092', 'kafka-2:9092', 'kafka-3:9092'],
   redisUrl: process.env.REDIS_URL || 'redis://redis-cache:6379',
   // jwtSecret: process.env.JWT_SECRET,
 };

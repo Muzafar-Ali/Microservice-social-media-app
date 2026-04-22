@@ -6,7 +6,7 @@ const config = {
   environment: process.env.NODE_ENV, 
   logLevel: process.env.LOG_LEVEL,
   serviceName: process.env.SERVICE_NAME,
-  kafkaBrokers: ["kafka:9092"],
+  kafkaBrokers: ['kafka-1:9092', 'kafka-2:9092', 'kafka-3:9092'],
   redisUrl: process.env.REDIS_URL || "redis://redis-cache:6379" || "redis://localhost:6379",
 
   // cloudinary

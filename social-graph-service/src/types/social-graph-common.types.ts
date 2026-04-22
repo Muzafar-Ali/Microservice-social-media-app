@@ -28,3 +28,9 @@ export type GetFollowersResponseDto = {
   followers: FollowerListItemDto[];
   nextCursor: string | null;
 };
+
+export type GetCountsResponseDto = {
+  userId: string;
+  followersCount: number;
+  followingCount: number;
+};

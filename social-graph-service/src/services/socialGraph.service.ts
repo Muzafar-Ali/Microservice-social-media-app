@@ -3,7 +3,7 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
-import { FollowUserResultDto, GetFollowersResponseDto, UnfollowUserResponseDto } from '../types/social-graph-common.types.js';
+import { FollowUserResultDto, GetCountsResponseDto, GetFollowersResponseDto, UnfollowUserResponseDto } from '../types/social-graph-common.types.js';
 
 type UpsertUserProfileCacheInput = {
   userId: string;
@@ -166,6 +166,25 @@ export class SocialGraphService {
   };
 
   getFollowing(userId: string, query: { cursor?: string; limit?: number }) {}
-  getCounts(userId: string) {}
+  
+  getCounts = async (userId: string): Promise<GetCountsResponseDto> => {
+    const targetUserProfileCache = await this.socialGraphRepository.findUserProfileCacheByUserId(userId);
+
+    if (!targetUserProfileCache) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Target user is not available in social graph cache yet');
+    }
+
+    const [followersCount, followingCount] = await Promise.all([
+      this.socialGraphRepository.countFollowers(userId),
+      this.socialGraphRepository.countFollowing(userId),
+    ]);
+
+    return {
+      userId,
+      followersCount,
+      followingCount,
+    };
+  };
+
   getFollowingUserIds(userId: string) {}
 }

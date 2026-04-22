@@ -17,7 +17,7 @@ export class SocialGraphController {
   followUser = async (req: Request<FollowUserParamsDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
-
+      
       if (!userId) {
         throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
@@ -73,6 +73,7 @@ export class SocialGraphController {
     next: NextFunction,
   ) => {
     try {
+      console.log('param', req.params)
       const safeParams = followUserParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {
@@ -91,6 +92,26 @@ export class SocialGraphController {
         success: true,
         message: 'Followers fetched successfully',
         data: followersResult,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getCounts = async (req: Request<FollowUserParamsDto>, res: Response, next: NextFunction) => {
+    try {
+      const safeParams = followUserParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(safeParams.error));
+      }
+
+      const countsResult = await this.socialGraphService.getCounts(safeParams.data.targetUserId);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: 'Counts fetched successfully',
+        data: countsResult,
       });
     } catch (error) {
       next(error);

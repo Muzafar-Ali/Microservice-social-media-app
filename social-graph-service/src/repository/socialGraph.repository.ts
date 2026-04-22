@@ -88,8 +88,24 @@ export class SocialGraphRepository {
   };
 
   findFollowing() {}
-  countFollowers() {}
-  countFollowing() {}
+  
+  countFollowers = async (userId: string): Promise<number> => {
+    return this.prisma.follow.count({
+      where: {
+        followeeId: userId,
+        status: FollowStatus.ACTIVE,
+      },
+    });
+  };
+
+  countFollowing = async (userId: string): Promise<number> => {
+    return this.prisma.follow.count({
+      where: {
+        followerId: userId,
+        status: FollowStatus.ACTIVE,
+      },
+    });
+  };
 
   async upsertUserProfileCache(input: UpsertUserProjectionInput): Promise<UserProfileCache> {
     return this.prisma.userProfileCache.upsert({

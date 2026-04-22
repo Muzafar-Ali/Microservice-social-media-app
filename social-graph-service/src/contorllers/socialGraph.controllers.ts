@@ -117,4 +117,24 @@ export class SocialGraphController {
       next(error);
     }
   };
+
+  getMyFollowingUserIds = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { userId } = req;
+
+      if (!userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
+      }
+
+      const followingUserIdsResult = await this.socialGraphService.getFollowingUserIds(userId);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: 'Following user ids fetched successfully',
+        data: followingUserIdsResult,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }

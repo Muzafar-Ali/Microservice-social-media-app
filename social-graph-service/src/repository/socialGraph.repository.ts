@@ -143,4 +143,19 @@ export class SocialGraphRepository {
       },
     });
   };
+
+  findFollowingUserIds = async (userId: string): Promise<string[]> => {
+    const followingRelations = await this.prisma.follow.findMany({
+      where: {
+        followerId: userId,
+        status: FollowStatus.ACTIVE,
+      },
+      select: {
+        followeeId: true,
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+
+    return followingRelations.map((relation) => relation.followeeId);
+  };
 }

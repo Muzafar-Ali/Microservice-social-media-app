@@ -3,7 +3,7 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
-import { FollowUserResultDto, GetCountsResponseDto, GetFollowersResponseDto, UnfollowUserResponseDto } from '../types/social-graph-common.types.js';
+import { FollowUserResultDto, GetCountsResponseDto, GetFollowersResponseDto, GetFollowingUserIdsResponseDto, UnfollowUserResponseDto } from '../types/social-graph-common.types.js';
 
 type UpsertUserProfileCacheInput = {
   userId: string;
@@ -186,5 +186,16 @@ export class SocialGraphService {
     };
   };
 
-  getFollowingUserIds(userId: string) {}
+  getFollowingUserIds = async (userId: string): Promise<GetFollowingUserIdsResponseDto> => {
+    if (!userId) {
+      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
+    }
+
+    const followingUserIds = await this.socialGraphRepository.findFollowingUserIds(userId);
+
+    return {
+      userId,
+      followingUserIds,
+    };
+  };
 }

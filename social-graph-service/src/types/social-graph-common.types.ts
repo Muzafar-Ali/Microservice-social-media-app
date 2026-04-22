@@ -34,3 +34,8 @@ export type GetCountsResponseDto = {
   followersCount: number;
   followingCount: number;
 };
+
+export type GetFollowingUserIdsResponseDto = {
+  userId: string;
+  followingUserIds: string[];
+};

@@ -6,14 +6,7 @@ import {
   userCreatedEventSchema,
   type UserCreatedEvent,
 } from "../../validation/post.validation.js";
-
-type FailedMessageContext = {
-  topic: string;
-  partition: number;
-  offset: string;
-  rawValue: string;
-  reason: string;
-};
+import { FailedMessageContext } from "../../types/post-event-consumer.types..js";
 
 class UserEventConsumer {
   constructor(
@@ -23,6 +16,7 @@ class UserEventConsumer {
   ) {}
 
   public async start(): Promise<void> {
+
     await this.consumer.subscribe({
       topic: KAFKA_TOPICS.USER_EVENTS,
       fromBeginning: false,
@@ -95,7 +89,15 @@ class UserEventConsumer {
             "Failed to process user Kafka message"
           );
 
-          // No offset commit here: allows retry/redelivery
+          await this.sendToDlq({
+            topic,
+            partition,
+            offset: message.offset,
+            rawValue,
+            reason: "Unhandled processing error",
+          });
+
+          await this.commitNextOffset(topic, partition, message.offset);
         }
       },
     });
@@ -146,7 +148,7 @@ class UserEventConsumer {
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
     await this.dlqProducer.send({
-      topic: KAFKA_TOPICS.USER_EVENTS_DLQ,
+      topic: KAFKA_TOPICS.POST_SERVICE_USER_EVENTS_DLQ,
       acks: -1,
       messages: [
         {

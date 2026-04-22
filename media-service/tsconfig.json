@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "target": "es2016",
-    "module": "commonjs",
+    "module": "nodenext",
     "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "NodeNext",
     "strict": true,
     "skipLibCheck": true,
   },

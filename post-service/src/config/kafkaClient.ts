@@ -4,7 +4,7 @@ import config from "./config.js";
 const kafka = new Kafka({
   clientId: 'post-service',
   brokers: config.kafkaBrokers,
-  logLevel: logLevel.ERROR
+  logLevel: logLevel.INFO
 });
 
 export default kafka;

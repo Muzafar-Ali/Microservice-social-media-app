@@ -1,5 +1,7 @@
 import { Consumer } from 'kafkajs';
 import kafka from '../../config/kafkaClient.js';
+import logger from '../logger.js';
+
 
 let consumer: Consumer | null = null;
 
@@ -10,7 +12,7 @@ const getUserKafkaConsumer = async () => {
     });
 
     await consumer.connect();
-    console.log('[Kafka] Consumer connected (social-graph-service)');
+    logger.info('[Kafka] Consumer connected (social-graph-service)');
   }
 
   return consumer;

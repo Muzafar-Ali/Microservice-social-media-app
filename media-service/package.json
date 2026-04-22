@@ -2,10 +2,11 @@
   "name": "media-service",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "dist/server.js",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon dist/server.js",
     "start": "node dist/server.js",
+    "dev": "nodemon dist/server.js",
     "build": "tsc",
     "watch": "tsc -w"
   },

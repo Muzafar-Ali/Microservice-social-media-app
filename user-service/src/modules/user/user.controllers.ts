@@ -11,7 +11,7 @@ import {
   updateMyProfileSchema, 
   UpdateProfileImageDto, 
   updateProfileImageSchema,
-} from "./user.schema.js";
+} from "./user.validations.js";
 import ApiErrorHandler from "../../utils/apiErrorHanlderClass.js";
 import formatZodError from "../../utils/formatZodError.js";
 

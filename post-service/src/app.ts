@@ -19,7 +19,6 @@ import UserEventConsumer from "./events/consumers/user-event.consumer.js";
 import MediaEventConsumer from "./events/consumers/media-event.consumer.js";
 
 
-
 export async function createApp() {
   const producer = await getKafkaProducer();
   const userKafkaConsumer = await getUserKafkaConsumer();

@@ -10,6 +10,7 @@ import { SocialGraphEventPublisher } from './events/socialGraph-producer.js';
 import { SocialGraphService } from './services/socialGraph.service.js';
 import { SocialGraphController } from './contorllers/socialGraph.controllers.js';
 import prisma from './config/prismaClinet.js';
+
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
 import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';
 import UserEventConsumer from './events/consumers/user-event.consumer.js';

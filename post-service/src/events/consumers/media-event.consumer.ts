@@ -2,27 +2,7 @@ import { Consumer, Producer } from "kafkajs";
 import { PostService } from "../../services/post.service.js";
 import { KAFKA_TOPICS, MEDIA_EVENT_NAMES } from "../topics.js";
 import logger from "../../utils/logger.js";
-
-type MediaUploadCompletedPayload = {
-  userId: string;
-  postId: string;
-  secureUrl: string;
-  publicId: string;
-  mediaType: "image" | "video";
-};
-
-type MediaDeletedPayload = {
-  postId: string;
-  mediaId: string;
-};
-
-type FailedMessageContext = {
-  topic: string;
-  partition: number;
-  offset: string;
-  rawValue: string;
-  reason: string;
-};
+import { FailedMessageContext, MediaDeletedPayload, MediaUploadCompletedPayload } from "../../types/post-event-consumer.types..js";
 
 class MediaEventConsumer {
   constructor(
@@ -164,7 +144,7 @@ class MediaEventConsumer {
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
     await this.dlqProducer.send({
-      topic: KAFKA_TOPICS.MEDIA_EVENTS_DLQ,
+      topic: KAFKA_TOPICS.POST_SERVICE_MEDIA_EVENTS_DLQ,
       acks: -1,
       messages: [
         {

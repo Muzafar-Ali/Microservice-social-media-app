@@ -1,8 +1,8 @@
-import MediaController from "../controllers/media.controller";
+import MediaController from "../controllers/media.controller.js";
 import { Router } from "express";
-import validateRequestBody from "../middlewares/validaterequestBody.middleware";
-import { postMediaUploadedSchema, postMediaUploadSignatureSchema, profileImageUpdateSchema } from "../validations/media.validation";
-import isAuthenticatedRedis from "../middlewares/isAuthenticatedRedis.middleware";
+import validateRequestBody from "../middlewares/validaterequestBody.middleware.js";
+import { postMediaUploadedSchema, postMediaUploadSignatureSchema, profileImageUpdateSchema } from "../validations/media.validation.js";
+import isAuthenticatedRedis from "../middlewares/isAuthenticatedRedis.middleware.js";
 
 
 const mediaRoutes = (mediaController: MediaController) => {

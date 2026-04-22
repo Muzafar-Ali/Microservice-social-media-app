@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { StatusCodes } from "http-status-codes";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass";
-import { redis } from "../config/redisClient";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
+import { redis } from "../config/redisClient.js";
 
 
 declare global {

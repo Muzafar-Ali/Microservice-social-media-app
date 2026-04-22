@@ -16,8 +16,7 @@ const getKafkaProducer = async (): Promise<Producer> => {
     });
 
     await producer.connect();
-
-    logger.info('[Kafka] Producer connected (post-service)');
+    logger.info('[Kafka] Producer connected (media-service)');
   }
 
   return producer;

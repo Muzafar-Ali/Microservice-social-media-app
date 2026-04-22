@@ -1,14 +1,14 @@
-import { cloudinary } from "../config/cloudinaryClient";
-import config from "../config/config";
 import { NextFunction, Request, Response } from "express";
+import { cloudinary } from "../config/cloudinaryClient.js";
+import config from "../config/config.js";
 import { StatusCodes } from "http-status-codes";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass";
-import MediaService from "../services/media.service";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
+import MediaService from "../services/media.service.js";
 import { 
   PostMediaUploadedDto, 
   PostMediaUploadSignatureDto, 
   ProfileImageUpdateDto 
-} from "../validations/media.validation";
+} from "../validations/media.validation.js";
 
 
 class MediaController {

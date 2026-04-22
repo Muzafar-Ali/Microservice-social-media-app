@@ -1,16 +1,16 @@
-import express, { json } from "express";
+import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import mediaRouter from "./routes/media.routes";
-import globalErrorHandler from "./middlewares/globalErrorHandler.middleware";
-import notFoundHandler from "./middlewares/notFoundHandler.middleware";
-import MediaController from "./controllers/media.controller";
-import MediaService from "./services/media.service";
-import MediaRespository from "./respositories/media.respository";
-import config from "./config/config";
-import getKafkaProducer from "./utils/getKafkaProducer";
-import MediaServiceEventPublisher from "./events/producer";
+import mediaRouter from "./routes/media.routes.js";
+import globalErrorHandler from "./middlewares/globalErrorHandler.middleware.js";
+import notFoundHandler from "./middlewares/notFoundHandler.middleware.js";
+import MediaController from "./controllers/media.controller.js";
+import MediaService from "./services/media.service.js";
+import MediaRespository from "./respositories/media.respository.js";
+import config from "./config/config.js";
+import MediaServiceEventPublisher from "./events/producer.js";
+import getKafkaProducer from "./utils/kafka/getKafkaProducer.js";
 
 export async function createApp() {
 

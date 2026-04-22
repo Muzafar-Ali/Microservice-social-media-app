@@ -1,29 +1,9 @@
+import crypto from 'node:crypto';
 import { Producer } from "kafkajs";
 import { KAFKA_TOPICS, POST_EVENT_NAMES } from "./topics.js";
 import logger from "../utils/logger.js";
+import { PostCreatedEventPayload } from '../types/post-event-publisher.types.js';
 
-
-type PostCreatedEventPayload = {
-  postId: string;
-  authorId: string;
-  content: string;
-  themeKey: string | null;
-  isEdited: boolean;
-  editedAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  media: Array<{
-    id: string;
-    type: "IMAGE" | "VIDEO";
-    url: string;
-    publicId: string | null;
-    thumbnailUrl: string | null;
-    duration: number | null;
-    width: number | null;
-    height: number | null;
-    order: number;
-  }>;
-};
 
 export class PostEventPublisher {
   
@@ -45,6 +25,7 @@ export class PostEventPublisher {
     try {
       await this.producer.send({
         topic: KAFKA_TOPICS.POST_EVENTS,
+        acks: -1,
         messages: [
           {
             key: payload.postId,
@@ -53,14 +34,32 @@ export class PostEventPublisher {
               eventName: event.eventName,
               eventVersion: String(event.eventVersion),
               producerService: event.producerService,
+              eventId: event.eventId,
+              partitionKey: event.partitionKey
             },
           },
         ],
       });
 
-      logger.info(`Published ${event.eventName} for post ${payload.postId}`);
+      logger.info(
+        {
+          eventName: event.eventName,
+          eventId: event.eventId,
+          postId: payload.postId,
+          topic: KAFKA_TOPICS.POST_EVENTS,
+        },
+        `Published posts event}`
+      );
     } catch (error) {
-      logger.error(error, `Failed to publish ${event.eventName}`);
+      logger.error(
+        {
+          eventName: event.eventName,
+          eventId: event.eventId,
+          postId: payload.postId,
+          topic: KAFKA_TOPICS.POST_EVENTS,
+        },
+        `Failed to publish post event`
+      );
       throw error;
     }
   }

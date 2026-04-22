@@ -1,6 +1,6 @@
 // src/repositories/user.repository.ts
 import { PrismaClient, User, Prisma } from '../../generated/prisma/client.js';
-import { UpdateMyProfileDto } from './user.schema.js';
+import { UpdateMyProfileDto } from './user.validations.js';
 
 
 export class UserRepository {

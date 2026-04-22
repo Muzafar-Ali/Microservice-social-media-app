@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import z from "zod";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass";
-import formatZodError from "../utils/formatZodError";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
+import formatZodError from "../utils/formatZodError.js";
 
 const validateRequestBody = (schema: z.ZodObject<any>) => {
   

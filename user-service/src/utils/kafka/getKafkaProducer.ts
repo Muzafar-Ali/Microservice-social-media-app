@@ -10,9 +10,9 @@ const getKafkaProducer = async (): Promise<Producer> => {
       allowAutoTopicCreation: false,
       idempotent: true,
       maxInFlightRequests: 1,
-      retry: {
-        retries: 10,
-      },
+      // retry: {
+      //   retries: 10,
+      // },
     });
 
     await producer.connect();

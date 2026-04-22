@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import config from "./config/config.js";
 import { initRedis } from "./config/redisClient.js";
+import createKafkaTopic from "./utils/kafka/createKafkaTopic.js";
 import logger from "./utils/logger.js";
 
 const PORT = config.port;
@@ -9,6 +10,7 @@ async function bootstrap() {
   try {
     // 1. Init external dependencies first
     await initRedis();
+    await createKafkaTopic();
 
     // 2. Create app and Kafka consumer
     const { app, userEventConsumer, mediaEventConsumer } = await createApp();

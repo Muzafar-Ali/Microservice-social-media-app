@@ -1,8 +1,8 @@
 import { StatusCodes } from "http-status-codes";
-import MediaServiceEventPublisher from "../events/producer";
-import MediaRespository from "../respositories/media.respository";
-import { PostMediaUploadedDto } from "../validations/media.validation";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass";
+import MediaServiceEventPublisher from "../events/producer.js";
+import MediaRespository from "../respositories/media.respository.js";
+import { PostMediaUploadedDto } from "../validations/media.validation.js";
+import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
 
 class MediaService {
   constructor(
@@ -16,11 +16,11 @@ class MediaService {
     publicId: string
   ) => {
     
-    await this.mediaServiceEventPublisher.publishProfileImageUpdatedEvent(
-      secureUrl,
-      publicId,
-      userId
-    );
+    // await this.mediaServiceEventPublisher.publishProfileImageUpdatedEvent(
+    //   secureUrl,
+    //   publicId,
+    //   userId
+    // );
   }
 
  preparePostMediaPayload =  async (uploadedMedia: PostMediaUploadedDto) => {

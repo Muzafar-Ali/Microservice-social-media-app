@@ -1,11 +1,9 @@
-
 import { MediaType, PrismaClient } from '../generated/prisma/client.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
 import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
 import { PostUpdate } from '../types/post.types.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
-
 
 export class PostRepository {
   constructor(private prisma: PrismaClient) {}
@@ -14,12 +12,12 @@ export class PostRepository {
     return this.prisma.post.create({
       data: {
         authorId,
-        content: input.content ?? "",
+        content: input.content ?? '',
         themeKey: input.themeKey ?? null,
         media: input?.media?.length
           ? {
               create: input.media.map((item, index) => ({
-                type: item.type === "image" ? MediaType.IMAGE : MediaType.VIDEO,
+                type: item.type === 'image' ? MediaType.IMAGE : MediaType.VIDEO,
                 url: item.url,
                 publicId: item.publicId ?? null,
                 thumbnailUrl: item.thumbnailUrl ?? null,
@@ -83,7 +81,7 @@ export class PostRepository {
       orderBy: { createdAt: 'desc' },
       include: {
         media: {
-          orderBy: { order: 'asc' }
+          orderBy: { order: 'asc' },
         },
         likes: true,
         comments: true,
@@ -99,10 +97,7 @@ export class PostRepository {
     const { limit, cursor } = options;
 
     const posts = await this.prisma.post.findMany({
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor
         ? {
@@ -116,10 +111,7 @@ export class PostRepository {
     const hasNextPage = posts.length > limit;
     const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
 
-    const nextCursor =
-      hasNextPage && slicedPosts.length > 0
-        ? slicedPosts[slicedPosts.length - 1].id
-        : null;
+    const nextCursor = hasNextPage && slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
 
     return {
       posts: slicedPosts,
@@ -137,7 +129,7 @@ export class PostRepository {
     const cursorPost = await this.findPostCursorById(cursor);
 
     if (!cursorPost) {
-      throw new ApiErrorHandler(404, "Cursor post not found");
+      throw new ApiErrorHandler(404, 'Cursor post not found');
     }
 
     const posts = await this.prisma.post.findMany({
@@ -156,10 +148,7 @@ export class PostRepository {
           },
         ],
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       select: userFeedPostSelect,
     });
@@ -193,7 +182,7 @@ export class PostRepository {
     const cursorPost = await this.findPostCursorById(cursor);
 
     if (!cursorPost) {
-      throw new ApiErrorHandler(404, "Cursor post not found");
+      throw new ApiErrorHandler(404, 'Cursor post not found');
     }
 
     const posts = await this.prisma.post.findMany({
@@ -212,10 +201,7 @@ export class PostRepository {
           },
         ],
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       select: userFeedPostSelect,
     });
@@ -223,10 +209,7 @@ export class PostRepository {
     const hasNextPage = posts.length > limit;
     const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
 
-    const nextCursor =
-      slicedPosts.length > 0
-        ? slicedPosts[slicedPosts.length - 1].id
-        : null;
+    const nextCursor = slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
 
     return {
       posts: slicedPosts,
@@ -237,7 +220,7 @@ export class PostRepository {
 
   async findPostLikes(
     postId: string,
-    options: { cursor?: string; limit: number }
+    options: { cursor?: string; limit: number },
   ): Promise<{
     likes: Array<{ userId: string; createdAt: Date }>;
     nextCursor: string | null;
@@ -260,7 +243,7 @@ export class PostRepository {
       });
 
       if (!cursorLike) {
-        throw new ApiErrorHandler(404, "Likes cursor not found");
+        throw new ApiErrorHandler(404, 'Likes cursor not found');
       }
     }
 
@@ -279,10 +262,7 @@ export class PostRepository {
             }
           : {}),
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { userId: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { userId: 'desc' }],
       take: limit + 1,
       select: {
         userId: true,
@@ -293,9 +273,7 @@ export class PostRepository {
     const hasNextPage = likes.length > limit;
     const slicedLikes = hasNextPage ? likes.slice(0, limit) : likes;
 
-    const nextCursor = hasNextPage && slicedLikes.length > 0
-        ? slicedLikes[slicedLikes.length - 1].userId
-        : null;
+    const nextCursor = hasNextPage && slicedLikes.length > 0 ? slicedLikes[slicedLikes.length - 1].userId : null;
 
     return {
       likes: slicedLikes,
@@ -303,26 +281,22 @@ export class PostRepository {
       hasNextPage,
     };
   }
-  
-  async findUserGridPostsCursor(
-    profileUserId: string, 
-    options: { limit: number; cursor?: string }
-  ): Promise<{ 
-    posts: UserGridPost[]; 
-    nextCursor: string | null; 
-    hasNextPage: boolean 
-  }> {
 
+  async findUserGridPostsCursor(
+    profileUserId: string,
+    options: { limit: number; cursor?: string },
+  ): Promise<{
+    posts: UserGridPost[];
+    nextCursor: string | null;
+    hasNextPage: boolean;
+  }> {
     const { limit, cursor } = options;
 
     const posts = await this.prisma.post.findMany({
       where: {
         authorId: profileUserId,
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor
         ? {
@@ -336,9 +310,7 @@ export class PostRepository {
     const hasNextPage = posts.length > limit;
     const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
 
-    const nextCursor = hasNextPage && slicedPosts.length > 0
-        ? slicedPosts[slicedPosts.length - 1].id
-        : null;
+    const nextCursor = hasNextPage && slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
 
     return {
       posts: slicedPosts,
@@ -348,13 +320,12 @@ export class PostRepository {
   }
 
   async findUserGridPostsOffset(
-    profileUserId: string, 
-    options: { page: number; limit: number }
+    profileUserId: string,
+    options: { page: number; limit: number },
   ): Promise<{
-    posts: UserGridPost[]; 
-    total: number 
+    posts: UserGridPost[];
+    total: number;
   }> {
-
     const { page, limit } = options;
     const skip = (page - 1) * limit;
 
@@ -364,7 +335,7 @@ export class PostRepository {
           authorId: profileUserId,
         },
         orderBy: {
-          createdAt: "desc",
+          createdAt: 'desc',
         },
         skip,
         take: limit,
@@ -397,14 +368,14 @@ export class PostRepository {
         displayName: true,
         avatarUrl: true,
         status: true,
-        updatedAt: true
+        updatedAt: true,
       },
     });
   }
-  
+
   async findUserFeedWindow(
     profileUserId: string,
-    options: { postId: string; limit: number }
+    options: { postId: string; limit: number },
   ): Promise<{
     posts: UserFeedPost[];
     anchorPostId: string;
@@ -425,7 +396,7 @@ export class PostRepository {
     });
 
     if (!anchorPost) {
-      throw new ApiErrorHandler(404, "Selected post not found");
+      throw new ApiErrorHandler(404, 'Selected post not found');
     }
 
     const clickedPost = await this.prisma.post.findFirst({
@@ -437,7 +408,7 @@ export class PostRepository {
     });
 
     if (!clickedPost) {
-      throw new ApiErrorHandler(404, "Selected post not found");
+      throw new ApiErrorHandler(404, 'Selected post not found');
     }
 
     const olderTake = Math.max(limit - 1, 0);
@@ -453,25 +424,17 @@ export class PostRepository {
           },
         ],
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: olderTake + 1,
       select: userFeedPostSelect,
     });
 
     const hasNextPage = olderPostsPlusOne.length > olderTake;
-    const slicedOlderPosts = hasNextPage
-      ? olderPostsPlusOne.slice(0, olderTake)
-      : olderPostsPlusOne;
+    const slicedOlderPosts = hasNextPage ? olderPostsPlusOne.slice(0, olderTake) : olderPostsPlusOne;
 
     const posts = [clickedPost, ...slicedOlderPosts];
 
-    const nextCursor =
-      hasNextPage && posts.length > 0
-        ? posts[posts.length - 1].id
-        : null;
+    const nextCursor = hasNextPage && posts.length > 0 ? posts[posts.length - 1].id : null;
 
     return {
       posts,
@@ -483,7 +446,7 @@ export class PostRepository {
 
   async findUserFeedAfter(
     profileUserId: string,
-    options: { cursor: string; limit: number }
+    options: { cursor: string; limit: number },
   ): Promise<{
     posts: UserFeedPost[];
     nextCursor: string | null;
@@ -503,7 +466,7 @@ export class PostRepository {
     });
 
     if (!cursorPost) {
-      throw new ApiErrorHandler(404, "Cursor post not found");
+      throw new ApiErrorHandler(404, 'Cursor post not found');
     }
 
     const posts = await this.prisma.post.findMany({
@@ -517,10 +480,7 @@ export class PostRepository {
           },
         ],
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       select: userFeedPostSelect,
     });
@@ -528,10 +488,7 @@ export class PostRepository {
     const hasNextPage = posts.length > limit;
     const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
 
-    const nextCursor =
-      hasNextPage && slicedPosts.length > 0
-        ? slicedPosts[slicedPosts.length - 1].id
-        : null;
+    const nextCursor = hasNextPage && slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
 
     return {
       posts: slicedPosts,
@@ -549,7 +506,6 @@ export class PostRepository {
   }
 
   async findAllPaginated(skip: number, limit: number) {
-    
     const [posts, total] = await Promise.all([
       this.prisma.post.findMany({
         skip: skip,
@@ -558,14 +514,14 @@ export class PostRepository {
           createdAt: 'desc',
         },
       }),
-      
-      this.prisma.post.count()
-    ])
+
+      this.prisma.post.count(),
+    ]);
 
     return {
-      posts, 
-      total
-    }
+      posts,
+      total,
+    };
   }
 
   async update(postId: string, data: PostUpdate) {
@@ -626,7 +582,7 @@ export class PostRepository {
 
   async findPostComments(
     postId: string,
-    options: { cursor?: string; limit: number }
+    options: { cursor?: string; limit: number },
   ): Promise<{
     comments: Array<{
       id: string;
@@ -645,10 +601,7 @@ export class PostRepository {
       where: {
         postId,
       },
-      orderBy: [
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor
         ? {
@@ -669,10 +622,7 @@ export class PostRepository {
     const hasNextPage = comments.length > limit;
     const slicedComments = hasNextPage ? comments.slice(0, limit) : comments;
 
-    const nextCursor =
-      hasNextPage && slicedComments.length > 0
-        ? slicedComments[slicedComments.length - 1].id
-        : null;
+    const nextCursor = hasNextPage && slicedComments.length > 0 ? slicedComments[slicedComments.length - 1].id : null;
 
     return {
       comments: slicedComments,

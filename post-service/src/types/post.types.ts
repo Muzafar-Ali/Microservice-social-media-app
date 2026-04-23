@@ -11,4 +11,4 @@ export type PostUpdate = {
   content?: string;
   editedAt?: Date;
   isEdited?: boolean;
-}
+};

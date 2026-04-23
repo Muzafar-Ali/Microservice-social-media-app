@@ -1,6 +1,6 @@
-import { Producer } from "kafkajs";
-import kafka from "../../config/kafkaClient.js";
-import logger from "../logger.js";
+import { Producer } from 'kafkajs';
+import kafka from '../../config/kafkaClient.js';
+import logger from '../logger.js';
 
 let producer: Producer | null = null;
 
@@ -17,7 +17,7 @@ const getKafkaProducer = async (): Promise<Producer> => {
 
     await producer.connect();
 
-    logger.info("[Kafka] Producer connected (user-service)");
+    logger.info('[Kafka] Producer connected (user-service)');
   }
 
   return producer;

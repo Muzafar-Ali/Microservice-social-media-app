@@ -1,11 +1,11 @@
-import crypto from "node:crypto";
-import { Producer } from "kafkajs";
-import { KAFKA_TOPICS, USER_EVENT_NAMES } from "./topics.js";
-import logger from "../utils/logger.js";
-import { UserCreatedEvent, UserCreatedPayload } from "../types/publisher.types.js";
+import crypto from 'node:crypto';
+import { Producer } from 'kafkajs';
+import { KAFKA_TOPICS, USER_EVENT_NAMES } from './topics.js';
+import logger from '../utils/logger.js';
+import { UserCreatedEvent, UserCreatedPayload } from '../types/publisher.types.js';
 
 export class UserEventPublisher {
-  private readonly producerServiceName = "user-service";
+  private readonly producerServiceName = 'user-service';
 
   constructor(private readonly producer: Producer) {}
 
@@ -46,7 +46,7 @@ export class UserEventPublisher {
           eventId: event.eventId,
           topic: KAFKA_TOPICS.USER_EVENTS,
         },
-        "Published user event"
+        'Published user event',
       );
     } catch (error) {
       logger.error(
@@ -57,7 +57,7 @@ export class UserEventPublisher {
           eventId: event.eventId,
           topic: KAFKA_TOPICS.USER_EVENTS,
         },
-        "Failed to publish user event"
+        'Failed to publish user event',
       );
 
       throw error;

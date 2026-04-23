@@ -1,7 +1,7 @@
-import { NextFunction, Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
-import { ChatService } from "../services/chat.service.js";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
+import { NextFunction, Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes';
+import { ChatService } from '../services/chat.service.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import {
   AddParticipantsDto,
   AddReactionDto,
@@ -19,22 +19,16 @@ import {
   RemoveReactionDto,
   SendMessageDto,
   UpdateGroupConversationDto,
-} from "../validations/chat.validation.js";
-import formatZodError from "../utils/formatZodError.js";
-import { getSocketServer } from "../socket/index.js";
-import removeUserFromConversationRoom from "../utils/removeUserFromConversationRoom.js";
-
+} from '../validations/chat.validation.js';
+import formatZodError from '../utils/formatZodError.js';
+import { getSocketServer } from '../socket/index.js';
+import removeUserFromConversationRoom from '../utils/removeUserFromConversationRoom.js';
 
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
-  getMe = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getMe = async (req: Request, res: Response, next: NextFunction) => {
     try {
-
       res.status(StatusCodes.OK).json({
         success: true,
         data: {
@@ -49,28 +43,27 @@ export class ChatController {
   createDirectConversation = async (
     req: Request<Record<string, never>, any, CreateDirectConversationDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { userId } = req;
-      const participantUserId = req.body.participantUserId
-      
+      const participantUserId = req.body.participantUserId;
+
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const createdConversation = await this.chatService.createDirectConversation({
         creatorUserId: userId,
-        type: "DIRECT",
-        participantUserId
+        type: 'DIRECT',
+        participantUserId,
       });
 
       res.status(StatusCodes.CREATED).json({
         success: true,
-        message: "Direct conversation created successfully",
+        message: 'Direct conversation created successfully',
         data: createdConversation,
       });
-
     } catch (error) {
       next(error);
     }
@@ -79,44 +72,39 @@ export class ChatController {
   createGroupConversation = async (
     req: Request<Record<string, never>, any, CreateGroupConversationDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { userId } = req;
       const { title, participantUserIds } = req.body;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const createdConversation = await this.chatService.createGroupConversation({
         creatorUserId: userId,
-        type: "GROUP",
+        type: 'GROUP',
         title,
         participantUserIds,
       });
 
       res.status(StatusCodes.CREATED).json({
         success: true,
-        message: "Group conversation created successfully",
+        message: 'Group conversation created successfully',
         data: createdConversation,
       });
-
     } catch (error) {
       next(error);
     }
   };
 
-  listMyConversations = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  listMyConversations = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const conversations = await this.chatService.listMyConversations(userId);
@@ -125,36 +113,31 @@ export class ChatController {
         success: true,
         data: conversations,
       });
-
     } catch (error) {
       next(error);
     }
   };
 
-  getConversationMessages = async (
-    req: Request<ConversationParamsDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getConversationMessages = async (req: Request<ConversationParamsDto>, res: Response, next: NextFunction) => {
     try {
-      const { userId } = req
-      
+      const { userId } = req;
+
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
-      
+
       const safeParams = conversationParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
-        throw new ApiErrorHandler( StatusCodes.BAD_REQUEST, errorMessages);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const safeQuery = cursorPaginationSchema.safeParse(req.query);
 
       if (!safeQuery.success) {
         const errorMessages = formatZodError(safeQuery.error);
-        throw new ApiErrorHandler( StatusCodes.BAD_REQUEST, errorMessages);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const paginatedMessages = await this.chatService.getConversationMessages({
@@ -168,37 +151,25 @@ export class ChatController {
         success: true,
         data: paginatedMessages,
       });
-
     } catch (error) {
       next(error);
     }
   };
 
-  sendMessage = async (
-    req: Request<ConversationParamsDto, any, SendMessageDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  sendMessage = async (req: Request<ConversationParamsDto, any, SendMessageDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = conversationParamsSchema.safeParse(req.params);
-      const {
-        attachments,
-        clientMessageId,
-        type, 
-        body,
-        metadata,
-        replyToMessageId
-      } = req.body;
+      const { attachments, clientMessageId, type, body, metadata, replyToMessageId } = req.body;
 
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
-        throw new ApiErrorHandler( StatusCodes.BAD_REQUEST, errorMessages);
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
       }
 
       const createdMessage = await this.chatService.sendMessage({
@@ -214,9 +185,9 @@ export class ChatController {
 
       const io = getSocketServer();
 
-      io.to(`conversation:${safeParams.data.conversationId}`).emit("chat:message:new", createdMessage);
+      io.to(`conversation:${safeParams.data.conversationId}`).emit('chat:message:new', createdMessage);
 
-      io.to(`conversation:${safeParams.data.conversationId}`).emit("conversation:update", {
+      io.to(`conversation:${safeParams.data.conversationId}`).emit('conversation:update', {
         conversationId: safeParams.data.conversationId,
         lastMessageId: createdMessage.id,
         lastMessageAt: createdMessage.createdAt,
@@ -224,10 +195,9 @@ export class ChatController {
 
       res.status(StatusCodes.CREATED).json({
         success: true,
-        message: "Message sent successfully",
+        message: 'Message sent successfully',
         data: createdMessage,
       });
-
     } catch (error) {
       next(error);
     }
@@ -236,15 +206,15 @@ export class ChatController {
   markConversationRead = async (
     req: Request<ConversationParamsDto, any, MarkConversationReadDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { userId } = req;
       const { lastReadMessageId } = req.body;
       const safeParams = conversationParamsSchema.safeParse(req.params);
-      
+
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       if (!safeParams.success) {
@@ -259,31 +229,26 @@ export class ChatController {
       });
 
       const io = getSocketServer();
-      io.to(`conversation:${safeParams.data.conversationId}`).emit("chat:message:read:update", readState);
-      io.emit("chat:message:read:ack", readState);
+      io.to(`conversation:${safeParams.data.conversationId}`).emit('chat:message:read:update', readState);
+      io.emit('chat:message:read:ack', readState);
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Conversation marked as read",
+        message: 'Conversation marked as read',
         data: readState,
       });
-
     } catch (error) {
       next(error);
     }
   };
 
-  deleteMessage = async (
-    req: Request<MessageParamsDto, any, DeleteMessageDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  deleteMessage = async (req: Request<MessageParamsDto, any, DeleteMessageDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
       const { forEveryone } = req.body;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = messageParamsSchema.safeParse(req.params);
@@ -301,29 +266,24 @@ export class ChatController {
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Message deleted successfully",
+        message: 'Message deleted successfully',
         data: deletedMessage,
       });
-
     } catch (error) {
       next(error);
     }
   };
 
-  addReaction = async (
-    req: Request<MessageParamsDto, any, AddReactionDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  addReaction = async (req: Request<MessageParamsDto, any, AddReactionDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = messageParamsSchema.safeParse(req.params);
-    
+
       if (!safeParams.success) {
         const errorMessage = formatZodError(safeParams.error);
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessage);
@@ -337,10 +297,9 @@ export class ChatController {
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Reaction added successfully",
+        message: 'Reaction added successfully',
         data: reaction,
       });
-
     } catch (error) {
       next(error);
     }
@@ -349,14 +308,14 @@ export class ChatController {
   removeReaction = async (
     req: Request<MessageParamsDto, any, RemoveReactionDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { userId } = req;
       const { reaction } = req.body;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = messageParamsSchema.safeParse(req.params);
@@ -374,10 +333,9 @@ export class ChatController {
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Reaction removed successfully",
+        message: 'Reaction removed successfully',
         data: removedReaction,
       });
-
     } catch (error) {
       next(error);
     }
@@ -386,20 +344,20 @@ export class ChatController {
   updateGroupConversation = async (
     req: Request<ConversationParamsDto, any, UpdateGroupConversationDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { userId } = req;
       const { title } = req.body;
-      
+
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = conversationParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {
-        const errorMessages = formatZodError(safeParams.error)
+        const errorMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
       }
 
@@ -410,14 +368,13 @@ export class ChatController {
       });
 
       const io = getSocketServer();
-      io.to(`conversation:${updatedConversation.conversationId}`).emit("chat:group:updated", updatedConversation);
+      io.to(`conversation:${updatedConversation.conversationId}`).emit('chat:group:updated', updatedConversation);
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Group title updated successfully",
+        message: 'Group title updated successfully',
         data: updatedConversation,
       });
-
     } catch (error) {
       next(error);
     }
@@ -426,14 +383,14 @@ export class ChatController {
   addParticipants = async (
     req: Request<ConversationParamsDto, any, AddParticipantsDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { userId } = req;
       const { participantUserIds } = req.body;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = conversationParamsSchema.safeParse(req.params);
@@ -449,38 +406,35 @@ export class ChatController {
         conversationId: safeParams.data.conversationId,
         participantUserIds,
       });
-      
 
       const io = getSocketServer();
-      
-      io.to(`conversation:${addParticipantsResult.conversationId}`).emit("chat:group:participant:added", addParticipantsResult);
-      
+
+      io.to(`conversation:${addParticipantsResult.conversationId}`).emit(
+        'chat:group:participant:added',
+        addParticipantsResult,
+      );
+
       for (const participantUserId of addParticipantsResult.participantUserIds) {
         io.in(`user:${participantUserId}`).socketsJoin(`conversation:${addParticipantsResult.conversationId}`);
-        io.to(`user:${participantUserId}`).emit("chat:group:participant:added", addParticipantsResult);
+        io.to(`user:${participantUserId}`).emit('chat:group:participant:added', addParticipantsResult);
       }
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Participants added successfully",
+        message: 'Participants added successfully',
         data: addParticipantsResult,
       });
-      
     } catch (error) {
       next(error);
     }
   };
 
-  removeParticipant = async (
-    req: Request<ConversationParticipantParamsDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  removeParticipant = async (req: Request<ConversationParticipantParamsDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = conversationParticipantParamsSchema.safeParse(req.params);
@@ -497,36 +451,37 @@ export class ChatController {
       });
 
       const io = getSocketServer();
-      
+
       removeUserFromConversationRoom({
         userId: removeParticipantResult.participantUserId,
         conversationId: removeParticipantResult.conversationId,
       });
-      
-      io.to(`conversation:${removeParticipantResult.conversationId}`).emit("chat:group:participant:removed", removeParticipantResult);
-      io.to(`user:${removeParticipantResult.participantUserId}`).emit("chat:group:participant:removed", removeParticipantResult);
+
+      io.to(`conversation:${removeParticipantResult.conversationId}`).emit(
+        'chat:group:participant:removed',
+        removeParticipantResult,
+      );
+      io.to(`user:${removeParticipantResult.participantUserId}`).emit(
+        'chat:group:participant:removed',
+        removeParticipantResult,
+      );
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "Participant removed successfully",
+        message: 'Participant removed successfully',
         data: removeParticipantResult,
       });
-
     } catch (error) {
       next(error);
     }
   };
 
-  leaveGroupConversation = async (
-    req: Request<ConversationParamsDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  leaveGroupConversation = async (req: Request<ConversationParamsDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Unauthorized");
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }
 
       const safeParams = conversationParamsSchema.safeParse(req.params);
@@ -547,19 +502,17 @@ export class ChatController {
         userId: leaveGroupResult.userId,
         conversationId: leaveGroupResult.conversationId,
       });
-      
-      io.to(`conversation:${leaveGroupResult.conversationId}`).emit("chat:group:left", leaveGroupResult);
-      io.to(`user:${leaveGroupResult.userId}`).emit("chat:group:left", leaveGroupResult);
+
+      io.to(`conversation:${leaveGroupResult.conversationId}`).emit('chat:group:left', leaveGroupResult);
+      io.to(`user:${leaveGroupResult.userId}`).emit('chat:group:left', leaveGroupResult);
 
       res.status(StatusCodes.OK).json({
         success: true,
-        message: "You left the group successfully",
+        message: 'You left the group successfully',
         data: leaveGroupResult,
       });
-
     } catch (error) {
       next(error);
     }
   };
-
 }

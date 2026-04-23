@@ -1,22 +1,22 @@
-import config from "../config/config.js";
-import ApiErrorHandler from "../utils/apiErrorHanlderClass.js";
-import { NextFunction, Request, Response } from "express"
-import { StatusCodes } from "http-status-codes"; // This dependency needs to be added
-import jwt,  { JwtPayload } from "jsonwebtoken";
+import config from '../config/config.js';
+import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import { NextFunction, Request, Response } from 'express';
+import { StatusCodes } from 'http-status-codes'; // This dependency needs to be added
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
 const { JsonWebTokenError, TokenExpiredError, verify } = jwt;
 
 declare global {
   namespace Express {
     interface Request {
-      userId?: string
+      userId?: string;
     }
   }
 }
 
 interface UserToken extends JwtPayload {
-  username: string,
-  userId: string,
+  username: string;
+  userId: string;
 }
 
 const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
@@ -26,40 +26,38 @@ const isAuthenticated = async (req: Request, res: Response, next: NextFunction) 
     if (req.cookies?.auth_token) {
       token = req.cookies.auth_token;
     }
-    
-    if(req.headers.authorization) {
+
+    if (req.headers.authorization) {
       const authHeader = req.headers.authorization;
-      if(authHeader.startsWith("Bearer ")) {
-        token = authHeader.split(" ")[1];
+      if (authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
       }
     }
 
-    if(!token) {
-      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, "Please login") // Using 401 directly
+    if (!token) {
+      throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Please login'); // Using 401 directly
     }
 
     if (!config.jwtSecret) {
-      throw new ApiErrorHandler(StatusCodes.INTERNAL_SERVER_ERROR, "JWT secret is not configured");
+      throw new ApiErrorHandler(StatusCodes.INTERNAL_SERVER_ERROR, 'JWT secret is not configured');
     }
 
-    const decode = verify(token, config.jwtSecret) as UserToken
+    const decode = verify(token, config.jwtSecret) as UserToken;
 
+    req.userId = decode.userId;
 
-    req.userId = decode.userId
-    
     next();
-
   } catch (error) {
-    if( error instanceof TokenExpiredError) {
-      return next(new ApiErrorHandler(401, "Session expired, please login again")) 
+    if (error instanceof TokenExpiredError) {
+      return next(new ApiErrorHandler(401, 'Session expired, please login again'));
     }
 
-    if( error instanceof JsonWebTokenError) {
-      return next( new ApiErrorHandler(401, "Invalid token, please login again"))
+    if (error instanceof JsonWebTokenError) {
+      return next(new ApiErrorHandler(401, 'Invalid token, please login again'));
     }
 
-    return next(error)
+    return next(error);
   }
-}
+};
 
 export default isAuthenticated;

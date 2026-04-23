@@ -1,10 +1,10 @@
-import { Prisma, PrismaClient } from "../../generated/prisma/client.js";
+import { PrismaClient } from '../../generated/prisma/client.js';
 
 export class AuthRepository {
   constructor(private prisma: PrismaClient) {}
 
   getUserByEmailOrUsername = async (email?: string, username?: string) => {
-    const orConditions: {email?: string, username?: string}[] = [];
+    const orConditions: { email?: string; username?: string }[] = [];
 
     if (email) {
       orConditions.push({ email });
@@ -24,10 +24,4 @@ export class AuthRepository {
 
     return user;
   };
-
-  // getUserById = async (id: number) => {
-  //   updatedUser = await this.prisma.user.findUnique({
-  //     where: {id}
-  //   })
-  // }
 }

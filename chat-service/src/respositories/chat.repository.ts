@@ -5,7 +5,7 @@ import {
   ParticipantRole,
   MessageType,
   AttachmentType,
-} from "../generated/prisma/client.js";
+} from '../generated/prisma/client.js';
 
 type CreateMessageAttachmentInput = {
   type: AttachmentType;
@@ -91,14 +91,8 @@ export class ChatRepository {
     });
   }
 
-  async createGroupConversation(params: {
-    creatorUserId: string;
-    title?: string;
-    participantUserIds: string[];
-  }) {
-    const uniqueParticipantUserIds = Array.from(
-      new Set([params.creatorUserId, ...params.participantUserIds])
-    );
+  async createGroupConversation(params: { creatorUserId: string; title?: string; participantUserIds: string[] }) {
+    const uniqueParticipantUserIds = Array.from(new Set([params.creatorUserId, ...params.participantUserIds]));
 
     return this.prisma.conversation.create({
       data: {
@@ -109,10 +103,7 @@ export class ChatRepository {
           createMany: {
             data: uniqueParticipantUserIds.map((userId) => ({
               userId,
-              role:
-                userId === params.creatorUserId
-                  ? ParticipantRole.ADMIN
-                  : ParticipantRole.MEMBER,
+              role: userId === params.creatorUserId ? ParticipantRole.ADMIN : ParticipantRole.MEMBER,
             })),
           },
         },
@@ -140,20 +131,20 @@ export class ChatRepository {
             deletedAt: null,
           },
           orderBy: {
-            joinedAt: "asc",
+            joinedAt: 'asc',
           },
         },
         lastMessage: {
           include: {
             attachments: {
               orderBy: {
-                sortOrder: "asc",
+                sortOrder: 'asc',
               },
             },
           },
         },
       },
-      orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
+      orderBy: [{ lastMessageAt: 'desc' }, { updatedAt: 'desc' }],
     });
   }
 
@@ -186,17 +177,14 @@ export class ChatRepository {
       include: {
         attachments: {
           orderBy: {
-            sortOrder: "asc",
+            sortOrder: 'asc',
           },
         },
       },
     });
   }
 
-  async findMessageByClientMessageId(params: {
-    conversationId: string;
-    clientMessageId: string;
-  }) {
+  async findMessageByClientMessageId(params: { conversationId: string; clientMessageId: string }) {
     return this.prisma.message.findUnique({
       where: {
         conversationId_clientMessageId: {
@@ -207,7 +195,7 @@ export class ChatRepository {
       include: {
         attachments: {
           orderBy: {
-            sortOrder: "asc",
+            sortOrder: 'asc',
           },
         },
       },
@@ -245,7 +233,7 @@ export class ChatRepository {
         include: {
           attachments: {
             orderBy: {
-              sortOrder: "asc",
+              sortOrder: 'asc',
             },
           },
         },
@@ -266,11 +254,7 @@ export class ChatRepository {
     });
   }
 
-  async listMessagesByConversation(params: {
-    conversationId: string;
-    limit: number;
-    cursorMessageId?: string;
-  }) {
+  async listMessagesByConversation(params: { conversationId: string; limit: number; cursorMessageId?: string }) {
     return this.prisma.message.findMany({
       where: {
         conversationId: params.conversationId,
@@ -279,11 +263,11 @@ export class ChatRepository {
       include: {
         attachments: {
           orderBy: {
-            sortOrder: "asc",
+            sortOrder: 'asc',
           },
         },
       },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: params.limit,
       ...(params.cursorMessageId
         ? {
@@ -316,11 +300,7 @@ export class ChatRepository {
     });
   }
 
-  async countUnreadMessages(params: {
-    conversationId: string;
-    userId: string;
-    lastReadAt?: Date | null;
-  }) {
+  async countUnreadMessages(params: { conversationId: string; userId: string; lastReadAt?: Date | null }) {
     return this.prisma.message.count({
       where: {
         conversationId: params.conversationId,
@@ -348,19 +328,15 @@ export class ChatRepository {
       include: {
         attachments: {
           orderBy: {
-            sortOrder: "asc",
+            sortOrder: 'asc',
           },
         },
       },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
   }
 
-    async upsertMessageDeliveryReceipt(params: {
-    messageId: string;
-    userId: string;
-    deliveredAt: Date;
-  }) {
+  async upsertMessageDeliveryReceipt(params: { messageId: string; userId: string; deliveredAt: Date }) {
     return this.prisma.messageReceipt.upsert({
       where: {
         messageId_userId: {
@@ -379,10 +355,7 @@ export class ChatRepository {
     });
   }
 
-  async findConversationMessageById(params: {
-    conversationId: string;
-    messageId: string;
-  }) {
+  async findConversationMessageById(params: { conversationId: string; messageId: string }) {
     return this.prisma.message.findFirst({
       where: {
         id: params.messageId,
@@ -392,7 +365,7 @@ export class ChatRepository {
       include: {
         attachments: {
           orderBy: {
-            sortOrder: "asc",
+            sortOrder: 'asc',
           },
         },
         receipts: true,
@@ -400,11 +373,7 @@ export class ChatRepository {
     });
   }
 
-  async markMessagesSeenUpTo(params: {
-    conversationId: string;
-    userId: string;
-    seenAt: Date;
-  }) {
+  async markMessagesSeenUpTo(params: { conversationId: string; userId: string; seenAt: Date }) {
     const messagesToMarkSeen = await this.prisma.message.findMany({
       where: {
         conversationId: params.conversationId,
@@ -443,7 +412,7 @@ export class ChatRepository {
           deliveredAt: params.seenAt,
           seenAt: params.seenAt,
         },
-      })
+      }),
     );
 
     return this.prisma.$transaction(receiptOperations);
@@ -455,7 +424,7 @@ export class ChatRepository {
         messageId,
       },
       orderBy: {
-        createdAt: "asc",
+        createdAt: 'asc',
       },
     });
   }
@@ -473,7 +442,7 @@ export class ChatRepository {
       include: {
         attachments: {
           orderBy: {
-            sortOrder: "asc",
+            sortOrder: 'asc',
           },
         },
         receipts: true,
@@ -489,7 +458,7 @@ export class ChatRepository {
           conversationId,
           deletedAt: null,
         },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       });
 
       return transactionClient.conversation.update({
@@ -504,11 +473,7 @@ export class ChatRepository {
     });
   }
 
-  async findReaction(params: {
-    messageId: string;
-    userId: string;
-    reaction: string;
-  }) {
+  async findReaction(params: { messageId: string; userId: string; reaction: string }) {
     return this.prisma.messageReaction.findFirst({
       where: {
         messageId: params.messageId,
@@ -518,11 +483,7 @@ export class ChatRepository {
     });
   }
 
-  async addReaction(params: {
-    messageId: string;
-    userId: string;
-    reaction: string;
-  }) {
+  async addReaction(params: { messageId: string; userId: string; reaction: string }) {
     return this.prisma.messageReaction.create({
       data: {
         messageId: params.messageId,
@@ -532,11 +493,7 @@ export class ChatRepository {
     });
   }
 
-  async removeReaction(params: {
-    messageId: string;
-    userId: string;
-    reaction: string;
-  }) {
+  async removeReaction(params: { messageId: string; userId: string; reaction: string }) {
     return this.prisma.messageReaction.deleteMany({
       where: {
         messageId: params.messageId,
@@ -557,17 +514,14 @@ export class ChatRepository {
             deletedAt: null,
           },
           orderBy: {
-            joinedAt: "asc",
+            joinedAt: 'asc',
           },
         },
       },
     });
   }
 
-  async updateGroupConversationTitle(params: {
-    conversationId: string;
-    title: string;
-  }) {
+  async updateGroupConversationTitle(params: { conversationId: string; title: string }) {
     return this.prisma.conversation.update({
       where: {
         id: params.conversationId,
@@ -578,10 +532,7 @@ export class ChatRepository {
     });
   }
 
-  async addParticipantsToConversation(params: {
-    conversationId: string;
-    participantUserIds: string[];
-  }) {
+  async addParticipantsToConversation(params: { conversationId: string; participantUserIds: string[] }) {
     const existingParticipants = await this.prisma.participant.findMany({
       where: {
         conversationId: params.conversationId,
@@ -594,9 +545,7 @@ export class ChatRepository {
       },
     });
 
-    const existingUserIds = new Set(
-      existingParticipants.map((participant: any) => participant.userId)
-    );
+    const existingUserIds = new Set(existingParticipants.map((participant: any) => participant.userId));
 
     const newUserIds = params.participantUserIds.filter((userId) => !existingUserIds.has(userId));
 
@@ -622,15 +571,12 @@ export class ChatRepository {
         deletedAt: null,
       },
       orderBy: {
-        joinedAt: "asc",
+        joinedAt: 'asc',
       },
     });
   }
 
-  async removeParticipantFromConversation(params: {
-    conversationId: string;
-    participantUserId: string;
-  }) {
+  async removeParticipantFromConversation(params: { conversationId: string; participantUserId: string }) {
     return this.prisma.participant.update({
       where: {
         conversationId_userId: {
@@ -653,5 +599,4 @@ export class ChatRepository {
       },
     });
   }
-  
 }

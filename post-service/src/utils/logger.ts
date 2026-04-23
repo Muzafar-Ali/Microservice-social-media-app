@@ -1,22 +1,22 @@
 import pino from 'pino';
-import config from "../config/config.js";
+import config from '../config/config.js';
 
-const isProduction = config.environment === "production";
+const isProduction = config.environment === 'production';
 
 const productionLogger = pino({
-  level: config.logLevel || "info",
-  base: { service: config.serviceName || "post-service" },
-  redact: ["req.headers.authorization"],
+  level: config.logLevel || 'info',
+  base: { service: config.serviceName || 'post-service' },
+  redact: ['req.headers.authorization'],
 });
 
 const developmentLogger = pino({
-  level: "debug",
+  level: 'debug',
   transport: {
-    target: "pino-pretty",
+    target: 'pino-pretty',
     options: {
       colorize: true,
-      translateTime: "SYS:dd-mm-yyyy HH:MM:ss",
-      ignore: "pid,hostname",
+      translateTime: 'SYS:dd-mm-yyyy HH:MM:ss',
+      ignore: 'pid,hostname',
     },
   },
 });

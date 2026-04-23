@@ -4,44 +4,45 @@ import validateRequestBody from '../middlewares/validaterequestBody.middleware.j
 import { createPostCommentSchema, createPostSchema, updatePostSchema } from '../validation/post.validation.js';
 import isAuthenticatedRedis from '../middlewares/isAuthenticatedRedis.js';
 
-
 const postRoutes = (postController: PostController) => {
- 
   const router = express.Router();
- 
-  router.route('/')
+
+  router
+    .route('/')
     .post(isAuthenticatedRedis, validateRequestBody(createPostSchema), postController.createPostHandler)
     .get(postController.getAllPostsHandler);
-  
+
   router.route('/me').get(isAuthenticatedRedis, postController.getMyPostsHandler);
-  
+
   router.route('/feed/home').get(isAuthenticatedRedis, postController.getHomeFeedHandler);
   router.route('/feed/home/before').get(isAuthenticatedRedis, postController.getHomeFeedBeforeHandler);
   router.route('/feed/home/after').get(isAuthenticatedRedis, postController.getHomeFeedAfterHandler);
 
   router.route('/user/:profileUserId/grid/cursor').get(postController.getUserGridPostsCursorHandler); // cursor pagination end point
-  router.route("/user/:profileUserId/feed/window").get(postController.getUserFeedWindowHandler);
-  router.route("/user/:profileUserId/feed/after").get(postController.getUserFeedAfterHandler);
+  router.route('/user/:profileUserId/feed/window').get(postController.getUserFeedWindowHandler);
+  router.route('/user/:profileUserId/feed/after').get(postController.getUserFeedAfterHandler);
   router.route('/user/:profileUserId/grid').get(postController.getUserGridPostsOffsetHandler); // offset pagination endponit
   router.route('/user/:userId').get(postController.getPostsByUserIdHandler);
 
-  router.route("/:postId/like")
+  router
+    .route('/:postId/like')
     .post(isAuthenticatedRedis, postController.likePostHandler)
     .get(postController.getPostLikesHandler)
     .delete(isAuthenticatedRedis, postController.unlikePostHandler);
-  
-  router.route("/:postId/comments/:commentId").delete(isAuthenticatedRedis, postController.deletePostCommentHandler);    
-  router.route("/:postId/comments")
+
+  router.route('/:postId/comments/:commentId').delete(isAuthenticatedRedis, postController.deletePostCommentHandler);
+  router
+    .route('/:postId/comments')
     .post(isAuthenticatedRedis, validateRequestBody(createPostCommentSchema), postController.createPostCommentHandler)
-    .get(postController.getPostCommentsHandler)
-        
-  router.route('/:postId')
+    .get(postController.getPostCommentsHandler);
+
+  router
+    .route('/:postId')
     .get(postController.getPostByIdHandler)
     .patch(isAuthenticatedRedis, validateRequestBody(updatePostSchema), postController.updatePostHandler)
-    .delete(isAuthenticatedRedis, postController.deletePostHandler)
-  
+    .delete(isAuthenticatedRedis, postController.deletePostHandler);
 
   return router;
-}
+};
 
 export default postRoutes;

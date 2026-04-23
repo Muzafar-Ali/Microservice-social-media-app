@@ -1,31 +1,30 @@
 import { NextFunction, Request, Response } from 'express';
 import { PostService } from '../services/post.service.js';
-import { 
+import {
   CommentsCursorPaginationDto,
   commentsCursorPaginationSchema,
   CreatePostCommentDto,
-  CreatePostDto,  
-  DeletePostCommentParamsDto,  
-  deletePostCommentParamsSchema,  
-  FeedAfterQueryDto,  
-  feedAfterQuerySchema,  
-  FeedWindowQueryDto,  
-  feedWindowQuerySchema,  
-  gridCursorPaginationSchema,  
-  homeFeedAfterQuerySchema,  
-  homeFeedBeforeQuerySchema,  
-  HomeFeedQueryDto,  
-  homeFeedQuerySchema,  
-  LikesCursorPaginationDto,  
-  likesCursorPaginationSchema,  
-  PostIdParamsDto,  
-  postIdParamsSchema,  
-  profileUserIdParamsSchema,  
-  ProfileUserParamsIdDto,  
-  QueryCursorPaginationDto,  
-  queryOffsetPaginationSchema,  
-  QueryPaginationDto, 
-  UpdatePostDto, 
+  CreatePostDto,
+  DeletePostCommentParamsDto,
+  deletePostCommentParamsSchema,
+  FeedAfterQueryDto,
+  feedAfterQuerySchema,
+  FeedWindowQueryDto,
+  feedWindowQuerySchema,
+  gridCursorPaginationSchema,
+  homeFeedAfterQuerySchema,
+  homeFeedBeforeQuerySchema,
+  homeFeedQuerySchema,
+  LikesCursorPaginationDto,
+  likesCursorPaginationSchema,
+  PostIdParamsDto,
+  postIdParamsSchema,
+  profileUserIdParamsSchema,
+  ProfileUserParamsIdDto,
+  QueryCursorPaginationDto,
+  queryOffsetPaginationSchema,
+  QueryPaginationDto,
+  UpdatePostDto,
 } from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
@@ -39,44 +38,39 @@ export class PostController {
    * @route   POST /api/posts
    * @access  Private (Authenticated users only)
    */
-  createPostHandler = async( 
-    req: Request<Record<string, never>, any, CreatePostDto>, 
-    res: Response, 
-    next: NextFunction
+  createPostHandler = async (
+    req: Request<Record<string, never>, any, CreatePostDto>,
+    res: Response,
+    next: NextFunction,
   ) => {
     try {
       const data = req.body;
       const { userId } = req;
-      
-      if (!userId) throw new ApiErrorHandler(401, 'Unauthorized')
+
+      if (!userId) throw new ApiErrorHandler(401, 'Unauthorized');
 
       const post = await this.postService.createPost(data, userId);
 
-      res.status(201).json({ 
+      res.status(201).json({
         success: true,
-        message: "post created successfuly",
-        postId: post.id 
+        message: 'post created successfuly',
+        postId: post.id,
       });
-
     } catch (error) {
       logger.error(error, 'Error in createPostHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Retrieve a single post by its ID
    * @route   GET /api/post/:postId
    * @access  Public
    */
-  getPostByIdHandler = async(
-    req: Request<PostIdParamsDto>, 
-    res: Response, 
-    next: NextFunction
-  ) => {
+  getPostByIdHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
-      if(!safeParams.success) {
+      if (!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(400, erroMessages);
       }
@@ -86,15 +80,15 @@ export class PostController {
         throw new ApiErrorHandler(404, 'Post not found');
       }
 
-      res.status(200).json({ 
-        success: true, 
-        data: post 
+      res.status(200).json({
+        success: true,
+        data: post,
       });
     } catch (error) {
       logger.error(error, 'Error in getPostByIdHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Get personalized home feed posts for the authenticated user.
@@ -110,16 +104,12 @@ export class PostController {
    * @route   GET /api/posts/feed/home
    * @access  Private (Authenticated User Required)
    */
-  getHomeFeedHandler = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getHomeFeedHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const safeQuery = homeFeedQuerySchema.safeParse(req.query);
@@ -138,7 +128,7 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getHomeFeedHandler");
+      logger.error(error, 'Error in getHomeFeedHandler');
       next(error);
     }
   };
@@ -147,20 +137,16 @@ export class PostController {
    * @desc    Get newer home feed posts before the current top cursor for refresh
    *          Usage:
    *          - GET /api/posts/feed/home/before?cursor=<topPostId>&limit=20
-   * 
+   *
    * @route   GET /api/posts/feed/home/before
    * @access  Private (Authenticated users only)
    */
-  getHomeFeedBeforeHandler = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getHomeFeedBeforeHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const safeQuery = homeFeedBeforeQuerySchema.safeParse(req.query);
@@ -179,7 +165,7 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getHomeFeedBeforeHandler");
+      logger.error(error, 'Error in getHomeFeedBeforeHandler');
       next(error);
     }
   };
@@ -189,20 +175,16 @@ export class PostController {
    *          - Usage
    *            GET /api/posts/feed/home/after?cursor=post_123
    *            GET /api/posts/feed/home/after?cursor=post_123&limit=20
-   * 
+   *
    * @route   GET /api/posts/feed/home/after
    * @access  Private (Authenticated users only)
    */
-  getHomeFeedAfterHandler = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getHomeFeedAfterHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const safeQuery = homeFeedAfterQuerySchema.safeParse(req.query);
@@ -221,7 +203,7 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getHomeFeedAfterHandler");
+      logger.error(error, 'Error in getHomeFeedAfterHandler');
       next(error);
     }
   };
@@ -231,51 +213,45 @@ export class PostController {
    * @route   GET /api/post?page=1&limit=10
    * @access  Public
    */
-  getAllPostsHandler = async(
-    req: Request<Record<string, never>, any, never, QueryPaginationDto>, 
-    res: Response, 
-    next: NextFunction
+  getAllPostsHandler = async (
+    req: Request<Record<string, never>, any, never, QueryPaginationDto>,
+    res: Response,
+    next: NextFunction,
   ) => {
     try {
       const safeQuery = queryOffsetPaginationSchema.safeParse(req.query);
 
-      if(!safeQuery.success) {
+      if (!safeQuery.success) {
         const errorMessagge = formatZodError(safeQuery.error);
         throw new ApiErrorHandler(400, errorMessagge);
       }
 
-      const { page, limit } = safeQuery.data
+      const { page, limit } = safeQuery.data;
       const skip = (page - 1) * limit;
-      
-      const { posts, meta } = await this.postService.getAllPosts(page, limit, skip);
-      
-      res.status(200).json({ 
-        success: true, 
-        data: posts,
-        meta
-      });
 
+      const { posts, meta } = await this.postService.getAllPosts(page, limit, skip);
+
+      res.status(200).json({
+        success: true,
+        data: posts,
+        meta,
+      });
     } catch (error) {
       logger.error(error, 'Error in getAllPostsHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Retrieve all posts created by a specific user
    * @route   GET /api/post/user/:userId
    * @access  Public
    */
-  getPostsByUserIdHandler = async(
-    req: Request<ProfileUserParamsIdDto>, 
-    res: Response, 
-    next: NextFunction
-  ) => {
+  getPostsByUserIdHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
-      
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
 
-      if(!safeParams.success) {
+      if (!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(400, erroMessages);
       }
@@ -284,30 +260,25 @@ export class PostController {
 
       res.status(200).json({
         success: true,
-        data: posts
-      })
-
+        data: posts,
+      });
     } catch (error) {
       logger.error(error, 'Error in getPostByUserIdHandler');
-      return next(error)
+      return next(error);
     }
-  }
+  };
 
   /**
    * @desc    Retrieve posts created by the currently logged-in user
    * @route   GET /api/post/me
    * @access  Private (Authenticated users only)
    */
-  getMyPostsHandler = async(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  getMyPostsHandler = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
 
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const posts = await this.postService.getMyPosts(userId);
@@ -317,20 +288,20 @@ export class PostController {
         data: posts,
       });
     } catch (error) {
-      logger.error(error, "Error in getMyPostsHandler");
+      logger.error(error, 'Error in getMyPostsHandler');
       next(error);
     }
-  }
+  };
 
   /**
-   * @desc    Get profile user post grid (cursor pagination for infinite scrolling) 
+   * @desc    Get profile user post grid (cursor pagination for infinite scrolling)
    * @route   GET /api/posts/users/:profileUserId/grid?limit=50&cursor=<postId>
    * @access  Public
    */
-  getUserGridPostsCursorHandler = async( 
-    req: Request<ProfileUserParamsIdDto, any, never, QueryCursorPaginationDto>, 
-    res: Response, 
-    next: NextFunction
+  getUserGridPostsCursorHandler = async (
+    req: Request<ProfileUserParamsIdDto, any, never, QueryCursorPaginationDto>,
+    res: Response,
+    next: NextFunction,
   ) => {
     try {
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -345,42 +316,40 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getUserGridPostsCursor( safeParams.data.profileUserId, {
-          limit: safeQuery.data.limit,
-          cursor: safeQuery.data.cursor,
-        }
-      );
+      const result = await this.postService.getUserGridPostsCursor(safeParams.data.profileUserId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
 
       res.status(200).json({
         success: true,
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getUserGridPostsCursorHandler");
+      logger.error(error, 'Error in getUserGridPostsCursorHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Get profile user grid posts (offset pagination)
    * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
    * @access  Public
    */
-  getUserGridPostsOffsetHandler = async(
-    req: Request<ProfileUserParamsIdDto, any, never, QueryPaginationDto>, 
-    res: Response, 
-    next: NextFunction
+  getUserGridPostsOffsetHandler = async (
+    req: Request<ProfileUserParamsIdDto, any, never, QueryPaginationDto>,
+    res: Response,
+    next: NextFunction,
   ) => {
     try {
-
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
-      if(!safeParams.success) {
+      if (!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(400, erroMessages);
       }
-      
+
       const safeQuery = queryOffsetPaginationSchema.safeParse(req.query);
-      if(!safeQuery.success) {
+      if (!safeQuery.success) {
         const erroMessages = formatZodError(safeQuery.error);
         throw new ApiErrorHandler(400, erroMessages);
       }
@@ -394,12 +363,11 @@ export class PostController {
         success: true,
         data: result,
       });
-      
     } catch (error) {
       logger.error(error, 'Error in getUserGridPostsHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Open profile user feed from a clicked post
@@ -409,7 +377,7 @@ export class PostController {
   getUserFeedWindowHandler = async (
     req: Request<ProfileUserParamsIdDto, any, never, FeedWindowQueryDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -424,33 +392,30 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getUserFeedWindow(
-        safeParams.data.profileUserId,
-        {
-          postId: safeQuery.data.postId,
-          limit: safeQuery.data.limit,
-        }
-      );
+      const result = await this.postService.getUserFeedWindow(safeParams.data.profileUserId, {
+        postId: safeQuery.data.postId,
+        limit: safeQuery.data.limit,
+      });
 
       res.status(200).json({
         success: true,
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getUserFeedWindowHandler");
+      logger.error(error, 'Error in getUserFeedWindowHandler');
       return next(error);
     }
-  }
+  };
 
   /**
- * @desc    Load older profile user feed posts after current bottom cursor
- * @route   GET /api/posts/user/:profileUserId/feed/after?cursor=<postId>&limit=10
- * @access  Public
- */
+   * @desc    Load older profile user feed posts after current bottom cursor
+   * @route   GET /api/posts/user/:profileUserId/feed/after?cursor=<postId>&limit=10
+   * @access  Public
+   */
   async getUserFeedAfterHandler(
     req: Request<ProfileUserParamsIdDto, any, never, FeedAfterQueryDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) {
     try {
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
@@ -465,20 +430,17 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getUserFeedAfter(
-        safeParams.data.profileUserId,
-        {
-          cursor: safeQuery.data.cursor,
-          limit: safeQuery.data.limit,
-        }
-      );
+      const result = await this.postService.getUserFeedAfter(safeParams.data.profileUserId, {
+        cursor: safeQuery.data.cursor,
+        limit: safeQuery.data.limit,
+      });
 
       res.status(200).json({
         success: true,
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getUserFeedAfterHandler");
+      logger.error(error, 'Error in getUserFeedAfterHandler');
       return next(error);
     }
   }
@@ -488,21 +450,17 @@ export class PostController {
    * @route   PATCH /api/post/:postId
    * @access  Private (Owner only)
    */
-  updatePostHandler = async(
-    req: Request<PostIdParamsDto, any, UpdatePostDto>, 
-    res: Response, 
-    next: NextFunction
-  ) => {
+  updatePostHandler = async (req: Request<PostIdParamsDto, any, UpdatePostDto>, res: Response, next: NextFunction) => {
     try {
       const data = req.body;
       const { userId } = req;
-      
+
       const safeParams = postIdParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {
         throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
-      
+
       if (!userId) {
         throw new ApiErrorHandler(401, 'Unauthorized');
       }
@@ -510,61 +468,52 @@ export class PostController {
       // const post = await this.postService.updatePost(req.params.id, req.body, userId);
 
       const post = await this.postService.updatePost(data, safeParams.data.postId, userId);
-      
-      res.status(200).json({ 
-        success: true, 
-        data: post 
+
+      res.status(200).json({
+        success: true,
+        data: post,
       });
     } catch (error) {
       logger.error(error, 'Error in updatePostHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Delete a post
    * @route   DELETE /api/post/:postId
    * @access  Private (Owner only)
    */
-  deletePostHandler = async(
-    req: Request<PostIdParamsDto>, 
-    res: Response, 
-    next: NextFunction
-  ) => {
+  deletePostHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
       if (!userId) {
-        throw new ApiErrorHandler(401,'Unauthorized');
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
-      
+
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
-      
 
       await this.postService.deletePost(req.params.postId, userId);
-      
+
       res.status(204).json({
         success: true,
-        message: "post deleted successfuly"
+        message: 'post deleted successfuly',
       });
     } catch (error) {
       logger.error(error, 'Error in deletePostHandler');
       next(error);
     }
-  }
+  };
 
   /**
    * @desc    Like a post
    * @route   POST /api/posts/:postId/like
    * @access  Private
    */
-  likePostHandler = async (
-    req: Request<PostIdParamsDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  likePostHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
@@ -574,7 +523,7 @@ export class PostController {
 
       const { userId } = req;
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const result = await this.postService.likePost(safeParams.data.postId, userId);
@@ -584,21 +533,17 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in likePostHandler");
+      logger.error(error, 'Error in likePostHandler');
       return next(error);
     }
-  }
+  };
 
   /**
    * @desc    Unlike a post
    * @route   DELETE /api/posts/:postId/unlike
    * @access  Private
    */
-  unlikePostHandler = async (
-    req: Request<PostIdParamsDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  unlikePostHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
@@ -608,7 +553,7 @@ export class PostController {
 
       const { userId } = req;
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const result = await this.postService.unlikePost(safeParams.data.postId, userId);
@@ -618,10 +563,10 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in unlikePostHandler");
+      logger.error(error, 'Error in unlikePostHandler');
       return next(error);
     }
-  }
+  };
 
   /**
    * @desc    Get users who liked a post
@@ -631,7 +576,7 @@ export class PostController {
   getPostLikesHandler = async (
     req: Request<PostIdParamsDto, any, never, LikesCursorPaginationDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
@@ -656,10 +601,10 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getPostLikesHandler");
+      logger.error(error, 'Error in getPostLikesHandler');
       return next(error);
     }
-  }
+  };
 
   /**
    * @desc    Create comment on a post
@@ -669,10 +614,10 @@ export class PostController {
   createPostCommentHandler = async (
     req: Request<PostIdParamsDto, any, CreatePostCommentDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
-      const { content } = req.body
+      const { content } = req.body;
 
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
@@ -682,21 +627,17 @@ export class PostController {
 
       const { userId } = req;
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
-      const result = await this.postService.createPostComment(
-        safeParams.data.postId,
-        userId,
-        content
-      );
+      const result = await this.postService.createPostComment(safeParams.data.postId, userId, content);
 
       res.status(201).json({
         success: true,
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in createPostCommentHandler");
+      logger.error(error, 'Error in createPostCommentHandler');
       return next(error);
     }
   };
@@ -709,7 +650,7 @@ export class PostController {
   getPostCommentsHandler = async (
     req: Request<PostIdParamsDto, any, never, CommentsCursorPaginationDto>,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const safeParams = postIdParamsSchema.safeParse(req.params);
@@ -734,21 +675,17 @@ export class PostController {
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in getPostCommentsHandler");
+      logger.error(error, 'Error in getPostCommentsHandler');
       return next(error);
     }
   };
-  
+
   /**
    * @desc    Delete comment on a post
    * @route   DELETE /api/posts/:postId/comments/:commentId
    * @access  Private
    */
-  deletePostCommentHandler = async (
-    req: Request<DeletePostCommentParamsDto>,
-    res: Response,
-    next: NextFunction
-  ) => {
+  deletePostCommentHandler = async (req: Request<DeletePostCommentParamsDto>, res: Response, next: NextFunction) => {
     try {
       const safeParams = deletePostCommentParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
@@ -758,24 +695,23 @@ export class PostController {
 
       const { userId } = req;
       if (!userId) {
-        throw new ApiErrorHandler(401, "Unauthorized");
+        throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
       const result = await this.postService.deletePostComment(
         safeParams.data.postId,
         safeParams.data.commentId,
-        userId
+        userId,
       );
 
       res.status(200).json({
         success: true,
-        message: "Comment deleted successfully",
+        message: 'Comment deleted successfully',
         data: result,
       });
     } catch (error) {
-      logger.error(error, "Error in deletePostCommentHandler");
+      logger.error(error, 'Error in deletePostCommentHandler');
       return next(error);
     }
   };
-
 }

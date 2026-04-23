@@ -7,7 +7,7 @@ import config from './config.js';
 const connectionString = process.env.DATABASE_URL ?? config.dataBaseUrl;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is not set in environment variables");
+  throw new Error('DATABASE_URL is not set in environment variables');
 }
 
 // 2. Create the adapter

@@ -119,7 +119,6 @@ describe('createUserSchema', () => {
     expect(result.success).toBe(false);
   });
 
-
   // Test case for invalid bio - too long
   it('should invalidate if bio is too long', () => {
     const invalidUser = {
@@ -206,16 +205,16 @@ describe('createUserSchema', () => {
       expect(result.data.email).toBe('test@example.com');
     }
   });
-  
+
   // Test case for email transformation (toLowerCase, trim)
   it('should invalidate an email without @', () => {
-      const result = createUserSchema.safeParse({
-        username: 'testuser',
-        name: 'Test User',
-        email: 'invalidemail.com',
-      });
-    expect(result.success).toBe(false)
-  })
+    const result = createUserSchema.safeParse({
+      username: 'testuser',
+      name: 'Test User',
+      email: 'invalidemail.com',
+    });
+    expect(result.success).toBe(false);
+  });
 
   // Test case for bio transformation (trim)
   it('should trim whitespace from bio if provided', () => {

@@ -1,14 +1,18 @@
-import { Consumer, Producer } from "kafkajs";
-import { PostService } from "../../services/post.service.js";
-import { KAFKA_TOPICS, MEDIA_EVENT_NAMES } from "../topics.js";
-import logger from "../../utils/logger.js";
-import { FailedMessageContext, MediaDeletedPayload, MediaUploadCompletedPayload } from "../../types/post-event-consumer.types..js";
+import { Consumer, Producer } from 'kafkajs';
+import { PostService } from '../../services/post.service.js';
+import { KAFKA_TOPICS, MEDIA_EVENT_NAMES } from '../topics.js';
+import logger from '../../utils/logger.js';
+import {
+  FailedMessageContext,
+  MediaDeletedPayload,
+  MediaUploadCompletedPayload,
+} from '../../types/post-event-consumer.types..js';
 
 class MediaEventConsumer {
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
-    private readonly postService: PostService
+    private readonly postService: PostService,
   ) {}
 
   public async start(): Promise<void> {
@@ -21,10 +25,7 @@ class MediaEventConsumer {
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
-          logger.warn(
-            { topic, partition, offset: message.offset },
-            "Received empty Kafka message"
-          );
+          logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
           await this.commitNextOffset(topic, partition, message.offset);
           return;
@@ -56,7 +57,7 @@ class MediaEventConsumer {
                   offset: message.offset,
                   eventName: parsedJson.eventName,
                 },
-                "Ignoring unknown media event"
+                'Ignoring unknown media event',
               );
 
               await this.commitNextOffset(topic, partition, message.offset);
@@ -72,7 +73,7 @@ class MediaEventConsumer {
               offset: message.offset,
               rawValue,
             },
-            "Failed to process media Kafka message"
+            'Failed to process media Kafka message',
           );
 
           // No offset commit here: allows retry/redelivery
@@ -93,7 +94,7 @@ class MediaEventConsumer {
         postId: data.postId,
         mediaType: data.mediaType,
       },
-      "Handling media.upload.completed event in post-service"
+      'Handling media.upload.completed event in post-service',
     );
 
     // await this.postService.attachMediaToPost(data.postId, {
@@ -103,10 +104,7 @@ class MediaEventConsumer {
     // });
   }
 
-  private async handleMediaDeleted(event: {
-    eventName: string;
-    data: MediaDeletedPayload;
-  }): Promise<void> {
+  private async handleMediaDeleted(event: { eventName: string; data: MediaDeletedPayload }): Promise<void> {
     const data = event.data;
 
     logger.info(
@@ -115,17 +113,13 @@ class MediaEventConsumer {
         postId: data.postId,
         mediaId: data.mediaId,
       },
-      "Handling media.deleted event in post-service"
+      'Handling media.deleted event in post-service',
     );
 
     // await this.postService.detachMediaFromPost(data.postId, data.mediaId);
   }
 
-  private async commitNextOffset(
-    topic: string,
-    partition: number,
-    currentOffset: string
-  ): Promise<void> {
+  private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
     const nextOffset = (BigInt(currentOffset) + 1n).toString();
 
     await this.consumer.commitOffsets([
@@ -136,10 +130,7 @@ class MediaEventConsumer {
       },
     ]);
 
-    logger.info(
-      { topic, partition, committedOffset: nextOffset },
-      "Committed media Kafka offset"
-    );
+    logger.info({ topic, partition, committedOffset: nextOffset }, 'Committed media Kafka offset');
   }
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
@@ -156,14 +147,14 @@ class MediaEventConsumer {
             sourceOffset: context.offset,
             rawValue: context.rawValue,
             reason: context.reason,
-            consumerService: "post-service",
-            consumerGroup: "post-service-media-events",
+            consumerService: 'post-service',
+            consumerGroup: 'post-service-media-events',
           }),
         },
       ],
     });
 
-    logger.error(context, "Sent media event to DLQ");
+    logger.error(context, 'Sent media event to DLQ');
   }
 }
 

@@ -1,25 +1,27 @@
 import { redis } from '../../config/redisClient.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
-import { getUserCacheKeyById, getUserCacheKeyByUsername, USER_CACHE_TTL_SECONDS } from '../../utils/cacheKeys/userCacheKeys.js';
+import {
+  getUserCacheKeyById,
+  getUserCacheKeyByUsername,
+  USER_CACHE_TTL_SECONDS,
+} from '../../utils/cacheKeys/userCacheKeys.js';
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
 import { UserEventPublisher } from '../../events/producers.js';
-import bcrypt from "bcrypt"
+import bcrypt from 'bcrypt';
 import config from '../../config/config.js';
 
-export type SafeUSer = Omit<User, "password">
+export type SafeUSer = Omit<User, 'password'>;
 
 export class UserService {
-
   constructor(
     private userRepository: UserRepository,
-    private userEventPublisher: UserEventPublisher
+    private userEventPublisher: UserEventPublisher,
   ) {}
 
   async createUser(dto: CreateUserDto): Promise<SafeUSer> {
-
-    const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds!)
+    const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds!);
 
     const prismaData: Prisma.UserCreateInput = {
       username: dto.username,
@@ -28,17 +30,17 @@ export class UserService {
       password: hashedPassword,
       bio: dto.bio,
       profileImage: dto.profileImage,
-      gender: dto.gender as any,
+      gender: dto.gender,
     };
     const exist = await this.userRepository.findByEmailOrUsername(dto.email, dto.username);
 
-    if(exist) {
-      if (exist.username === dto.username) throw new ApiErrorHandler(409, "Username already taken");
-      if (exist.email === dto.email) throw new ApiErrorHandler(409, "Email already registered");
+    if (exist) {
+      if (exist.username === dto.username) throw new ApiErrorHandler(409, 'Username already taken');
+      if (exist.email === dto.email) throw new ApiErrorHandler(409, 'Email already registered');
     }
 
     const user = await this.userRepository.createUser(prismaData);
-    const safeUser = this.toSafeUser(user)
+    const safeUser = this.toSafeUser(user);
 
     // Cache the user
     await this.writeUserCache(safeUser);
@@ -47,8 +49,8 @@ export class UserService {
     const image = user.profileImage as {
       secureUrl: string;
       publicId: string;
-    } | null ;
-    
+    } | null;
+
     // Publish user created event
     await this.userEventPublisher.publishUserCreated({
       userId: user.id,
@@ -56,10 +58,10 @@ export class UserService {
       username: user.username,
       avatarUrl: image,
       status: user.status,
-      createdAt: user.createdAt.toISOString()
-    })
-    
-    return safeUser
+      createdAt: user.createdAt.toISOString(),
+    });
+
+    return safeUser;
   }
 
   async getUserByUsername(username: string): Promise<SafeUSer | null> {
@@ -67,7 +69,7 @@ export class UserService {
     const cacheKey = getUserCacheKeyByUsername(username);
     const cached = await redis.get(cacheKey);
 
-    if(cached) {
+    if (cached) {
       const parsed = JSON.parse(cached);
       return {
         ...parsed,
@@ -76,9 +78,9 @@ export class UserService {
       };
     }
 
-     // Otherwise get from database
+    // Otherwise get from database
     const user = await this.userRepository.findByUsername(username);
-    if(!user) return null;
+    if (!user) return null;
 
     const safeUser = this.toSafeUser(user);
 
@@ -89,7 +91,6 @@ export class UserService {
   }
 
   async getUserById(userId: string): Promise<SafeUSer | null> {
-    
     const cacheKey = getUserCacheKeyById(userId);
     const cached = await redis.get(cacheKey);
 
@@ -104,7 +105,7 @@ export class UserService {
 
     const user = await this.userRepository.findUserById(userId);
     if (!user) return null;
-    
+
     const safeUser = this.toSafeUser(user);
 
     // Cache the user
@@ -113,15 +114,8 @@ export class UserService {
     return safeUser;
   }
 
-  updateUserProfileImage = async (
-    dto: UpdateProfileImageDto,
-    userId: string
-  ): Promise<SafeUSer | null> => {
-    const updatedUser = await this.userRepository.updateProfileImageById(
-      dto.secureUrl,
-      dto.publicId,
-      userId
-    );
+  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
+    const updatedUser = await this.userRepository.updateProfileImageById(dto.secureUrl, dto.publicId, userId);
 
     const safeUser = this.toSafeUser(updatedUser);
 
@@ -168,11 +162,8 @@ export class UserService {
       this.userRepository.incrementFollowersCount(followeeId, 1),
     ]);
 
-    await Promise.all([
-      this.refreshUserCacheById(followerId),
-      this.refreshUserCacheById(followeeId),
-    ]);
-  };
+    await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
+  }
 
   async handleFollowRemoved(followerId: string, followeeId: string) {
     await Promise.all([
@@ -180,11 +171,8 @@ export class UserService {
       this.userRepository.incrementFollowersCount(followeeId, -1),
     ]);
 
-    await Promise.all([
-      this.refreshUserCacheById(followerId),
-      this.refreshUserCacheById(followeeId),
-    ]);
-  };
+    await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
+  }
 
   // Helper functions
   private toSafeUser(user: User): SafeUSer {
@@ -194,24 +182,13 @@ export class UserService {
 
   private async writeUserCache(safeUser: SafeUSer): Promise<void> {
     await Promise.all([
-      redis.set(
-        getUserCacheKeyById(safeUser.id),
-        JSON.stringify(safeUser),
-        { EX: USER_CACHE_TTL_SECONDS }
-      ),
-      redis.set(
-        getUserCacheKeyByUsername(safeUser.username),
-        JSON.stringify(safeUser),
-        { EX: USER_CACHE_TTL_SECONDS }
-      ),
+      redis.set(getUserCacheKeyById(safeUser.id), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
+      redis.set(getUserCacheKeyByUsername(safeUser.username), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
     ]);
   }
- 
+
   private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
-    await redis.del([
-      getUserCacheKeyById(userId),
-      getUserCacheKeyByUsername(username),
-    ]);
+    await redis.del([getUserCacheKeyById(userId), getUserCacheKeyByUsername(username)]);
   }
 
   private async refreshUserCacheById(userId: string): Promise<void> {

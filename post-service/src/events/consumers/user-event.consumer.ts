@@ -1,25 +1,24 @@
-import { Consumer, Producer } from "kafkajs";
-import { PostService } from "../../services/post.service.js";
-import { KAFKA_TOPICS, USER_EVENT_NAMES } from "../topics.js";
-import logger from "../../utils/logger.js";
+import { Consumer, Producer } from 'kafkajs';
+import { PostService } from '../../services/post.service.js';
+import { KAFKA_TOPICS, USER_EVENT_NAMES } from '../topics.js';
+import logger from '../../utils/logger.js';
 import {
   userCreatedEventSchema,
   UserUpdatedEvent,
   userUpdatedEventSchema,
   type UserCreatedEvent,
-} from "../../validation/post.validation.js";
-import { FailedMessageContext } from "../../types/post-event-consumer.types..js";
-import formatZodError from "../../utils/formatZodError.js";
+} from '../../validation/post.validation.js';
+import { FailedMessageContext } from '../../types/post-event-consumer.types..js';
+import formatZodError from '../../utils/formatZodError.js';
 
 class UserEventConsumer {
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
-    private readonly postService: PostService
+    private readonly postService: PostService,
   ) {}
 
   public async start(): Promise<void> {
-
     await this.consumer.subscribe({
       topic: KAFKA_TOPICS.USER_EVENTS,
       fromBeginning: false,
@@ -29,10 +28,7 @@ class UserEventConsumer {
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
-          logger.warn(
-            { topic, partition, offset: message.offset },
-            "Received empty Kafka message"
-          );
+          logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
           await this.commitNextOffset(topic, partition, message.offset);
           return;
@@ -55,7 +51,7 @@ class UserEventConsumer {
                   partition,
                   offset: message.offset,
                   rawValue,
-                  reason: "Invalid user.created schema",
+                  reason: 'Invalid user.created schema',
                 });
 
                 await this.commitNextOffset(topic, partition, message.offset);
@@ -98,7 +94,7 @@ class UserEventConsumer {
                   offset: message.offset,
                   eventName: parsedJson.eventName,
                 },
-                "Ignoring unknown user event"
+                'Ignoring unknown user event',
               );
 
               await this.commitNextOffset(topic, partition, message.offset);
@@ -114,7 +110,7 @@ class UserEventConsumer {
               offset: message.offset,
               rawValue,
             },
-            "Failed to process user Kafka message"
+            'Failed to process user Kafka message',
           );
 
           await this.sendToDlq({
@@ -122,7 +118,7 @@ class UserEventConsumer {
             partition,
             offset: message.offset,
             rawValue,
-            reason: "Unhandled processing error",
+            reason: 'Unhandled processing error',
           });
 
           await this.commitNextOffset(topic, partition, message.offset);
@@ -141,7 +137,7 @@ class UserEventConsumer {
         username: data.username,
         eventId: event.eventId,
       },
-      "Handling user.created event in post-service"
+      'Handling user.created event in post-service',
     );
 
     await this.postService.upsertUserProfileCache({
@@ -153,33 +149,29 @@ class UserEventConsumer {
     });
   }
 
-    private async handleUserUpdated(event: UserUpdatedEvent): Promise<void> {
-      const data = event.data;
+  private async handleUserUpdated(event: UserUpdatedEvent): Promise<void> {
+    const data = event.data;
 
-      logger.info(
-        {
-          eventName: event.eventName,
-          eventId: event.eventId,
-          userId: data.userId,
-          username: data.username,
-        },
-        "Handling user.updated event in post-service"
-        );
-
-      await this.postService.upsertUserProfileCache({
+    logger.info(
+      {
+        eventName: event.eventName,
+        eventId: event.eventId,
         userId: data.userId,
         username: data.username,
-        displayName: data.displayName,
-        avatarUrl: data.avatarUrl?.secureUrl ?? null,
-        status: data.status,
-      });
-    }
+      },
+      'Handling user.updated event in post-service',
+    );
 
-  private async commitNextOffset(
-    topic: string,
-    partition: number,
-    currentOffset: string
-  ): Promise<void> {
+    await this.postService.upsertUserProfileCache({
+      userId: data.userId,
+      username: data.username,
+      displayName: data.displayName,
+      avatarUrl: data.avatarUrl?.secureUrl ?? null,
+      status: data.status,
+    });
+  }
+
+  private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
     const nextOffset = (BigInt(currentOffset) + 1n).toString();
 
     await this.consumer.commitOffsets([
@@ -190,10 +182,7 @@ class UserEventConsumer {
       },
     ]);
 
-    logger.info(
-      { topic, partition, committedOffset: nextOffset },
-      "Committed user Kafka offset"
-    );
+    logger.info({ topic, partition, committedOffset: nextOffset }, 'Committed user Kafka offset');
   }
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
@@ -210,14 +199,14 @@ class UserEventConsumer {
             sourceOffset: context.offset,
             rawValue: context.rawValue,
             reason: context.reason,
-            consumerService: "post-service",
-            consumerGroup: "post-service-user-events",
+            consumerService: 'post-service',
+            consumerGroup: 'post-service-user-events',
           }),
         },
       ],
     });
 
-    logger.error(context, "Sent user event to DLQ");
+    logger.error(context, 'Sent user event to DLQ');
   }
 }
 

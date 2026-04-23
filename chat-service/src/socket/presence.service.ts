@@ -1,4 +1,4 @@
-import { redis } from "../config/redisClient.js";
+import { redis } from '../config/redisClient.js';
 
 type PresenceUpdate = {
   userId: string;
@@ -6,7 +6,7 @@ type PresenceUpdate = {
   lastSeen?: string; // ISO string
 };
 
-const ONLINE_SET_KEY = "presence:onlineUsers";
+const ONLINE_SET_KEY = 'presence:onlineUsers';
 const USER_SOCKETS_KEY = (userId: string) => `presence:user:${userId}:sockets`;
 const LAST_SEEN_KEY = (userId: string) => `presence:lastSeen:${userId}`;
 
@@ -17,11 +17,13 @@ const LAST_SEEN_KEY = (userId: string) => `presence:lastSeen:${userId}`;
  * - Keep lastSeen timestamp in Redis (TTL so it doesn't grow forever)
  */
 export class PresenceService {
-  
   async markOnline(userId: string, socketId: string): Promise<PresenceUpdate> {
-    await redis.sAdd(ONLINE_SET_KEY, userId),
-    await redis.sAdd(USER_SOCKETS_KEY(userId), socketId)
     
+    await Promise.all([
+      redis.sAdd(ONLINE_SET_KEY, userId),
+      redis.sAdd(USER_SOCKETS_KEY(userId), socketId),
+    ]);
+
     // When online, we can clear lastSeen or just keep it as last known.
     // We'll keep it, but you can choose to delete it.
     return { userId, online: true };
@@ -54,5 +56,4 @@ export class PresenceService {
     const isMember = await redis.sIsMember(ONLINE_SET_KEY, userId);
     return isMember === 1;
   }
-
 }

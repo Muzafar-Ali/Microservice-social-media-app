@@ -1,4 +1,4 @@
-import { UserFeedPost } from "../prisma/selects/userFeedPostSelect.js";
+import { UserFeedPost } from '../prisma/selects/userFeedPostSelect.js';
 import { MediaType } from '../generated/prisma/client.js';
 
 const mapUserFeedPost = (post: UserFeedPost) => {
@@ -15,7 +15,7 @@ const mapUserFeedPost = (post: UserFeedPost) => {
     updatedAt: post.updatedAt,
     media: post.media.map((mediaItem: any) => ({
       id: mediaItem.id,
-      type: mediaItem.type === MediaType.IMAGE ? "image" : "video",
+      type: mediaItem.type === MediaType.IMAGE ? 'image' : 'video',
       url: mediaItem.url,
       thumbnailUrl: mediaItem.thumbnailUrl ?? null,
       duration: mediaItem.duration ?? null,
@@ -24,6 +24,6 @@ const mapUserFeedPost = (post: UserFeedPost) => {
       order: mediaItem.order,
     })),
   };
-}
+};
 
 export default mapUserFeedPost;

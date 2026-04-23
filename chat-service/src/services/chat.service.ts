@@ -1,12 +1,7 @@
-import { StatusCodes } from "http-status-codes";
-import {
-  AttachmentType,
-  MessageType,
-  Prisma,
-  ParticipantRole
-} from "../generated/prisma/client.js";
-import ApiErrorHandler from "../utils/apiErrorHandlerClass.js";
-import { ChatRepository } from "../respositories/chat.repository.js";
+import { StatusCodes } from 'http-status-codes';
+import { AttachmentType, MessageType, Prisma, ParticipantRole } from '../generated/prisma/client.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
+import { ChatRepository } from '../respositories/chat.repository.js';
 import {
   AddParticipantsResponseDto,
   AddReactionResponseDto,
@@ -19,8 +14,8 @@ import {
   PaginatedMessagesResponseDto,
   RemoveParticipantResponseDto,
   RemoveReactionResponseDto,
-} from "../types/chat.types.js";
-import mapConversation from "../utils/mapConversion.js";
+} from '../types/chat.types.js';
+import mapConversation from '../utils/mapConversion.js';
 
 export class ChatService {
   constructor(private readonly chatRepository: ChatRepository) {}
@@ -50,12 +45,8 @@ export class ChatService {
       })),
       receipts: (message.receipts ?? []).map((receipt: any) => ({
         userId: receipt.userId,
-        deliveredAt: receipt.deliveredAt
-          ? receipt.deliveredAt.toISOString()
-          : null,
-        seenAt: receipt.seenAt
-          ? receipt.seenAt.toISOString()
-          : null,
+        deliveredAt: receipt.deliveredAt ? receipt.deliveredAt.toISOString() : null,
+        seenAt: receipt.seenAt ? receipt.seenAt.toISOString() : null,
       })),
       createdAt: message.createdAt.toISOString(),
       editedAt: message.editedAt ? message.editedAt.toISOString() : null,
@@ -65,48 +56,44 @@ export class ChatService {
 
   async createDirectConversation(params: {
     creatorUserId: string;
-    type: "DIRECT";
+    type: 'DIRECT';
     participantUserId?: string;
   }): Promise<BaseConversationDto> {
-
     if (!params.participantUserId) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "participantUserId is required for DIRECT chat");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'participantUserId is required for DIRECT chat');
     }
 
     if (params.participantUserId === params.creatorUserId) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "You cannot create a DIRECT chat with yourself");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot create a DIRECT chat with yourself');
     }
 
-    const existingConversation =
-      await this.chatRepository.findExistingDirectConversation(
-        params.creatorUserId,
-        params.participantUserId
-      );
+    const existingConversation = await this.chatRepository.findExistingDirectConversation(
+      params.creatorUserId,
+      params.participantUserId,
+    );
 
     if (existingConversation) {
       return mapConversation(existingConversation);
     }
 
-    const createdConversation =
-      await this.chatRepository.createDirectConversation(
-        params.creatorUserId,
-        params.participantUserId
-      );
+    const createdConversation = await this.chatRepository.createDirectConversation(
+      params.creatorUserId,
+      params.participantUserId,
+    );
 
     return mapConversation(createdConversation);
   }
 
   async createGroupConversation(params: {
     creatorUserId: string;
-    type: "GROUP";
+    type: 'GROUP';
     title?: string;
     participantUserIds?: string[];
   }): Promise<BaseConversationDto> {
-
     const participantUserIds = params.participantUserIds ?? [];
 
     if (participantUserIds.length === 0) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "participantUserIds is required for GROUP chat");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'participantUserIds is required for GROUP chat');
     }
 
     const createdConversation = await this.chatRepository.createGroupConversation({
@@ -119,15 +106,11 @@ export class ChatService {
   }
 
   async listMyConversations(userId: string): Promise<ConversationListItemDto[]> {
-
     const conversations = await this.chatRepository.listUserConversations(userId);
 
     const conversationListItems = await Promise.all(
       conversations.map(async (conversation: any) => {
-        const currentParticipant = await this.chatRepository.findParticipant(
-          conversation.id,
-          userId
-        );
+        const currentParticipant = await this.chatRepository.findParticipant(conversation.id, userId);
 
         const unreadCount = await this.chatRepository.countUnreadMessages({
           conversationId: conversation.id,
@@ -137,9 +120,7 @@ export class ChatService {
 
         return {
           ...mapConversation(conversation),
-          lastMessageAt: conversation.lastMessageAt
-            ? conversation.lastMessageAt.toISOString()
-            : null,
+          lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
           unreadCount,
           lastMessage: conversation.lastMessage
             ? {
@@ -151,7 +132,7 @@ export class ChatService {
               }
             : null,
         };
-      })
+      }),
     );
 
     return conversationListItems;
@@ -178,18 +159,14 @@ export class ChatService {
       sortOrder?: number;
     }>;
   }): Promise<MessageResponseDto> {
-
-    const isParticipant = await this.chatRepository.isUserParticipant(
-      params.conversationId,
-      params.senderId
-    );
+    const isParticipant = await this.chatRepository.isUserParticipant(params.conversationId, params.senderId);
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     if (params.type === MessageType.SYSTEM) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "SYSTEM messages cannot be created directly by clients");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'SYSTEM messages cannot be created directly by clients');
     }
 
     const existingMessage = await this.chatRepository.findMessageByClientMessageId({
@@ -205,18 +182,15 @@ export class ChatService {
       const replyTargetMessage = await this.chatRepository.findMessageById(params.replyToMessageId);
 
       if (!replyTargetMessage) {
-        throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Reply target message not found");
+        throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Reply target message not found');
       }
 
       if (replyTargetMessage.conversationId !== params.conversationId) {
-        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Reply target message does not belong to this conversation");
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Reply target message does not belong to this conversation');
       }
     }
 
-    const normalizedBody =
-      typeof params.body === "string" && params.body.trim().length > 0
-        ? params.body.trim()
-        : null;
+    const normalizedBody = typeof params.body === 'string' && params.body.trim().length > 0 ? params.body.trim() : null;
 
     const createdMessage = await this.chatRepository.createMessage({
       conversationId: params.conversationId,
@@ -238,14 +212,10 @@ export class ChatService {
     limit: number;
     cursorMessageId?: string;
   }): Promise<PaginatedMessagesResponseDto> {
-
-    const isParticipant = await this.chatRepository.isUserParticipant(
-      params.conversationId,
-      params.userId
-    );
+    const isParticipant = await this.chatRepository.isUserParticipant(params.conversationId, params.userId);
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     const messages = await this.chatRepository.listMessagesByConversation({
@@ -264,38 +234,27 @@ export class ChatService {
     };
   }
 
-  async markConversationRead(params: {
-    userId: string;
-    conversationId: string;
-    lastReadMessageId: string;
-  }) {
-
-    const isParticipant = await this.chatRepository.isUserParticipant(
-      params.conversationId,
-      params.userId
-    );
+  async markConversationRead(params: { userId: string; conversationId: string; lastReadMessageId: string }) {
+    const isParticipant = await this.chatRepository.isUserParticipant(params.conversationId, params.userId);
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     const targetMessage = await this.chatRepository.findMessageById(params.lastReadMessageId);
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "lastReadMessageId not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'lastReadMessageId not found');
     }
 
     if (targetMessage.conversationId !== params.conversationId) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "lastReadMessageId does not belong to this conversation");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'lastReadMessageId does not belong to this conversation');
     }
 
-    const currentParticipant = await this.chatRepository.findParticipant(
-      params.conversationId,
-      params.userId
-    );
+    const currentParticipant = await this.chatRepository.findParticipant(params.conversationId, params.userId);
 
     if (!currentParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     if (currentParticipant.lastReadAt && currentParticipant.lastReadAt.getTime() >= targetMessage.createdAt.getTime()) {
@@ -332,19 +291,11 @@ export class ChatService {
     return this.chatRepository.isUserParticipant(conversationId, userId);
   }
 
-  async markMessageDelivered(params: {
-    userId: string;
-    conversationId: string;
-    messageId: string;
-  }) {
-
-    const isParticipant = await this.chatRepository.isUserParticipant(
-      params.conversationId,
-      params.userId
-    );
+  async markMessageDelivered(params: { userId: string; conversationId: string; messageId: string }) {
+    const isParticipant = await this.chatRepository.isUserParticipant(params.conversationId, params.userId);
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     const targetMessage = await this.chatRepository.findConversationMessageById({
@@ -353,11 +304,11 @@ export class ChatService {
     });
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found in this conversation");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Message not found in this conversation');
     }
 
     if (targetMessage.senderId === params.userId) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Sender cannot mark own message as delivered");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Sender cannot mark own message as delivered');
     }
 
     const deliveredReceipt = await this.chatRepository.upsertMessageDeliveryReceipt({
@@ -379,23 +330,22 @@ export class ChatService {
     messageId: string;
     forEveryone: boolean;
   }): Promise<DeleteMessageResponseDto> {
-    
     if (!params.forEveryone) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only forEveryone delete is supported right now");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Only forEveryone delete is supported right now');
     }
 
     const targetMessage = await this.chatRepository.findMessageById(params.messageId);
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Message not found');
     }
 
     if (targetMessage.senderId !== params.userId) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You can only delete your own messages");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You can only delete your own messages');
     }
 
     if (targetMessage.deletedAt) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Message is already deleted");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Message is already deleted');
     }
 
     const deletedMessage = await this.chatRepository.softDeleteMessage(params.messageId);
@@ -415,29 +365,21 @@ export class ChatService {
     };
   }
 
-  async addReaction(params: {
-    userId: string;
-    messageId: string;
-    reaction: string;
-  }): Promise<AddReactionResponseDto> {
-
+  async addReaction(params: { userId: string; messageId: string; reaction: string }): Promise<AddReactionResponseDto> {
     const targetMessage = await this.chatRepository.findMessageById(params.messageId);
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Message not found');
     }
 
     if (targetMessage.deletedAt) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Cannot react to a deleted message");
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Cannot react to a deleted message');
     }
 
-    const isParticipant = await this.chatRepository.isUserParticipant(
-      targetMessage.conversationId,
-      params.userId
-    );
+    const isParticipant = await this.chatRepository.isUserParticipant(targetMessage.conversationId, params.userId);
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     const existingReaction = await this.chatRepository.findReaction({
@@ -478,20 +420,16 @@ export class ChatService {
     messageId: string;
     reaction: string;
   }): Promise<RemoveReactionResponseDto> {
-
     const targetMessage = await this.chatRepository.findMessageById(params.messageId);
 
     if (!targetMessage) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Message not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Message not found');
     }
 
-    const isParticipant = await this.chatRepository.isUserParticipant(
-      targetMessage.conversationId,
-      params.userId
-    );
+    const isParticipant = await this.chatRepository.isUserParticipant(targetMessage.conversationId, params.userId);
 
     if (!isParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     const deleteResult = await this.chatRepository.removeReaction({
@@ -515,33 +453,32 @@ export class ChatService {
     conversationId: string;
     title: string;
   }): Promise<GroupConversationUpdateResponseDto> {
-
     const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
 
     if (!conversation) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Conversation not found');
     }
 
-    if (conversation.type !== "GROUP") {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations can be updated");
+    if (conversation.type !== 'GROUP') {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Only group conversations can be updated');
     }
 
     const currentParticipant = conversation.participants.find(
-      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null,
     );
 
     if (!currentParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     if (currentParticipant.role !== ParticipantRole.ADMIN) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN,"Only group admins can update group title");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'Only group admins can update group title');
     }
 
     const updatedConversation = await this.chatRepository.updateGroupConversationTitle({
-        conversationId: params.conversationId,
-        title: params.title.trim(),
-      });
+      conversationId: params.conversationId,
+      title: params.title.trim(),
+    });
 
     return {
       conversationId: updatedConversation.id,
@@ -556,27 +493,26 @@ export class ChatService {
     conversationId: string;
     participantUserIds: string[];
   }): Promise<AddParticipantsResponseDto> {
-
     const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
 
     if (!conversation) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Conversation not found');
     }
 
-    if (conversation.type !== "GROUP") {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations can add participants");
+    if (conversation.type !== 'GROUP') {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Only group conversations can add participants');
     }
 
     const currentParticipant = conversation.participants.find(
-      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null,
     );
 
     if (!currentParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     if (currentParticipant.role !== ParticipantRole.ADMIN) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "Only group admins can add participants");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'Only group admins can add participants');
     }
 
     const uniqueParticipantUserIds = Array.from(
@@ -584,24 +520,27 @@ export class ChatService {
         params.participantUserIds
           .map((participantUserId) => participantUserId.trim())
           .filter(Boolean)
-          .filter((participantUserId) => participantUserId !== params.userId)
-      )
+          .filter((participantUserId) => participantUserId !== params.userId),
+      ),
     );
 
     const activeParticipantUserIds = new Set(
       conversation.participants
         .filter((participant: any) => participant.deletedAt === null)
-        .map((participant: any) => participant.userId)
+        .map((participant: any) => participant.userId),
     );
-  
-    const alreadyExistingParticipantUserIds = uniqueParticipantUserIds.filter(
-      (participantUserId) => activeParticipantUserIds.has(participantUserId)
+
+    const alreadyExistingParticipantUserIds = uniqueParticipantUserIds.filter((participantUserId) =>
+      activeParticipantUserIds.has(participantUserId),
     );
 
     if (alreadyExistingParticipantUserIds.length > 0) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, `User(s) already exist in the conversation: ${alreadyExistingParticipantUserIds.join(", ")}`);
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        `User(s) already exist in the conversation: ${alreadyExistingParticipantUserIds.join(', ')}`,
+      );
     }
-    
+
     const createdParticipants = await this.chatRepository.addParticipantsToConversation({
       conversationId: params.conversationId,
       participantUserIds: uniqueParticipantUserIds,
@@ -609,7 +548,7 @@ export class ChatService {
 
     return {
       conversationId: params.conversationId,
-      participantUserIds: createdParticipants.map( (participant: any) => participant.userId ),
+      participantUserIds: createdParticipants.map((participant: any) => participant.userId),
       addedBy: params.userId,
       addedAt: new Date().toISOString(),
     };
@@ -620,44 +559,41 @@ export class ChatService {
     conversationId: string;
     participantUserId: string;
   }): Promise<RemoveParticipantResponseDto> {
-
     const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
 
     if (!conversation) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Conversation not found');
     }
 
-    if (conversation.type !== "GROUP") {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations can remove participants");
+    if (conversation.type !== 'GROUP') {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Only group conversations can remove participants');
     }
 
     const currentParticipant = conversation.participants.find(
-      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null,
     );
 
     if (!currentParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     if (currentParticipant.role !== ParticipantRole.ADMIN) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "Only group admins can remove participants");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'Only group admins can remove participants');
     }
 
     const targetParticipant = conversation.participants.find(
-      (participant: any) => participant.userId === params.participantUserId && participant.deletedAt === null
+      (participant: any) => participant.userId === params.participantUserId && participant.deletedAt === null,
     );
 
     if (!targetParticipant) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Participant not found in this conversation");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Participant not found in this conversation');
     }
 
     if (targetParticipant.role === ParticipantRole.ADMIN) {
-      const adminCount = await this.chatRepository.countConversationAdmins(
-        params.conversationId
-      );
+      const adminCount = await this.chatRepository.countConversationAdmins(params.conversationId);
 
       if (adminCount <= 1) {
-        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Cannot remove the last admin from the group");
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Cannot remove the last admin from the group');
       }
     }
 
@@ -674,36 +610,31 @@ export class ChatService {
     };
   }
 
-  async leaveGroupConversation(params: {
-    userId: string;
-    conversationId: string;
-  }): Promise<LeaveGroupResponseDto> {
-
+  async leaveGroupConversation(params: { userId: string; conversationId: string }): Promise<LeaveGroupResponseDto> {
     const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
     console.log('conversation', conversation);
-    
 
     if (!conversation) {
-      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, "Conversation not found");
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Conversation not found');
     }
 
-    if (conversation.type !== "GROUP") {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Only group conversations support leave");
+    if (conversation.type !== 'GROUP') {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Only group conversations support leave');
     }
 
     const currentParticipant = conversation.participants.find(
-      (participant: any) => participant.userId === params.userId && participant.deletedAt === null
+      (participant: any) => participant.userId === params.userId && participant.deletedAt === null,
     );
 
     if (!currentParticipant) {
-      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, "You are not a participant of this conversation");
+      throw new ApiErrorHandler(StatusCodes.FORBIDDEN, 'You are not a participant of this conversation');
     }
 
     if (currentParticipant.role === ParticipantRole.ADMIN) {
       const adminCount = await this.chatRepository.countConversationAdmins(params.conversationId);
 
       if (adminCount < 1) {
-        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, "Last admin cannot leave the group");
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Last admin cannot leave the group');
       }
     }
 
@@ -718,5 +649,4 @@ export class ChatService {
       leftAt: new Date().toISOString(),
     };
   }
-
 }

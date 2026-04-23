@@ -1,6 +1,6 @@
 export type ParticipantDto = {
   userId: string;
-  role: "MEMBER" | "ADMIN";
+  role: 'MEMBER' | 'ADMIN';
   joinedAt: string;
   lastReadAt: string | null;
   lastReadMessageId: string | null;
@@ -8,7 +8,7 @@ export type ParticipantDto = {
 
 export type MessageAttachmentDto = {
   id: string;
-  type: "IMAGE" | "VIDEO" | "AUDIO" | "FILE";
+  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE';
   url: string;
   thumbnailUrl: string | null;
   mimeType: string | null;
@@ -30,7 +30,7 @@ export type MessageResponseDto = {
   id: string;
   conversationId: string;
   senderId: string;
-  type: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE" | "SYSTEM" | "SHARED_POST";
+  type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'SYSTEM' | 'SHARED_POST';
   body: string | null;
   metadata: unknown | null;
   clientMessageId: string | null;
@@ -44,7 +44,7 @@ export type MessageResponseDto = {
 
 export type BaseConversationDto = {
   id: string;
-  type: "DIRECT" | "GROUP";
+  type: 'DIRECT' | 'GROUP';
   title: string | null;
   createdAt: string;
   updatedAt: string;
@@ -57,7 +57,7 @@ export type ConversationListItemDto = BaseConversationDto & {
   lastMessage: null | {
     id: string;
     senderId: string;
-    type: "TEXT" | "IMAGE" | "VIDEO" | "AUDIO" | "FILE" | "SYSTEM" | "SHARED_POST";
+    type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'SYSTEM' | 'SHARED_POST';
     body: string | null;
     createdAt: string;
   };

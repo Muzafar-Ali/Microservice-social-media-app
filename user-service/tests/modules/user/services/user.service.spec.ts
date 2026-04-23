@@ -6,7 +6,11 @@ import { CreateUserDto } from '../../src/schema/user.schema';
 import ApiErrorHandler from '../../../../src/utils/apiErrorHanlderClass';
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
 import { User } from '../../../../src/generated/prisma/client';
-import { USER_CACHE_TTL_SECONDS, userCacheKeyById, userCacheKeyByUsername } from '../../../../src/utils/cache/userCacheKeys';
+import {
+  USER_CACHE_TTL_SECONDS,
+  userCacheKeyById,
+  userCacheKeyByUsername,
+} from '../../../../src/utils/cache/userCacheKeys';
 
 // Tell Jest to use the manual mock we created in src/config/__mocks__/redisClient.ts
 jest.mock('../../src/config/redisClient');
@@ -64,7 +68,10 @@ describe('UserService', () => {
       const result = await userService.createUser(createUserDto);
 
       expect(result).toEqual(createdUser);
-      expect(mockUserRepository.findByEmailOrUsername).toHaveBeenCalledWith(createUserDto.email, createUserDto.username);
+      expect(mockUserRepository.findByEmailOrUsername).toHaveBeenCalledWith(
+        createUserDto.email,
+        createUserDto.username,
+      );
       expect(mockUserRepository.createUser).toHaveBeenCalledWith({
         username: createUserDto.username,
         name: createUserDto.name,
@@ -73,8 +80,14 @@ describe('UserService', () => {
         profileImage: createUserDto.profileImage,
         gender: createUserDto.gender,
       });
-      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyById(createdUser.id), JSON.stringify(createdUser), { EX: USER_CACHE_TTL_SECONDS });
-      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyByUsername(createdUser.username), JSON.stringify(createdUser), { EX: USER_CACHE_TTL_SECONDS });
+      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyById(createdUser.id), JSON.stringify(createdUser), {
+        EX: USER_CACHE_TTL_SECONDS,
+      });
+      expect(mockRedis.set).toHaveBeenCalledWith(
+        userCacheKeyByUsername(createdUser.username),
+        JSON.stringify(createdUser),
+        { EX: USER_CACHE_TTL_SECONDS },
+      );
       expect(mockPublishUserEvent).toHaveBeenCalledWith('user.created', {
         id: createdUser.id,
         username: createdUser.username,
@@ -87,9 +100,12 @@ describe('UserService', () => {
       mockUserRepository.findByEmailOrUsername.mockResolvedValue({ ...createdUser, email: 'different@example.com' });
 
       await expect(userService.createUser(createUserDto)).rejects.toThrow(
-        new ApiErrorHandler(409, 'Username already taken')
+        new ApiErrorHandler(409, 'Username already taken'),
       );
-      expect(mockUserRepository.findByEmailOrUsername).toHaveBeenCalledWith(createUserDto.email, createUserDto.username);
+      expect(mockUserRepository.findByEmailOrUsername).toHaveBeenCalledWith(
+        createUserDto.email,
+        createUserDto.username,
+      );
       expect(mockUserRepository.createUser).not.toHaveBeenCalled();
       expect(mockRedis.set).not.toHaveBeenCalled();
       expect(mockPublishUserEvent).not.toHaveBeenCalled();
@@ -99,9 +115,12 @@ describe('UserService', () => {
       mockUserRepository.findByEmailOrUsername.mockResolvedValue({ ...createdUser, username: 'differentuser' });
 
       await expect(userService.createUser(createUserDto)).rejects.toThrow(
-        new ApiErrorHandler(409, 'Email already registered')
+        new ApiErrorHandler(409, 'Email already registered'),
       );
-      expect(mockUserRepository.findByEmailOrUsername).toHaveBeenCalledWith(createUserDto.email, createUserDto.username);
+      expect(mockUserRepository.findByEmailOrUsername).toHaveBeenCalledWith(
+        createUserDto.email,
+        createUserDto.username,
+      );
       expect(mockUserRepository.createUser).not.toHaveBeenCalled();
       expect(mockRedis.set).not.toHaveBeenCalled();
       expect(mockPublishUserEvent).not.toHaveBeenCalled();
@@ -146,8 +165,12 @@ describe('UserService', () => {
       expect(result).toEqual(user);
       expect(mockRedis.get).toHaveBeenCalledWith(userCacheKeyByUsername(username));
       expect(mockUserRepository.findByUsername).toHaveBeenCalledWith(username);
-      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyById(user.id), JSON.stringify(user), { EX: USER_CACHE_TTL_SECONDS });
-      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyByUsername(user.username), JSON.stringify(user), { EX: USER_CACHE_TTL_SECONDS });
+      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyById(user.id), JSON.stringify(user), {
+        EX: USER_CACHE_TTL_SECONDS,
+      });
+      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyByUsername(user.username), JSON.stringify(user), {
+        EX: USER_CACHE_TTL_SECONDS,
+      });
     });
 
     it('should return null if user not found in cache or database', async () => {
@@ -201,8 +224,12 @@ describe('UserService', () => {
       expect(result).toEqual(user);
       expect(mockRedis.get).toHaveBeenCalledWith(userCacheKeyById(userId));
       expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
-      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyById(user.id), JSON.stringify(user), { EX: USER_CACHE_TTL_SECONDS });
-      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyByUsername(user.username), JSON.stringify(user), { EX: USER_CACHE_TTL_SECONDS });
+      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyById(user.id), JSON.stringify(user), {
+        EX: USER_CACHE_TTL_SECONDS,
+      });
+      expect(mockRedis.set).toHaveBeenCalledWith(userCacheKeyByUsername(user.username), JSON.stringify(user), {
+        EX: USER_CACHE_TTL_SECONDS,
+      });
     });
 
     it('should return null if user not found in cache or database', async () => {

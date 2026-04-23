@@ -17,7 +17,7 @@ export const userFeedPostSelect = {
   },
   media: {
     orderBy: {
-      order: "asc" as const,
+      order: 'asc' as const,
     },
     select: {
       id: true,

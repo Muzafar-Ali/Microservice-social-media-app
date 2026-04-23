@@ -3,7 +3,7 @@ export type MediaUploadCompletedPayload = {
   postId: string;
   secureUrl: string;
   publicId: string;
-  mediaType: "image" | "video";
+  mediaType: 'image' | 'video';
 };
 
 export type FailedMessageContext = {

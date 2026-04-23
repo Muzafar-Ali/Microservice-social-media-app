@@ -1,28 +1,32 @@
-import { Consumer, Producer } from "kafkajs";
-import { UserService } from "../../modules/user/user.service.js";
-import { KAFKA_TOPICS, SOCIAL_GRAPH_EVENT_NAMES } from "../topics.js";
-import logger from "../../utils/logger.js";
-import { FollowCreatedEvent, followCreatedEventSchema, FollowRemovedEvent, followRemovedEventSchema } from "../../modules/user/user.validations.js";
-import formatZodError from "../../utils/formatZodError.js";
-import { FailedMessageContext } from "../../types/common.types.js";
+import { Consumer, Producer } from 'kafkajs';
+import { UserService } from '../../modules/user/user.service.js';
+import { KAFKA_TOPICS, SOCIAL_GRAPH_EVENT_NAMES } from '../topics.js';
+import logger from '../../utils/logger.js';
+import {
+  FollowCreatedEvent,
+  followCreatedEventSchema,
+  FollowRemovedEvent,
+  followRemovedEventSchema,
+} from '../../modules/user/user.validations.js';
+import formatZodError from '../../utils/formatZodError.js';
+import { FailedMessageContext } from '../../types/common.types.js';
 
 export class SocialGrapsEventConsumer {
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
-    private readonly userService: UserService
-  ){}
+    private readonly userService: UserService,
+  ) {}
 
   public async start() {
-
     await this.consumer.subscribe({
       topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS,
-      fromBeginning: false
+      fromBeginning: false,
     });
 
     await this.consumer.run({
       autoCommit: false,
-      eachMessage: async({topic, partition, message}) => {
+      eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
@@ -98,10 +102,29 @@ export class SocialGrapsEventConsumer {
             }
           }
         } catch (error) {
-          
+          logger.error(
+            {
+              error,
+              topic,
+              partition,
+              offset: message.offset,
+              rawValue,
+            },
+            'Failed to process user Kafka message in social-graph-service',
+          );
+
+          await this.sendToDlq({
+            topic,
+            partition,
+            offset: message.offset,
+            rawValue,
+            reason: 'Unhandled processing error',
+          });
+
+          await this.commitNextOffset(topic, partition, message.offset);
         }
-      }
-    })
+      },
+    });
   }
 
   private async handleFollowCreated(event: FollowCreatedEvent): Promise<void> {
@@ -117,11 +140,7 @@ export class SocialGrapsEventConsumer {
       'Handling follow.created event in user-service',
     );
 
-    await this.userService.handleFollowCreated(
-      data.followerId,
-      data.followeeId,
-    );
-
+    await this.userService.handleFollowCreated(data.followerId, data.followeeId);
   }
 
   private async handleFollowRemoved(event: FollowRemovedEvent): Promise<void> {
@@ -137,11 +156,7 @@ export class SocialGrapsEventConsumer {
       'Handling follow.removed event in user-service',
     );
 
-    await this.userService.handleFollowRemoved(
-      data.followerId,
-      data.followeeId,
-    );
-
+    await this.userService.handleFollowRemoved(data.followerId, data.followeeId);
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
@@ -188,5 +203,4 @@ export class SocialGrapsEventConsumer {
 
     logger.error(context, 'Sent social graph event to DLQ from user-service');
   }
-  
 }

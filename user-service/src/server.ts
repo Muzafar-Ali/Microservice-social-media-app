@@ -1,8 +1,8 @@
-import { createApp } from "./app.js";
-import config from "./config/config.js";
-import { initRedis } from "./config/redisClient.js";
-import createKafkaTopic from "./utils/kafka/createKafkaTopic.js";
-import logger from "./utils/logger.js";
+import { createApp } from './app.js';
+import config from './config/config.js';
+import { initRedis } from './config/redisClient.js';
+import createKafkaTopic from './utils/kafka/createKafkaTopic.js';
+import logger from './utils/logger.js';
 
 const PORT = config.port;
 

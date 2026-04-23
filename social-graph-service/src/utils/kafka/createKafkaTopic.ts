@@ -20,6 +20,18 @@ const createKafkaTopic = async (): Promise<void> => {
             },
           ],
         },
+        //  USER EVENTS DLQ (dead letter queue)
+        {
+          topic: KAFKA_TOPICS.USER_EVENTS_DLQ,
+          numPartitions: 2,
+          replicationFactor: 3,
+          configEntries: [
+            {
+              name: 'min.insync.replicas',
+              value: '2',
+            },
+          ],
+        },
       ],
       waitForLeaders: true,
     });

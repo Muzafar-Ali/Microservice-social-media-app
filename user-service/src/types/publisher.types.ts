@@ -1,4 +1,3 @@
-
 export type BaseEvent<TData> = {
   eventId: string;
   eventName: string;

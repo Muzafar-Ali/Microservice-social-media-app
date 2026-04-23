@@ -21,6 +21,18 @@ const createKafkaTopic = async (): Promise<void> => {
             },
           ],
         },
+        //  SCOIAL GRAPH EVENTS DLQ (dead letter queue)
+        {
+          topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS_DLQ,
+          numPartitions: 2,
+          replicationFactor: 3,
+          configEntries: [
+            {
+              name: 'min.insync.replicas',
+              value: '2',
+            },
+          ],
+        },
       ],
       waitForLeaders: true,
     });

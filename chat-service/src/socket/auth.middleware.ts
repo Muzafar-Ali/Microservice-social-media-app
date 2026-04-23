@@ -1,6 +1,7 @@
-import { Socket } from "socket.io";
-import cookie from "cookie";
-import { redis } from "../config/redisClient.js";
+import { Socket } from 'socket.io';
+import cookie from 'cookie';
+import { redis } from '../config/redisClient.js';
+import logger from '../utils/logger.js';
 
 type SocketSessionPayload = {
   userId: string | number;
@@ -8,36 +9,32 @@ type SocketSessionPayload = {
   userAgent?: string;
 };
 
-export async function socketAuthMiddleware(
-  socket: Socket,
-  next: (err?: Error) => void
-) {
-  
+export async function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void) {
   try {
     const cookieHeader = socket.handshake.headers.cookie;
 
     if (!cookieHeader) {
-      return next(new Error("Unauthorized: missing cookies"));
+      return next(new Error('Unauthorized: missing cookies'));
     }
 
     const cookies = cookie.parse(cookieHeader);
     const sessionId = cookies.sid;
 
     if (!sessionId) {
-      return next(new Error("Unauthorized: missing sid cookie"));
+      return next(new Error('Unauthorized: missing sid cookie'));
     }
 
     const sessionKey = `session:${sessionId}`;
     const sessionJson = await redis.get(sessionKey);
 
     if (!sessionJson) {
-      return next(new Error("Unauthorized: session expired"));
+      return next(new Error('Unauthorized: session expired'));
     }
 
     const session = JSON.parse(sessionJson) as SocketSessionPayload;
 
     if (session.userId === undefined || session.userId === null) {
-      return next(new Error("Unauthorized: invalid session user"));
+      return next(new Error('Unauthorized: invalid session user'));
     }
 
     /**
@@ -61,6 +58,7 @@ export async function socketAuthMiddleware(
 
     return next();
   } catch (error) {
-    return next(new Error("Unauthorized: invalid session"));
+    logger.error(error);
+    return next(new Error('Unauthorized: invalid session'));
   }
 }

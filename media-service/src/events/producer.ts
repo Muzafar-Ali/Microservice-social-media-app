@@ -1,9 +1,7 @@
-import { Producer } from "kafkajs";
+import { Producer } from 'kafkajs';
 
 class MediaServiceEventPublisher {
-
-  constructor( private producer: Producer) {}
-
+  constructor(private producer: Producer) {}
 }
 
 export default MediaServiceEventPublisher;

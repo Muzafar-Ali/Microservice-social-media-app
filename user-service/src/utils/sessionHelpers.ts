@@ -11,19 +11,14 @@ type SessionData = {
   createdAt: number;
   ip?: string;
   userAgent?: string;
-  expiry: number
+  expiry: number;
 };
 
 export const generateSessionId = () => {
-  return crypto.randomBytes(32).toString("hex");
-}
+  return crypto.randomBytes(32).toString('hex');
+};
 
-export const createWebSession = async ( params: {
-  userId: string;
-  ip?: string;
-  userAgent?: string;
-}) => {
-
+export const createWebSession = async (params: { userId: string; ip?: string; userAgent?: string }) => {
   const sessionId = generateSessionId();
 
   const sessionData: SessionData = {
@@ -36,28 +31,24 @@ export const createWebSession = async ( params: {
 
   const key = sessionCacheKey(sessionId);
 
-  await redis.set(
-    key,
-    JSON.stringify(sessionData),
-    { 
-      expiration: {
-        type: 'EX',
-        value: SESSION_TTL_SECONDS
-      } 
-    }
-  )
+  await redis.set(key, JSON.stringify(sessionData), {
+    expiration: {
+      type: 'EX',
+      value: SESSION_TTL_SECONDS,
+    },
+  });
 
-  return sessionId
-}
+  return sessionId;
+};
 
 export const setWebSessionCookie = (res: Response, sessionId: string) => {
-  const isProduction = config.environment === "production";
+  const isProduction = config.environment === 'production';
 
-  res.cookie("sid", sessionId, {
+  res.cookie('sid', sessionId, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: "lax",
-    path: "/",
+    sameSite: 'lax',
+    path: '/',
     maxAge: SESSION_TTL_SECONDS * 1000,
   });
-}
+};

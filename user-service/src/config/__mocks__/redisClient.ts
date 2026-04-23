@@ -1,5 +1,5 @@
 import { mockDeep, DeepMockProxy } from 'jest-mock-extended';
-import { RedisClientType, createClient } from 'redis';
+import { createClient } from 'redis';
 
 // Get the type of the redis instance, without actually creating a client
 type RedisClient = ReturnType<typeof createClient>;

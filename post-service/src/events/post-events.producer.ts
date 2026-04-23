@@ -1,17 +1,14 @@
 import crypto from 'node:crypto';
-import { Producer } from "kafkajs";
-import { KAFKA_TOPICS, POST_EVENT_NAMES } from "./topics.js";
-import logger from "../utils/logger.js";
+import { Producer } from 'kafkajs';
+import { KAFKA_TOPICS, POST_EVENT_NAMES } from './topics.js';
+import logger from '../utils/logger.js';
 import { PostCreatedEventPayload } from '../types/post-event-publisher.types.js';
 
-
 export class PostEventPublisher {
-  
-  private readonly producerServiceName = "post-service";
+  private readonly producerServiceName = 'post-service';
   constructor(private producer: Producer) {}
 
   async publishPostCreated(payload: PostCreatedEventPayload): Promise<void> {
-    
     const event = {
       eventId: crypto.randomUUID(),
       eventName: POST_EVENT_NAMES.POST_CREATED,
@@ -35,7 +32,7 @@ export class PostEventPublisher {
               eventVersion: String(event.eventVersion),
               producerService: event.producerService,
               eventId: event.eventId,
-              partitionKey: event.partitionKey
+              partitionKey: event.partitionKey,
             },
           },
         ],
@@ -48,7 +45,7 @@ export class PostEventPublisher {
           postId: payload.postId,
           topic: KAFKA_TOPICS.POST_EVENTS,
         },
-        `Published posts event}`
+        `Published posts event}`,
       );
     } catch (error) {
       logger.error(
@@ -58,7 +55,7 @@ export class PostEventPublisher {
           postId: payload.postId,
           topic: KAFKA_TOPICS.POST_EVENTS,
         },
-        `Failed to publish post event`
+        `Failed to publish post event`,
       );
       throw error;
     }

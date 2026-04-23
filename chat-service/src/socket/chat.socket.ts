@@ -1,5 +1,5 @@
-import { Server, Socket } from "socket.io";
-import { ChatService } from "../services/chat.service.js";
+import { Server, Socket } from 'socket.io';
+import { ChatService } from '../services/chat.service.js';
 import {
   joinConversationRoomSchema,
   leaveConversationRoomSchema,
@@ -7,9 +7,9 @@ import {
   messageReadSchema,
   sendMessageSchema,
   typingEventSchema,
-} from "../validations/chat.validation.js";
-import formatZodError from "../utils/formatZodError.js";
-import logger from "../utils/logger.js";
+} from '../validations/chat.validation.js';
+import formatZodError from '../utils/formatZodError.js';
+import logger from '../utils/logger.js';
 
 type AuthenticatedSocket = Socket & {
   data: {
@@ -17,18 +17,10 @@ type AuthenticatedSocket = Socket & {
   };
 };
 
-type SocketAcknowledgement = (payload: {
-  success: boolean;
-  message?: string;
-  data?: unknown;
-}) => void;
+type SocketAcknowledgement = (payload: { success: boolean; message?: string; data?: unknown }) => void;
 
-const emitSocketError = (
-  socket: Socket,
-  event: string,
-  message: string
-) => {
-  socket.emit("chat:error", {
+const emitSocketError = (socket: Socket, event: string, message: string) => {
+  socket.emit('chat:error', {
     event,
     message,
   });
@@ -48,52 +40,36 @@ const socketSendMessageSchema = sendMessageSchema.extend({
  * - Mark conversation messages as read
  * - Handle socket errors and acknowledgements
  */
-export function registerChatSocketHandlers(
-  io: Server,
-  socket: AuthenticatedSocket,
-  chatService: ChatService
-) {
-  
+export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSocket, chatService: ChatService) {
   const currentUserId = socket.data.userId;
 
   // ---- Ensure authenticated socket connection ----
   if (!currentUserId) {
-    socket.emit("chat:error", {
-      event: "socket:auth",
-      message: "Unauthorized socket connection",
+    socket.emit('chat:error', {
+      event: 'socket:auth',
+      message: 'Unauthorized socket connection',
     });
-    
+
     socket.disconnect(true);
     return;
   }
 
   // ---- Join a conversation room after payload validation + membership check ----
-  socket.on("chat:room:join", async (payload) => {
+  socket.on('chat:room:join', async (payload) => {
     const parsedPayload = joinConversationRoomSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
       const errorMessages = formatZodError(parsedPayload.error);
 
-      emitSocketError(
-        socket,
-        "chat:room:join",
-        errorMessages ?? "Invalid payload"
-      );
+      emitSocketError(socket, 'chat:room:join', errorMessages ?? 'Invalid payload');
 
       return;
     }
 
-    const isParticipant = await chatService.isParticipant(
-      parsedPayload.data.conversationId,
-      currentUserId
-    );
+    const isParticipant = await chatService.isParticipant(parsedPayload.data.conversationId, currentUserId);
 
     if (!isParticipant) {
-      emitSocketError(
-        socket,
-        "chat:room:join",
-        "You are not a participant of this conversation"
-      );
+      emitSocketError(socket, 'chat:room:join', 'You are not a participant of this conversation');
       return;
     }
 
@@ -105,25 +81,20 @@ export function registerChatSocketHandlers(
         conversationId: parsedPayload.data.conversationId,
         socketId: socket.id,
       },
-      "📥 joined conversation room"
+      '📥 joined conversation room',
     );
 
-    socket.emit("chat:room:joined", { conversationId: parsedPayload.data.conversationId });
-
+    socket.emit('chat:room:joined', { conversationId: parsedPayload.data.conversationId });
   });
 
   // ---- Leave a conversation room after payload validation ----
-  socket.on("chat:room:leave", async (payload) => {
+  socket.on('chat:room:leave', async (payload) => {
     const parsedPayload = leaveConversationRoomSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
       const errorMessages = formatZodError(parsedPayload.error);
 
-      emitSocketError(
-        socket,
-        "chat:room:leave",
-        errorMessages ?? "Invalid payload"
-      );
+      emitSocketError(socket, 'chat:room:leave', errorMessages ?? 'Invalid payload');
 
       return;
     }
@@ -136,23 +107,22 @@ export function registerChatSocketHandlers(
         conversationId: parsedPayload.data.conversationId,
         socketId: socket.id,
       },
-      "📤 left conversation room"
+      '📤 left conversation room',
     );
 
-    socket.emit("chat:room:left", {conversationId: parsedPayload.data.conversationId});
-
+    socket.emit('chat:room:left', { conversationId: parsedPayload.data.conversationId });
   });
 
   // ---- Send message (validate payload + persist message + broadcast updates) ----
-  socket.on( "chat:message:send", async (payload, acknowledgement?: SocketAcknowledgement) => {
+  socket.on('chat:message:send', async (payload, acknowledgement?: SocketAcknowledgement) => {
     try {
       const parsedPayload = socketSendMessageSchema.safeParse(payload);
 
       if (!parsedPayload.success) {
-        const errorMessages = formatZodError(parsedPayload.error)
-        const errorMessage =  errorMessages ?? "Invalid payload";
+        const errorMessages = formatZodError(parsedPayload.error);
+        const errorMessage = errorMessages ?? 'Invalid payload';
 
-        emitSocketError(socket, "chat:message:send", errorMessage);
+        emitSocketError(socket, 'chat:message:send', errorMessage);
 
         acknowledgement?.({
           success: false,
@@ -173,25 +143,22 @@ export function registerChatSocketHandlers(
         attachments: parsedPayload.data.attachments ?? [],
       });
 
-      io.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:message:new", createdMessage);
+      io.to(`conversation:${parsedPayload.data.conversationId}`).emit('chat:message:new', createdMessage);
 
-      io.to(`conversation:${parsedPayload.data.conversationId}`).emit("conversation:update",
-        {
-          conversationId: parsedPayload.data.conversationId,
-          lastMessageId: createdMessage.id,
-          lastMessageAt: createdMessage.createdAt,
-        }
-      );
+      io.to(`conversation:${parsedPayload.data.conversationId}`).emit('conversation:update', {
+        conversationId: parsedPayload.data.conversationId,
+        lastMessageId: createdMessage.id,
+        lastMessageAt: createdMessage.createdAt,
+      });
 
       acknowledgement?.({
         success: true,
         data: createdMessage,
       });
-
     } catch (error: any) {
-      const errorMessage = error?.message ?? "Unexpected error while sending message";
+      const errorMessage = error?.message ?? 'Unexpected error while sending message';
 
-      emitSocketError(socket, "chat:message:send", errorMessage);
+      emitSocketError(socket, 'chat:message:send', errorMessage);
 
       acknowledgement?.({
         success: false,
@@ -201,81 +168,65 @@ export function registerChatSocketHandlers(
   });
 
   // ---- Typing start indicator (validate + membership check + notify room) ----
-  socket.on("chat:typing:start", async (payload) => {
-
+  socket.on('chat:typing:start', async (payload) => {
     const parsedPayload = typingEventSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
       const errorMessages = formatZodError(parsedPayload.error);
-      const errorMessage =  errorMessages ?? "Invalid payload"
+      const errorMessage = errorMessages ?? 'Invalid payload';
 
-      emitSocketError(socket, "chat:typing:start", errorMessage);
+      emitSocketError(socket, 'chat:typing:start', errorMessage);
       return;
     }
 
-    const isParticipant = await chatService.isParticipant(
-      parsedPayload.data.conversationId,
-      currentUserId
-    );
+    const isParticipant = await chatService.isParticipant(parsedPayload.data.conversationId, currentUserId);
 
     if (!isParticipant) {
-      emitSocketError(socket, "chat:typing:start", "You are not a participant of this conversation");
+      emitSocketError(socket, 'chat:typing:start', 'You are not a participant of this conversation');
       return;
     }
 
-    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:typing:update",
-      {
-        conversationId: parsedPayload.data.conversationId,
-        userId: currentUserId,
-        isTyping: true,
-      }
-    );
+    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit('chat:typing:update', {
+      conversationId: parsedPayload.data.conversationId,
+      userId: currentUserId,
+      isTyping: true,
+    });
   });
 
   // ---- Typing stop indicator (validate + membership check + notify room) ----
-  socket.on("chat:typing:stop", async (payload) => {
-
+  socket.on('chat:typing:stop', async (payload) => {
     const parsedPayload = typingEventSchema.safeParse(payload);
 
     if (!parsedPayload.success) {
       const errorMessages = formatZodError(parsedPayload.error);
 
-      emitSocketError(socket, "chat:typing:stop", errorMessages ?? "Invalid payload");
+      emitSocketError(socket, 'chat:typing:stop', errorMessages ?? 'Invalid payload');
       return;
     }
 
-    const isParticipant = await chatService.isParticipant(
-      parsedPayload.data.conversationId,
-      currentUserId
-    );
+    const isParticipant = await chatService.isParticipant(parsedPayload.data.conversationId, currentUserId);
 
     if (!isParticipant) {
-      emitSocketError(socket, "chat:typing:stop", "You are not a participant of this conversation");
+      emitSocketError(socket, 'chat:typing:stop', 'You are not a participant of this conversation');
       return;
     }
 
-    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:typing:update",
-      {
-        conversationId: parsedPayload.data.conversationId,
-        userId: currentUserId,
-        isTyping: false,
-      }
-    );
+    socket.to(`conversation:${parsedPayload.data.conversationId}`).emit('chat:typing:update', {
+      conversationId: parsedPayload.data.conversationId,
+      userId: currentUserId,
+      isTyping: false,
+    });
   });
 
   // ---- Mark conversation as read (validate + update read state + notify others) ----
-  socket.on("chat:message:read", async (payload, acknowledgement?: SocketAcknowledgement) => {
+  socket.on('chat:message:read', async (payload, acknowledgement?: SocketAcknowledgement) => {
     try {
       const parsedPayload = messageReadSchema.safeParse(payload);
 
       if (!parsedPayload.success) {
         const errorMessages = formatZodError(parsedPayload.error);
 
-        emitSocketError(
-          socket, 
-          "chat:message:read", 
-          errorMessages ?? "Invalid payload"
-        );
+        emitSocketError(socket, 'chat:message:read', errorMessages ?? 'Invalid payload');
 
         acknowledgement?.({
           success: false,
@@ -291,19 +242,18 @@ export function registerChatSocketHandlers(
         lastReadMessageId: parsedPayload.data.lastReadMessageId,
       });
 
-      socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:message:read:update", readState);
+      socket.to(`conversation:${parsedPayload.data.conversationId}`).emit('chat:message:read:update', readState);
 
-      socket.emit("chat:message:read:ack", readState);
+      socket.emit('chat:message:read:ack', readState);
 
       acknowledgement?.({
         success: true,
         data: readState,
       });
-
     } catch (error: any) {
-      const errorMessage = error?.message ?? "Unexpected error while marking conversation read";
+      const errorMessage = error?.message ?? 'Unexpected error while marking conversation read';
 
-      emitSocketError(socket, "chat:message:read", errorMessage);
+      emitSocketError(socket, 'chat:message:read', errorMessage);
 
       acknowledgement?.({
         success: false,
@@ -313,15 +263,15 @@ export function registerChatSocketHandlers(
   });
 
   // ---- Mark conversation as delivered (validate + update read state + notify others) ----
-  socket.on("chat:message:delivered", async (payload, acknowledgement?: SocketAcknowledgement) => {
+  socket.on('chat:message:delivered', async (payload, acknowledgement?: SocketAcknowledgement) => {
     try {
       const parsedPayload = messageDeliveredSchema.safeParse(payload);
 
       if (!parsedPayload.success) {
         const errorMessages = formatZodError(parsedPayload.error);
-        const errorMessage = errorMessages ?? "Invalid payload";
+        const errorMessage = errorMessages ?? 'Invalid payload';
 
-        emitSocketError(socket, "chat:message:delivered", errorMessage);
+        emitSocketError(socket, 'chat:message:delivered', errorMessage);
 
         acknowledgement?.({
           success: false,
@@ -337,19 +287,20 @@ export function registerChatSocketHandlers(
         messageId: parsedPayload.data.messageId,
       });
 
-      socket.to(`conversation:${parsedPayload.data.conversationId}`).emit("chat:message:delivered:update", deliveryState);
+      socket
+        .to(`conversation:${parsedPayload.data.conversationId}`)
+        .emit('chat:message:delivered:update', deliveryState);
 
-      socket.emit("chat:message:delivered:ack", deliveryState);
+      socket.emit('chat:message:delivered:ack', deliveryState);
 
       acknowledgement?.({
         success: true,
         data: deliveryState,
       });
-
     } catch (error: any) {
-      const errorMessage =  error?.message ?? "Unexpected error while marking message delivered";
+      const errorMessage = error?.message ?? 'Unexpected error while marking message delivered';
 
-      emitSocketError(socket, "chat:message:delivered", errorMessage);
+      emitSocketError(socket, 'chat:message:delivered', errorMessage);
 
       acknowledgement?.({
         success: false,

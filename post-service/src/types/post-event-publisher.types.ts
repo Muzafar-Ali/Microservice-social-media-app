@@ -9,7 +9,7 @@ export type PostCreatedEventPayload = {
   updatedAt: string;
   media: Array<{
     id: string;
-    type: "IMAGE" | "VIDEO";
+    type: 'IMAGE' | 'VIDEO';
     url: string;
     publicId: string | null;
     thumbnailUrl: string | null;

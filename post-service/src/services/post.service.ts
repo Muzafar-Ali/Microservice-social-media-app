@@ -1,21 +1,19 @@
 import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
-import { postCreatedCounter } from "../monitoring/metrics.js";
+import { postCreatedCounter } from '../monitoring/metrics.js';
 import { PostEventPublisher } from '../events/post-events.producer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost.js';
 import { UserProfileCacheSummary } from '../types/post.types.js';
 
-
 export class PostService {
   constructor(
     private postRepository: PostRepository,
-    private postEventPublisher: PostEventPublisher
+    private postEventPublisher: PostEventPublisher,
   ) {}
 
   async createPost(input: CreatePostDto, userId: string) {
-
     const post = await this.postRepository.create(input, userId);
 
     postCreatedCounter.inc();
@@ -57,24 +55,23 @@ export class PostService {
     const { posts, total } = await this.postRepository.findAllPaginated(skip, limit);
 
     return {
-      posts, 
+      posts,
       meta: {
         page,
         limit,
-        total, 
+        total,
         totalPages: Math.ceil(total / limit),
         hasNextPage: skip + posts.length < total,
-        hasPrevious: page > 1
-      }
-    }
+        hasPrevious: page > 1,
+      },
+    };
   }
 
   async getMyPosts(userId: string) {
     return this.postRepository.findPostsByUserId(userId);
   }
 
-  async getHomeFeed( currentUserId: string, query: { limit?: number; cursor?: string } ) {
-
+  async getHomeFeed(currentUserId: string, query: { limit?: number; cursor?: string }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findHomeFeed({
@@ -86,22 +83,22 @@ export class PostService {
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
 
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile])
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
 
     return {
       items: result.posts.map((post) => {
         const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
         return {
           ...mapUserFeedPost(post),
           author: {
             userId: post.authorId,
-            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
-            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
             avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? "unknown",
+            status: cachedProfile?.status ?? 'unknown',
           },
           viewer: {
             userId: currentUserId,
@@ -116,8 +113,7 @@ export class PostService {
     };
   }
 
-  async getHomeFeedBefore( currentUserId: string,  query: { limit?: number; cursor: string } ) {
-
+  async getHomeFeedBefore(currentUserId: string, query: { limit?: number; cursor: string }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findHomeFeedBefore({
@@ -129,23 +125,22 @@ export class PostService {
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
 
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile])
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
 
     return {
       items: result.posts.map((post) => {
         const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser =
-          !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
         return {
           ...mapUserFeedPost(post),
           author: {
             userId: post.authorId,
-            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
-            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
             avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? "unknown",
+            status: cachedProfile?.status ?? 'unknown',
           },
           viewer: {
             userId: currentUserId,
@@ -161,8 +156,7 @@ export class PostService {
     };
   }
 
-  async getHomeFeedAfter( currentUserId: string, query: { limit?: number; cursor: string } ) {
-
+  async getHomeFeedAfter(currentUserId: string, query: { limit?: number; cursor: string }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findHomeFeedAfter({
@@ -174,23 +168,22 @@ export class PostService {
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
 
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile])
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
 
     return {
       items: result.posts.map((post) => {
         const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser =
-          !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
         return {
           ...mapUserFeedPost(post),
           author: {
             userId: post.authorId,
-            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
-            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
             avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? "unknown",
+            status: cachedProfile?.status ?? 'unknown',
           },
           viewer: {
             userId: currentUserId,
@@ -206,8 +199,7 @@ export class PostService {
     };
   }
 
-  async getUserGridPostsCursor( profileUserId: string, query: { limit?: number; cursor?: string } ) {
-    
+  async getUserGridPostsCursor(profileUserId: string, query: { limit?: number; cursor?: string }) {
     const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findUserGridPostsCursor(profileUserId, {
@@ -220,14 +212,14 @@ export class PostService {
       const hasContent = trimmedContent.length > 0;
       const primaryMedia = post.media[0] ?? null;
 
-      let previewType: "text" | "image" | "video" | "carousel";
+      let previewType: 'text' | 'image' | 'video' | 'carousel';
 
       if (post._count.media === 0) {
-        previewType = "text";
+        previewType = 'text';
       } else if (post._count.media > 1) {
-        previewType = "carousel";
+        previewType = 'carousel';
       } else {
-        previewType = primaryMedia?.type === MediaType.VIDEO ? "video" : "image";
+        previewType = primaryMedia?.type === MediaType.VIDEO ? 'video' : 'image';
       }
 
       return {
@@ -241,7 +233,7 @@ export class PostService {
         commentsCount: post._count.comments,
         primaryMedia: primaryMedia
           ? {
-              type: primaryMedia.type === MediaType.IMAGE ? "image" : "video",
+              type: primaryMedia.type === MediaType.IMAGE ? 'image' : 'video',
               url: primaryMedia.url,
               thumbnailUrl: primaryMedia.thumbnailUrl ?? null,
               width: primaryMedia.width ?? null,
@@ -262,8 +254,7 @@ export class PostService {
     };
   }
 
-  async getUserGridPostsOffset( profileUserId: string, query: { page?: number; limit?: number }) {
-
+  async getUserGridPostsOffset(profileUserId: string, query: { page?: number; limit?: number }) {
     const page = !query.page || query.page < 1 ? 1 : query.page;
     const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
 
@@ -273,7 +264,6 @@ export class PostService {
     });
 
     const items = result.posts.map((post) => {
-      
       const hasContent = post.content.trim().length > 0;
       const primaryMedia = post.media[0] ?? null;
 
@@ -286,7 +276,7 @@ export class PostService {
         mediaCount: post._count.media,
         primaryMedia: primaryMedia
           ? {
-              type: primaryMedia.type === MediaType.IMAGE ? "image" : "video",
+              type: primaryMedia.type === MediaType.IMAGE ? 'image' : 'video',
               url: primaryMedia.url,
               thumbnailUrl: primaryMedia.thumbnailUrl ?? null,
               width: primaryMedia.width ?? null,
@@ -308,8 +298,7 @@ export class PostService {
     };
   }
 
-  async getUserFeedWindow( profileUserId: string, query: { postId: string; limit?: number } ) {
-
+  async getUserFeedWindow(profileUserId: string, query: { postId: string; limit?: number }) {
     const limit = !query.limit || query.limit < 1 ? 10 : Math.min(query.limit, 20);
 
     const result = await this.postRepository.findUserFeedWindow(profileUserId, {
@@ -327,10 +316,7 @@ export class PostService {
     };
   }
 
-  async getUserFeedAfter(
-    profileUserId: string,
-    query: { cursor: string; limit?: number }
-  ) {
+  async getUserFeedAfter(profileUserId: string, query: { cursor: string; limit?: number }) {
     const limit = !query.limit || query.limit < 1 ? 10 : Math.min(query.limit, 20);
 
     const result = await this.postRepository.findUserFeedAfter(profileUserId, {
@@ -348,7 +334,6 @@ export class PostService {
   }
 
   async updatePost(input: UpdatePostDto, postId: string, authorId: string) {
-
     const existingPost = await this.postRepository.findPostById(postId);
     if (!existingPost) {
       throw new ApiErrorHandler(404, 'Post not found');
@@ -358,10 +343,10 @@ export class PostService {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    const post = await this.postRepository.update(postId, { 
+    const post = await this.postRepository.update(postId, {
       content: input.content,
-        editedAt: new Date(),
-        isEdited: true 
+      editedAt: new Date(),
+      isEdited: true,
     });
 
     // postUpdatedCounter.inc();
@@ -385,7 +370,6 @@ export class PostService {
   }
 
   async deletePost(postId: string, userId: string) {
-
     const existingPost = await this.postRepository.findPostById(postId);
     if (!existingPost) {
       throw new ApiErrorHandler(404, 'Post not found');
@@ -418,7 +402,7 @@ export class PostService {
   async likePost(postId: string, currentUserId: string) {
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {
-      throw new ApiErrorHandler(404, "Post not found");
+      throw new ApiErrorHandler(404, 'Post not found');
     }
 
     await this.postRepository.createPostLike(postId, currentUserId);
@@ -435,7 +419,7 @@ export class PostService {
   async unlikePost(postId: string, currentUserId: string) {
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {
-      throw new ApiErrorHandler(404, "Post not found");
+      throw new ApiErrorHandler(404, 'Post not found');
     }
 
     await this.postRepository.deletePostLike(postId, currentUserId);
@@ -449,15 +433,12 @@ export class PostService {
     };
   }
 
-  async getPostLikes(
-    postId: string,
-    query: { cursor?: string; limit?: number }
-  ) {
+  async getPostLikes(postId: string, query: { cursor?: string; limit?: number }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {
-      throw new ApiErrorHandler(404, "Post not found");
+      throw new ApiErrorHandler(404, 'Post not found');
     }
 
     const result = await this.postRepository.findPostLikes(postId, {
@@ -470,18 +451,18 @@ export class PostService {
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(likedUserIds);
 
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile])
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
 
     return {
       items: result.likes.map((like) => {
         const cachedProfile = cachedProfilesByUserId.get(like.userId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
         return {
           userId: like.userId,
-          username: isUnknownUser ? "unknown_user" : cachedProfile.username,
-          displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+          username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+          displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
           avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
           status: cachedProfile?.status,
           likedAt: like.createdAt,
@@ -504,35 +485,27 @@ export class PostService {
     return this.postRepository.upsertUserProfileCache(input);
   }
 
-  async   createPostComment(
-    postId: string,
-    currentUserId: string,
-    content: string
-  ) {
+  async createPostComment(postId: string, currentUserId: string, content: string) {
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {
-      throw new ApiErrorHandler(404, "Post not found");
+      throw new ApiErrorHandler(404, 'Post not found');
     }
 
-    const createdComment = await this.postRepository.createPostComment(
-      postId,
-      currentUserId,
-      content.trim()
-    );
+    const createdComment = await this.postRepository.createPostComment(postId, currentUserId, content.trim());
 
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds([currentUserId]);
     const cachedProfile = cachedProfiles[0];
-    const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+    const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
     return {
       id: createdComment.id,
       postId: createdComment.postId,
       author: {
         userId: currentUserId,
-        username: isUnknownUser ? "unknown_user" : cachedProfile.username,
-        displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+        username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+        displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
         avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-        status: cachedProfile?.status ?? "unknown",
+        status: cachedProfile?.status ?? 'unknown',
       },
       content: createdComment.content,
       createdAt: createdComment.createdAt,
@@ -540,15 +513,12 @@ export class PostService {
     };
   }
 
-  async getPostComments(
-    postId: string,
-    query: { cursor?: string; limit?: number }
-  ) {
+  async getPostComments(postId: string, query: { cursor?: string; limit?: number }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {
-      throw new ApiErrorHandler(404, "Post not found");
+      throw new ApiErrorHandler(404, 'Post not found');
     }
 
     const result = await this.postRepository.findPostComments(postId, {
@@ -560,24 +530,24 @@ export class PostService {
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
 
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile])
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
 
     return {
       items: result.comments.map((comment) => {
         const cachedProfile = cachedProfilesByUserId.get(comment.authorId);
 
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== "active";
+        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
         return {
           id: comment.id,
           postId: comment.postId,
           author: {
             userId: comment.authorId,
-            username: isUnknownUser ? "unknown_user" : cachedProfile.username,
-            displayName: isUnknownUser ? "Unknown User" : (cachedProfile.displayName ?? null),
+            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
             avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? "unknown",
+            status: cachedProfile?.status ?? 'unknown',
           },
           content: comment.content,
           createdAt: comment.createdAt,
@@ -591,27 +561,23 @@ export class PostService {
     };
   }
 
-  async deletePostComment(
-    postId: string,
-    commentId: string,
-    currentUserId: string
-  ) {
+  async deletePostComment(postId: string, commentId: string, currentUserId: string) {
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {
-      throw new ApiErrorHandler(404, "Post not found");
+      throw new ApiErrorHandler(404, 'Post not found');
     }
 
     const comment = await this.postRepository.findCommentById(commentId);
     if (!comment) {
-      throw new ApiErrorHandler(404, "Comment not found");
+      throw new ApiErrorHandler(404, 'Comment not found');
     }
 
     if (comment.postId !== postId) {
-      throw new ApiErrorHandler(400, "Comment does not belong to this post");
+      throw new ApiErrorHandler(400, 'Comment does not belong to this post');
     }
 
     if (comment.authorId !== currentUserId) {
-      throw new ApiErrorHandler(403, "You are not allowed to delete this comment");
+      throw new ApiErrorHandler(403, 'You are not allowed to delete this comment');
     }
 
     await this.postRepository.deleteComment(commentId);
@@ -622,5 +588,4 @@ export class PostService {
       deleted: true,
     };
   }
-    
 }

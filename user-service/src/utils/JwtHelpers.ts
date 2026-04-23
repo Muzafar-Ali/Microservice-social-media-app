@@ -1,36 +1,35 @@
-import JWT from "jsonwebtoken";
-import config from "../config/config.js";
-import { Response } from "express";
+import JWT from 'jsonwebtoken';
+import config from '../config/config.js';
+import { Response } from 'express';
 
 type UserTokenPayload = {
   userId: string;
   email: string;
-  username: string
-}
+  username: string;
+};
 
-const JWT_SECRET = config .jwtSecret as string; 
+const JWT_SECRET = config.jwtSecret as string;
 
 export const generateJwtToken = (payload: UserTokenPayload) => {
   const token = JWT.sign(payload, JWT_SECRET);
-  return token
-}
+  return token;
+};
 
 export const generateJwtTokenAndSaveCookies = (payload: UserTokenPayload, res: Response) => {
-  
   const token = generateJwtToken(payload);
 
-  const isProduction = config.environment === "production";
+  const isProduction = config.environment === 'production';
 
-  res.cookie("auth_token", token, {
+  res.cookie('auth_token', token, {
     httpOnly: true,
     secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000,
-    path: "/"
-  })
-}
+    path: '/',
+  });
+};
 
 export const verifyToken = (token: string) => {
   const decodedToken = JWT.verify(token, JWT_SECRET!);
-  return decodedToken
-}
+  return decodedToken;
+};

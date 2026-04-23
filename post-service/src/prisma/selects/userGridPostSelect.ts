@@ -15,7 +15,7 @@ export const userGridPostSelect = {
   },
   media: {
     orderBy: {
-      order: "asc" as const,
+      order: 'asc' as const,
     },
     take: 1,
     select: {

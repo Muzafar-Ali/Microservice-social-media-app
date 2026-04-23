@@ -17,10 +17,13 @@ import { AuthRepository } from "./modules/auth/auth.repository.js";
 import { AuthService } from "./modules/auth/auth.service.js";
 import { AuthController } from "./modules/auth/auth.controllers.js";
 import logger from "./utils/logger.js";
+import getSocialGraphKafkaConsumer from "./utils/kafka/getSocialGraphKafkaConsumer.js";
+import { SocialGrapsEventConsumer } from "./events/consumers/social-graph-event-consumer.js";
 
 export async function createApp() {
   
   const producer = await getKafkaProducer();
+  const socialGraphKafkaConsumer = await getSocialGraphKafkaConsumer();
 
   const userEventPublisher = new UserEventPublisher(producer);
   const userRepository = new UserRepository(prisma);
@@ -29,6 +32,7 @@ export async function createApp() {
   const authService = new AuthService(authRepository);
   const userController = new UserController(userService);
   const authControllers = new AuthController(authService);
+  const socialGraphEventConsumer = new SocialGrapsEventConsumer(socialGraphKafkaConsumer, producer, userService);
 
   const app = express();
 
@@ -61,5 +65,8 @@ export async function createApp() {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
 
-  return app;
+  return {
+    app,
+    socialGraphEventConsumer
+  };
 }

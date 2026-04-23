@@ -2,8 +2,8 @@ export const KAFKA_TOPICS = {
   POST_EVENTS: "post-events",
   MEDIA_EVENTS: "media-events",
   USER_EVENTS: "user-events",
-  POST_SERVICE_USER_EVENTS_DLQ: "post-service-user-events-dlq",
-  POST_SERVICE_MEDIA_EVENTS_DLQ: "post-service-media-events-dlq"
+  POST_SERVICE_USER_EVENTS_DLQ: "user-events-dlq-post-service",
+  POST_SERVICE_MEDIA_EVENTS_DLQ: "media-events-dlq-post-service"
 } as const;
 
 export const POST_EVENT_NAMES = {
@@ -26,4 +26,11 @@ export const MEDIA_EVENT_NAMES = {
 export const USER_EVENT_NAMES = {
   USER_CREATED: "user.created",
   USER_UPDATED: "user.updated",
+} as const;
+
+export const SOCIAL_GRAPH_EVENT_NAMES = {
+  FOLLOW_CREATED: 'follow.created',
+  FOLLOW_REMOVED: 'follow.removed',
+  FOLLOW_REQUESTED: 'follow.requested',
+  FOLLOW_ACCEPTED: 'follow.accepted',
 } as const;

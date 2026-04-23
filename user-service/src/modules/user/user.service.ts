@@ -38,33 +38,23 @@ export class UserService {
     }
 
     const user = await this.userRepository.createUser(prismaData);
-    const { password, ...safeUser } = user
+    const safeUser = this.toSafeUser(user)
 
-    await Promise.all([
-      redis.set(
-        getUserCacheKeyById(user.id), 
-        JSON.stringify(safeUser), 
-        { EX: USER_CACHE_TTL_SECONDS }
-      ),
-
-      redis.set(
-        getUserCacheKeyByUsername(user.username), 
-        JSON.stringify(safeUser), 
-        { EX: USER_CACHE_TTL_SECONDS }
-      )
-    ])
+    // Cache the user
+    await this.writeUserCache(safeUser);
 
     // for type
-    const image = user.profileImage ;
+    const image = user.profileImage as {
+      secureUrl: string;
+      publicId: string;
+    } | null ;
+    
     // Publish user created event
     await this.userEventPublisher.publishUserCreated({
       userId: user.id,
       displayName: user.name,
       username: user.username,
-      avatarUrl: user.profileImage as {
-        secureUrl: string;
-        publicId: string;
-      } | null,
+      avatarUrl: image,
       status: user.status,
       createdAt: user.createdAt.toISOString()
     })
@@ -76,6 +66,7 @@ export class UserService {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
     const cached = await redis.get(cacheKey);
+
     if(cached) {
       const parsed = JSON.parse(cached);
       return {
@@ -88,30 +79,20 @@ export class UserService {
      // Otherwise get from database
     const user = await this.userRepository.findByUsername(username);
     if(!user) return null;
-    const { password, ...safeUser } = user
+
+    const safeUser = this.toSafeUser(user);
 
     // Cache the user
-    await Promise.all([
-      redis.set(
-        getUserCacheKeyById(user.id), 
-        JSON.stringify(safeUser ), 
-        { EX: USER_CACHE_TTL_SECONDS }
-      ),
-
-      redis.set(
-        getUserCacheKeyByUsername(user.username), 
-        JSON.stringify(safeUser ), 
-        { EX: USER_CACHE_TTL_SECONDS }
-      ),
-    ]);
+    await this.writeUserCache(safeUser);
 
     return safeUser;
   }
 
-  async getUserById(id: string): Promise<SafeUSer | null> {
+  async getUserById(userId: string): Promise<SafeUSer | null> {
     
-    const cacheKey = getUserCacheKeyById(id);
+    const cacheKey = getUserCacheKeyById(userId);
     const cached = await redis.get(cacheKey);
+
     if (cached) {
       const parsed = JSON.parse(cached);
       return {
@@ -121,155 +102,126 @@ export class UserService {
       };
     }
 
-    const user = await this.userRepository.findById(id);
+    const user = await this.userRepository.findUserById(userId);
     if (!user) return null;
-    const { password, ...safeUser } = user
+    
+    const safeUser = this.toSafeUser(user);
 
-    await Promise.all([
-      redis.set(
-        getUserCacheKeyById(safeUser.id), 
-        JSON.stringify(user), {
-        EX: USER_CACHE_TTL_SECONDS,
-      }),
-      redis.set(
-        getUserCacheKeyByUsername(safeUser.username), 
-        JSON.stringify(user), {
-        EX: USER_CACHE_TTL_SECONDS,
-      }),
-    ]);
+    // Cache the user
+    await this.writeUserCache(safeUser);
 
     return safeUser;
   }
 
-  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
+  updateUserProfileImage = async (
+    dto: UpdateProfileImageDto,
+    userId: string
+  ): Promise<SafeUSer | null> => {
     const updatedUser = await this.userRepository.updateProfileImageById(
-      dto.secureUrl, 
-      dto.publicId, 
+      dto.secureUrl,
+      dto.publicId,
       userId
     );
 
-    const { password, ...safeUser } = updatedUser;
-    
+    const safeUser = this.toSafeUser(updatedUser);
+
+    await this.writeUserCache(safeUser);
+
     return safeUser;
-  } 
+  };
 
-  // updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: number) => {
-  //   try {
-  //     const updatedUser = await this.userRepository.updateProfileImage(dto.secureUrl, dto.publicId, userId);
-      
-  //     if(!updatedUser) {
-  //       throw new ApiErrorHandler(404, "user not found");
-  //     }
+  async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto) {
+    const existingUser = await this.userRepository.findUserById(authenticatedUserId);
 
-  //     const { password, ...safeUser } = updatedUser;
-      
-  //     return safeUser;
-
-  //   } catch (error: any) {
-  //     if (error.code === "P2025") {
-  //       thorw new ApiErrorHandler(404, "user not found");
-  //     }
-
-  //     console.error("updateUserProfileImage error:", error);
-  //     throw new ApiErrorHandler(500, "something went wrong while updating profile image");
-  //   }
-  // } 
-
-  // async updateUser(id: string, rawData: unknown): Promise<User> {
-  //   const parsed = updateUserSchema.parse(rawData);
-
-  //   const prismaData: Prisma.UserUpdateInput = {
-  //     name: parsed.name ?? undefined,
-  //     bio: parsed.bio ?? undefined,
-  //     profileImage: parsed.profileImage ?? undefined,
-  //     gender: parsed.gender ?? undefined,
-  //   };
-
-  //   const user = await this.userRepository.updateUser(id, prismaData);
-
-  //   await Promise.all([
-  //     redisClient.set(userCacheKeyById(user.id), JSON.stringify(user), {
-  //       EX: USER_CACHE_TTL_SECONDS,
-  //     }),
-  //     redisClient.set(userCacheKeyByUsername(user.username), JSON.stringify(user), {
-  //       EX: USER_CACHE_TTL_SECONDS,
-  //     }),
-  //   ]);
-
-  //   return user;
-  // }
-
-  // async bulkGetByIds(raw: unknown): Promise<User[]> {
-  //   const { ids } = bulkUserLookupSchema.parse(raw);
-  //   return this.userRepository.bulkFindByIds(ids);
-  // }
-
-  // async handleFollowerCountChange(userId: string, delta: number): Promise<void> {
-  //   const user = await this.userRepository.incrementFollowersCount(userId, delta);
-  //   await redisClient.set(userCacheKeyById(user.id), JSON.stringify(user), {
-  //     EX: USER_CACHE_TTL_SECONDS,
-  //   });
-  // }
-
-  // async handleFollowingCountChange(userId: string, delta: number): Promise<void> {
-  //   const user = await this.userRepository.incrementFollowingCount(userId, delta);
-  //   await redisClient.set(userCacheKeyById(user.id), JSON.stringify(user), {
-  //     EX: USER_CACHE_TTL_SECONDS,
-  //   });
-  // }
-
-    async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto) {
-
-    const existingUser = await this.userRepository.findById(authenticatedUserId);
-    
     if (!existingUser) {
-      throw new ApiErrorHandler(404, "user not found");
+      throw new ApiErrorHandler(404, 'user not found');
     }
 
-    // If username is being changed, ensure it is unique
-  const isUsernameChanging = typeof updatePayload.username === "string" && updatePayload.username.length > 0 && updatePayload.username !== existingUser.username;
+    const isUsernameChanging =
+      typeof updatePayload.username === 'string' &&
+      updatePayload.username.length > 0 &&
+      updatePayload.username !== existingUser.username;
 
     if (isUsernameChanging) {
       const usernameAlreadyUsed = await this.userRepository.findByUsername(updatePayload.username!);
 
       if (usernameAlreadyUsed) {
-        throw new ApiErrorHandler(409, "username already taken");
+        throw new ApiErrorHandler(409, 'username already taken');
       }
     }
 
     const updatedUser = await this.userRepository.updateUser(authenticatedUserId, updatePayload);
-    const { password, ...safeUser} = updatedUser
+    const safeUser = this.toSafeUser(updatedUser);
 
-    // Cache invalidation strategy
-    const userIdCacheKey = getUserCacheKeyById(updatedUser.id);
-
-    const keysToDelete: string[] = [userIdCacheKey];
-    const oldUsernameCacheKey = getUserCacheKeyByUsername(existingUser.username);
-    const newUsernameCacheKey = getUserCacheKeyByUsername(updatedUser.username);
-    
     if (isUsernameChanging) {
-      keysToDelete.push(oldUsernameCacheKey);
-      keysToDelete.push(newUsernameCacheKey)
-    } 
-    
-    // delete user from cacche
-    await redis.del(keysToDelete);
-    
+      await this.deleteUserCacheByIdentity(existingUser.id, existingUser.username);
+    }
+
+    await this.writeUserCache(safeUser);
+
+    return updatedUser;
+  }
+
+  async handleFollowCreated(followerId: string, followeeId: string) {
+    await Promise.all([
+      this.userRepository.incrementFollowingCount(followerId, 1),
+      this.userRepository.incrementFollowersCount(followeeId, 1),
+    ]);
+
+    await Promise.all([
+      this.refreshUserCacheById(followerId),
+      this.refreshUserCacheById(followeeId),
+    ]);
+  };
+
+  async handleFollowRemoved(followerId: string, followeeId: string) {
+    await Promise.all([
+      this.userRepository.incrementFollowingCount(followerId, -1),
+      this.userRepository.incrementFollowersCount(followeeId, -1),
+    ]);
+
+    await Promise.all([
+      this.refreshUserCacheById(followerId),
+      this.refreshUserCacheById(followeeId),
+    ]);
+  };
+
+  // Helper functions
+  private toSafeUser(user: User): SafeUSer {
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  private async writeUserCache(safeUser: SafeUSer): Promise<void> {
     await Promise.all([
       redis.set(
-        getUserCacheKeyById(safeUser.id), 
-        JSON.stringify(safeUser), 
+        getUserCacheKeyById(safeUser.id),
+        JSON.stringify(safeUser),
         { EX: USER_CACHE_TTL_SECONDS }
       ),
-
       redis.set(
-        getUserCacheKeyByUsername(safeUser.username), 
-        JSON.stringify(safeUser), 
+        getUserCacheKeyByUsername(safeUser.username),
+        JSON.stringify(safeUser),
         { EX: USER_CACHE_TTL_SECONDS }
-      )
-    ])
+      ),
+    ]);
+  }
+ 
+  private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
+    await redis.del([
+      getUserCacheKeyById(userId),
+      getUserCacheKeyByUsername(username),
+    ]);
+  }
 
-    
-    return updatedUser;
+  private async refreshUserCacheById(userId: string): Promise<void> {
+    const user = await this.userRepository.findUserById(userId);
+
+    if (!user) {
+      return;
+    }
+
+    const safeUser = this.toSafeUser(user);
+    await this.writeUserCache(safeUser);
   }
 }

@@ -22,17 +22,17 @@ export class UserRepository {
     });
   }
 
-  findById = async (id: string): Promise<User | null> => {
-    return this.prisma.user.findUnique({ where: { id } });
+  findUserById = async (userId: string): Promise<User | null> => {
+    return this.prisma.user.findUnique({ where: { id: userId } });
   }
 
   findByUsername = async(username: string): Promise<User | null> => {
     return this.prisma.user.findUnique({ where: { username } });
   }
 
-  updateUser = async (id: string, data: UpdateMyProfileDto): Promise<User> => {
+  updateUser = async (userId: string, data: UpdateMyProfileDto): Promise<User> => {
     return this.prisma.user.update({
-      where: { id },
+      where: { id: userId },
       data,
     });
   }
@@ -46,6 +46,28 @@ export class UserRepository {
         profileImage: {
           secureUrl,
           publicId,
+        },
+      },
+    });
+  };
+
+  incrementFollowersCount = async (userId: string, delta: number) => {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        followersCount: {
+          increment: delta,
+        },
+      },
+    });
+  };
+
+  incrementFollowingCount = async (userId: string, delta: number) => {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        followingCount: {
+          increment: delta,
         },
       },
     });

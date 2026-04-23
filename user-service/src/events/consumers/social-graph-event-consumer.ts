@@ -1,28 +1,28 @@
-import { Consumer, Producer } from 'kafkajs';
-import { SocialGraphService } from '../../services/socialGraph.service.js';
-import { KAFKA_TOPICS, USER_EVENT_NAMES } from '../socialGraph-event.topics.js';
-import logger from '../../utils/logger.js';
-import { UserCreatedEvent, userCreatedEventSchema, UserUpdatedEvent, userUpdatedEventSchema } from '../../validations/socialGraph.validation.js';
-import formatZodError from '../../utils/formatZodError.js';
-import { FailedMessageContext } from '../../types/social-graph-common.types.js';
+import { Consumer, Producer } from "kafkajs";
+import { UserService } from "../../modules/user/user.service.js";
+import { KAFKA_TOPICS, SOCIAL_GRAPH_EVENT_NAMES } from "../topics.js";
+import logger from "../../utils/logger.js";
+import { FollowCreatedEvent, followCreatedEventSchema, FollowRemovedEvent, followRemovedEventSchema } from "../../modules/user/user.validations.js";
+import formatZodError from "../../utils/formatZodError.js";
+import { FailedMessageContext } from "../../types/common.types.js";
 
-class UserEventConsumer {
+export class SocialGrapsEventConsumer {
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
-    private readonly socialGraphService: SocialGraphService,
-  ) {}
+    private readonly userService: UserService
+  ){}
 
-  public async start(): Promise<void> {
-    
+  public async start() {
+
     await this.consumer.subscribe({
-      topic: KAFKA_TOPICS.USER_EVENTS,
-      fromBeginning: false,
+      topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS,
+      fromBeginning: false
     });
 
     await this.consumer.run({
       autoCommit: false,
-      eachMessage: async ({ topic, partition, message }) => {
+      eachMessage: async({topic, partition, message}) => {
         if (!message.value) {
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
@@ -36,8 +36,8 @@ class UserEventConsumer {
           const parsedJson = JSON.parse(rawValue);
 
           switch (parsedJson.eventName) {
-            case USER_EVENT_NAMES.USER_CREATED: {
-              const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
+            case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED: {
+              const safeEvent = followCreatedEventSchema.safeParse(parsedJson);
 
               if (!safeEvent.success) {
                 logger.error(formatZodError(safeEvent.error));
@@ -47,20 +47,20 @@ class UserEventConsumer {
                   partition,
                   offset: message.offset,
                   rawValue,
-                  reason: 'Invalid user.created schema',
+                  reason: 'Invalid follow.created schema',
                 });
 
                 await this.commitNextOffset(topic, partition, message.offset);
                 return;
               }
 
-              await this.handleUserCreated(safeEvent.data);
+              await this.handleFollowCreated(safeEvent.data);
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
 
-            case USER_EVENT_NAMES.USER_UPDATED: {
-              const safeEvent = userUpdatedEventSchema.safeParse(parsedJson);
+            case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED: {
+              const safeEvent = followRemovedEventSchema.safeParse(parsedJson);
 
               if (!safeEvent.success) {
                 logger.error(formatZodError(safeEvent.error));
@@ -70,14 +70,14 @@ class UserEventConsumer {
                   partition,
                   offset: message.offset,
                   rawValue,
-                  reason: 'Invalid user.updated schema',
+                  reason: 'Invalid follow.removed schema',
                 });
 
                 await this.commitNextOffset(topic, partition, message.offset);
                 return;
               }
 
-              await this.handleUserUpdated(safeEvent.data);
+              await this.handleFollowRemoved(safeEvent.data);
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
@@ -90,7 +90,7 @@ class UserEventConsumer {
                   offset: message.offset,
                   eventName: parsedJson.eventName,
                 },
-                'Ignoring unknown user event in social-graph-service',
+                'Ignoring unknown user event in user-service',
               );
 
               await this.commitNextOffset(topic, partition, message.offset);
@@ -98,73 +98,50 @@ class UserEventConsumer {
             }
           }
         } catch (error) {
-          logger.error(
-            {
-              error,
-              topic,
-              partition,
-              offset: message.offset,
-              rawValue,
-            },
-            'Failed to process user Kafka message in social-graph-service',
-          );
-
-          await this.sendToDlq({
-            topic,
-            partition,
-            offset: message.offset,
-            rawValue,
-            reason: "Unhandled processing error",
-          });
-
-          await this.commitNextOffset(topic, partition, message.offset);
+          
         }
-      },
-    });
+      }
+    })
   }
 
-  private async handleUserCreated(event: UserCreatedEvent): Promise<void> {
+  private async handleFollowCreated(event: FollowCreatedEvent): Promise<void> {
     const data = event.data;
 
     logger.info(
       {
         eventName: event.eventName,
         eventId: event.eventId,
-        userId: data.userId,
-        username: data.username,
+        followerId: data.followerId,
+        followeeId: data.followeeId,
       },
-      'Handling user.created event in social-graph-service',
+      'Handling follow.created event in user-service',
     );
 
-    await this.socialGraphService.upsertUserProfileCache({
-      userId: data.userId,
-      username: data.username,
-      displayName: data.displayName ?? null,
-      avatarUrl: data.avatarUrl?.secureUrl ?? null,
-      status: data.status,
-    });
+    await this.userService.handleFollowCreated(
+      data.followerId,
+      data.followeeId,
+    );
+
   }
 
-  private async handleUserUpdated(event: UserUpdatedEvent): Promise<void> {
+  private async handleFollowRemoved(event: FollowRemovedEvent): Promise<void> {
     const data = event.data;
 
     logger.info(
       {
         eventName: event.eventName,
         eventId: event.eventId,
-        userId: data.userId,
-        username: data.username,
+        followerId: data.followerId,
+        followeeId: data.followeeId,
       },
-      'Handling user.updated event in social-graph-service',
+      'Handling follow.removed event in user-service',
     );
 
-      await this.socialGraphService.upsertUserProfileCache({
-        userId: data.userId,
-        username: data.username,
-        displayName: data.displayName,
-        avatarUrl: data.avatarUrl?.secureUrl ?? null,
-        status: data.status,
-      });
+    await this.userService.handleFollowRemoved(
+      data.followerId,
+      data.followeeId,
+    );
+
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
@@ -190,7 +167,7 @@ class UserEventConsumer {
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
     await this.dlqProducer.send({
-      topic: KAFKA_TOPICS.USER_EVENTS_DLQ,
+      topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS_DLQ,
       acks: -1,
       messages: [
         {
@@ -202,15 +179,14 @@ class UserEventConsumer {
             sourceOffset: context.offset,
             rawValue: context.rawValue,
             reason: context.reason,
-            consumerService: 'social-graph-service',
-            consumerGroup: 'social-graph-service-user-events',
+            consumerService: 'user-service',
+            consumerGroup: 'user-service-social-graph-events',
           }),
         },
       ],
     });
 
-    logger.error(context, 'Sent user event to DLQ from social-graph-service');
+    logger.error(context, 'Sent social graph event to DLQ from user-service');
   }
+  
 }
-
-export default UserEventConsumer;

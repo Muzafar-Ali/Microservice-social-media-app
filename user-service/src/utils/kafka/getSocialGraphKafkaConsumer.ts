@@ -5,17 +5,17 @@ import logger from '../logger.js';
 
 let consumer: Consumer | null = null;
 
-const getUserKafkaConsumer = async () => {
+const getSocialGraphKafkaConsumer = async () => {
   if (!consumer) {
     consumer = kafka.consumer({
-      groupId: 'social-graph-service-user-events',
+      groupId: 'user-service-social-graph-events',
     });
 
     await consumer.connect();
-    logger.info('[Kafka] Consumer connected (social-graph-service)');
+    logger.info('[Kafka] Consumer connected (user-service)');
   }
 
   return consumer;
 };
 
-export default getUserKafkaConsumer;
+export default getSocialGraphKafkaConsumer;

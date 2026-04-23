@@ -1,4 +1,5 @@
 import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
+import { FindFollowersInput, UpsertUserProjectionInput } from '../types/social-graph-common.types.js';
 
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}
@@ -142,6 +143,7 @@ export class SocialGraphRepository {
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     });
 
-    return followingRelations.map((relation) => relation.followeeId);
+    return followingRelations.map((relation: any) => relation.followeeId);
   };
+  
 }

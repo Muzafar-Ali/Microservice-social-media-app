@@ -1,7 +1,7 @@
 export const KAFKA_TOPICS = {
   USER_EVENTS: 'user-events',
   SOCIAL_GRAPH_EVENTS: 'social-graph-events',
-  USER_EVENTS_DLQ: 'user-events-dlq',
+  USER_EVENTS_DLQ: 'user-events-dlq-social-graph-service',
 } as const;
 
 export const USER_EVENT_NAMES = {

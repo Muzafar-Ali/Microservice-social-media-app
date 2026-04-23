@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { Producer } from "kafkajs";
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from "./topics.js";
 import logger from "../utils/logger.js";
-import { UserCreatedEvent, UserCreatedPayload } from "../types/post-event-publisher.types.js";
+import { UserCreatedEvent, UserCreatedPayload } from "../types/publisher.types.js";
 
 export class UserEventPublisher {
   private readonly producerServiceName = "user-service";

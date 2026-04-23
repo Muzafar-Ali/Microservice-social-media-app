@@ -97,8 +97,44 @@ export const bulkUserLookupSchema = z.object({
     .nonempty(),
 });
 
+export const followCreatedPayloadSchema = z.object({
+  followerId: z.string().min(1, { error: 'followerId is required' }),
+  followeeId: z.string().min(1, { error: 'followeeId is required' }),
+  status: z.enum(['ACTIVE', 'PENDING']),
+  createdAt: z.iso.datetime({ error: 'createdAt must be a valid ISO datetime' }),
+});
+
+export const followCreatedEventSchema = z.object({
+  eventId: z.string().min(1, { error: 'eventId is required' }),
+  eventName: z.literal('follow.created'),
+  eventVersion: z.number().int().positive(),
+  occurredAt: z.iso.datetime({ error: 'occurredAt must be a valid ISO datetime' }),
+  producerService: z.string().min(1, { error: 'producerService is required' }),
+  partitionKey: z.string().min(1, { error: 'partitionKey is required' }),
+  data: followCreatedPayloadSchema,
+});
+
+export const followRemovedPayloadSchema = z.object({
+  followerId: z.string().min(1, { error: 'followerId is required' }),
+  followeeId: z.string().min(1, { error: 'followeeId is required' }),
+  removedAt: z.iso.datetime({ error: 'removedAt must be a valid ISO datetime' }),
+});
+
+export const followRemovedEventSchema = z.object({
+  eventId: z.string().min(1, { error: 'eventId is required' }),
+  eventName: z.literal('follow.removed'),
+  eventVersion: z.number().int().positive(),
+  occurredAt: z.iso.datetime({ error: 'occurredAt must be a valid ISO datetime' }),
+  producerService: z.string().min(1, { error: 'producerService is required' }),
+  partitionKey: z.string().min(1, { error: 'partitionKey is required' }),
+  data: followRemovedPayloadSchema,
+});
+
+
 export type CreateUserDto = z.infer<typeof createUserSchema>;
 export type GetUserByIdDto = z.infer<typeof getUserByIdSchema>;
 export type GetUserByUsernameDto = z.infer<typeof getUserByUsernameSchema>;
 export type UpdateMyProfileDto = z.infer<typeof updateMyProfileSchema>;
 export type UpdateProfileImageDto = z.infer<typeof updateProfileImageSchema>;
+export type FollowCreatedEvent = z.infer<typeof followCreatedEventSchema>;
+export type FollowRemovedEvent = z.infer<typeof followRemovedEventSchema>;

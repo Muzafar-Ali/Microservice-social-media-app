@@ -106,5 +106,75 @@ export class UserRepository {
 
       return createdUser;
     });
-  }
+  };
+
+  updateProfileImageByIdAndQueueUserUpdatedEvent = async (
+    secureUrl: string,
+    publicId: string,
+    userId: string,
+  ): Promise<User> => {
+    return this.prisma.$transaction(async (transactionClient) => {
+      const updatedUser = await transactionClient.user.update({
+        where: { id: userId },
+        data: {
+          profileImage: {
+            secureUrl,
+            publicId,
+          },
+        },
+      });
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventName: USER_EVENT_NAMES.USER_UPDATED,
+          eventVersion: 1,
+          aggregateId: updatedUser.id,
+          partitionKey: updatedUser.id,
+          payload: {
+            userId: updatedUser.id,
+            username: updatedUser.username,
+            displayName: updatedUser.name,
+            avatarUrl: updatedUser.profileImage,
+            status: updatedUser.status,
+            updatedAt: updatedUser.updatedAt.toISOString(),
+          },
+          status: 'PENDING',
+        },
+      });
+
+      return updatedUser;
+    });
+  };
+
+  updateUserAndQueueUserUpdatedEvent = async (
+    userId: string,
+    data: UpdateMyProfileDto,
+  ): Promise<User> => {
+    return this.prisma.$transaction(async (transactionClient) => {
+      const updatedUser = await transactionClient.user.update({
+        where: { id: userId },
+        data,
+      });
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventName: USER_EVENT_NAMES.USER_UPDATED,
+          eventVersion: 1,
+          aggregateId: updatedUser.id,
+          partitionKey: updatedUser.id,
+          payload: {
+            userId: updatedUser.id,
+            username: updatedUser.username,
+            displayName: updatedUser.name,
+            avatarUrl: updatedUser.profileImage,
+            status: updatedUser.status,
+            updatedAt: updatedUser.updatedAt.toISOString(),
+          },
+          status: 'PENDING',
+        },
+      });
+
+      return updatedUser;
+    });
+  };
 }

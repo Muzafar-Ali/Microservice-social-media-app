@@ -194,7 +194,7 @@ export const userCreatedPayloadSchema = z.object({
   userId: z.string().min(1),
   username: z.string().min(1),
   displayName: z.string().nullable(),
-  avatarUrl: z
+  profileImage: z
     .object({
       secureUrl: z.string().url(),
       publicId: z.string().min(1),
@@ -219,7 +219,7 @@ export const userUpdatedPayloadSchema = z.object({
   userId: z.string().min(1, { error: 'userId is required' }),
   username: z.string().min(1, { error: 'username is required' }),
   displayName: z.string().nullable(),
-  avatarUrl: z
+  profileImage: z
     .object({
       secureUrl: z.url({ error: 'secureUrl must be a valid URL' }),
       publicId: z.string().min(1, { error: 'publicId is required' }),

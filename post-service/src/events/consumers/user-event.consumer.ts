@@ -144,7 +144,7 @@ class UserEventConsumer {
       userId: data.userId,
       username: data.username,
       displayName: data.displayName ?? null,
-      avatarUrl: data.avatarUrl?.secureUrl ?? null,
+      avatarUrl: data.profileImage?.secureUrl ?? null,
       status: data.status,
     });
   }
@@ -166,7 +166,7 @@ class UserEventConsumer {
       userId: data.userId,
       username: data.username,
       displayName: data.displayName,
-      avatarUrl: data.avatarUrl?.secureUrl ?? null,
+      avatarUrl: data.profileImage?.secureUrl ?? null,
       status: data.status,
     });
   }

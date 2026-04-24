@@ -18,7 +18,6 @@ export type SafeUSer = Omit<User, 'password'>;
 export class UserService {
   constructor(
     private userRepository: UserRepository,
-    private userEventPublisher: UserEventPublisher,
   ) {}
 
   async createUser(dto: CreateUserDto): Promise<SafeUSer> {
@@ -106,7 +105,12 @@ export class UserService {
   }
 
   updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
-    const updatedUser = await this.userRepository.updateProfileImageById(dto.secureUrl, dto.publicId, userId);
+    
+    const updatedUser = await this.userRepository.updateProfileImageByIdAndQueueUserUpdatedEvent(
+      dto.secureUrl,
+      dto.publicId,
+      userId,
+    );
 
     const safeUser = this.toSafeUser(updatedUser);
 
@@ -116,7 +120,7 @@ export class UserService {
     return safeUser;
   };
 
-  async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto) {
+  async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto): Promise<SafeUSer> {
     const existingUser = await this.userRepository.findUserById(authenticatedUserId);
 
     if (!existingUser) {
@@ -136,7 +140,11 @@ export class UserService {
       }
     }
 
-    const updatedUser = await this.userRepository.updateUser(authenticatedUserId, updatePayload);
+    const updatedUser = await this.userRepository.updateUserAndQueueUserUpdatedEvent(
+      authenticatedUserId,
+      updatePayload,
+    );
+
     const safeUser = this.toSafeUser(updatedUser);
 
     if (isUsernameChanging) {
@@ -146,7 +154,7 @@ export class UserService {
     // Cache the user
     await this.writeUserCache(safeUser);
 
-    return updatedUser;
+    return safeUser;
   }
 
   async followCreated(followerId: string, followeeId: string) {

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { Producer } from 'kafkajs';
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from './topics.js';
 import logger from '../utils/logger.js';
-import { UserCreatedEvent, UserCreatedPayload } from '../types/publisher.types.js';
+import { UserCreatedEvent, UserCreatedPayload, UserUpdatedEvent, UserUpdatedPayload } from '../types/publisher.types.js';
 
 export class UserEventPublisher {
   private readonly producerServiceName = 'user-service';
@@ -58,6 +58,61 @@ export class UserEventPublisher {
           topic: KAFKA_TOPICS.USER_EVENTS,
         },
         'Failed to publish user event',
+      );
+
+      throw error;
+    }
+  };
+
+  public async publishUserUpdated(payload: UserUpdatedPayload): Promise<void> {
+    const event: UserUpdatedEvent = {
+      eventId: crypto.randomUUID(),
+      eventName: USER_EVENT_NAMES.USER_UPDATED,
+      eventVersion: 1,
+      occurredAt: new Date().toISOString(),
+      producerService: this.producerServiceName,
+      partitionKey: payload.userId,
+      data: payload,
+    };
+
+    try {
+      await this.producer.send({
+        topic: KAFKA_TOPICS.USER_EVENTS,
+        acks: -1,
+        messages: [
+          {
+            key: payload.userId,
+            value: JSON.stringify(event),
+            headers: {
+              eventName: event.eventName,
+              eventVersion: String(event.eventVersion),
+              producerService: event.producerService,
+              eventId: event.eventId,
+              partitionKey: event.partitionKey,
+            },
+          },
+        ],
+      });
+
+      logger.info(
+        {
+          eventName: event.eventName,
+          userId: payload.userId,
+          eventId: event.eventId,
+          topic: KAFKA_TOPICS.USER_EVENTS,
+        },
+        'Published user updated event',
+      );
+    } catch (error) {
+      logger.error(
+        {
+          error,
+          eventName: event.eventName,
+          userId: payload.userId,
+          eventId: event.eventId,
+          topic: KAFKA_TOPICS.USER_EVENTS,
+        },
+        'Failed to publish user updated event',
       );
 
       throw error;

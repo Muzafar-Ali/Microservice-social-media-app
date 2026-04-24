@@ -1,7 +1,7 @@
 import { UserEventPublisher } from '../../events/producers.js';
 import { USER_EVENT_NAMES } from '../../events/topics.js';
 import { PrismaClient } from '../../generated/prisma/client.js';
-import { UserCreatedPayload } from '../../types/publisher.types.js';
+import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.types.js';
 import logger from '../../utils/logger.js';
 
 
@@ -41,6 +41,12 @@ export class OutboxWorker {
           const payload = outboxEvent.payload as UserCreatedPayload;
           
           await this.userEventPublisher.publishUserCreated(payload);
+        }
+
+        if (outboxEvent.eventName === USER_EVENT_NAMES.USER_UPDATED) {
+          const payload = outboxEvent.payload as UserUpdatedPayload;
+
+          await this.userEventPublisher.publishUserUpdated(payload);
         }
 
         await this.prisma.outboxEvent.update({

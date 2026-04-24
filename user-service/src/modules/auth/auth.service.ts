@@ -1,4 +1,4 @@
-import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import logger from '../../utils/logger.js';
 import { AuthRepository } from './auth.repository.js';
 import { UserLoginDto } from './auth.schema.js';

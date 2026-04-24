@@ -7,10 +7,11 @@ import {
 } from '../../utils/cacheKeys/userCacheKeys.js';
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.validations.js';
-import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import { UserEventPublisher } from '../../events/producers.js';
 import bcrypt from 'bcrypt';
 import config from '../../config/config.js';
+import logger from '../../utils/logger.js';
 
 export type SafeUSer = Omit<User, 'password'>;
 
@@ -21,9 +22,16 @@ export class UserService {
   ) {}
 
   async createUser(dto: CreateUserDto): Promise<SafeUSer> {
+    const existingUser = await this.userRepository.findByEmailOrUsername(dto.email, dto.username);
+
+    if (existingUser) {
+      if (existingUser.username === dto.username) throw new ApiErrorHandler(409, 'Username already taken');
+      if (existingUser.email === dto.email) throw new ApiErrorHandler(409, 'Email already registered');
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, config.saltRounds!);
 
-    const prismaData: Prisma.UserCreateInput = {
+    const userData: Prisma.UserCreateInput = {
       username: dto.username,
       name: dto.name,
       email: dto.email,
@@ -32,34 +40,17 @@ export class UserService {
       profileImage: dto.profileImage,
       gender: dto.gender,
     };
-    const exist = await this.userRepository.findByEmailOrUsername(dto.email, dto.username);
 
-    if (exist) {
-      if (exist.username === dto.username) throw new ApiErrorHandler(409, 'Username already taken');
-      if (exist.email === dto.email) throw new ApiErrorHandler(409, 'Email already registered');
-    }
+    const createdUser = await this.userRepository.createUserAndQueueUserCreatedEvent({ userData });
 
-    const user = await this.userRepository.createUser(prismaData);
-    const safeUser = this.toSafeUser(user);
+    const safeUser = this.toSafeUser(createdUser);
 
     // Cache the user
-    await this.writeUserCache(safeUser);
-
-    // for type
-    const image = user.profileImage as {
-      secureUrl: string;
-      publicId: string;
-    } | null;
-
-    // Publish user created event
-    await this.userEventPublisher.publishUserCreated({
-      userId: user.id,
-      displayName: user.name,
-      username: user.username,
-      avatarUrl: image,
-      status: user.status,
-      createdAt: user.createdAt.toISOString(),
-    });
+    try {
+      await this.writeUserCache(safeUser);
+    } catch (error) {
+      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
+    }
 
     return safeUser;
   }
@@ -119,6 +110,7 @@ export class UserService {
 
     const safeUser = this.toSafeUser(updatedUser);
 
+    // Cache the user
     await this.writeUserCache(safeUser);
 
     return safeUser;
@@ -151,12 +143,13 @@ export class UserService {
       await this.deleteUserCacheByIdentity(existingUser.id, existingUser.username);
     }
 
+    // Cache the user
     await this.writeUserCache(safeUser);
 
     return updatedUser;
   }
 
-  async handleFollowCreated(followerId: string, followeeId: string) {
+  async followCreated(followerId: string, followeeId: string) {
     await Promise.all([
       this.userRepository.incrementFollowingCount(followerId, 1),
       this.userRepository.incrementFollowersCount(followeeId, 1),
@@ -165,7 +158,7 @@ export class UserService {
     await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
   }
 
-  async handleFollowRemoved(followerId: string, followeeId: string) {
+  async followRemoved(followerId: string, followeeId: string) {
     await Promise.all([
       this.userRepository.incrementFollowingCount(followerId, -1),
       this.userRepository.incrementFollowersCount(followeeId, -1),

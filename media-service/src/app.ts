@@ -7,7 +7,7 @@ import globalErrorHandler from './middlewares/globalErrorHandler.middleware.js';
 import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
 import MediaController from './controllers/media.controller.js';
 import MediaService from './services/media.service.js';
-import MediaRespository from './respositories/media.respository.js';
+import MediaRespository from './repositories/media.repository.js';
 import MediaServiceEventPublisher from './events/producer.js';
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
 

@@ -2,7 +2,7 @@ import { MediaType, PrismaClient } from '../generated/prisma/client.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
 import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
 import { PostUpdate } from '../types/post.types.js';
-import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
 
 export class PostRepository {

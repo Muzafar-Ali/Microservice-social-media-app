@@ -2,7 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import { ChatRepository } from './respositories/chat.repository.js';
+import { ChatRepository } from './repositories/chat.repository.js';
 import { ChatService } from './services/chat.service.js';
 import { ChatController } from './controllers/chat.controllers.js';
 import chatRoutes from './routes/chat.routes.js';

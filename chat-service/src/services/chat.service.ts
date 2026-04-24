@@ -1,7 +1,7 @@
 import { StatusCodes } from 'http-status-codes';
 import { AttachmentType, MessageType, Prisma, ParticipantRole } from '../generated/prisma/client.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
-import { ChatRepository } from '../respositories/chat.repository.js';
+import { ChatRepository } from '../repositories/chat.repository.js';
 import {
   AddParticipantsResponseDto,
   AddReactionResponseDto,
@@ -10,6 +10,7 @@ import {
   DeleteMessageResponseDto,
   GroupConversationUpdateResponseDto,
   LeaveGroupResponseDto,
+  MessageEntity,
   MessageResponseDto,
   PaginatedMessagesResponseDto,
   RemoveParticipantResponseDto,
@@ -20,7 +21,7 @@ import mapConversation from '../utils/mapConversion.js';
 export class ChatService {
   constructor(private readonly chatRepository: ChatRepository) {}
 
-  private mapMessage(message: any): MessageResponseDto {
+  private mapMessage(message: MessageEntity): MessageResponseDto {
     return {
       id: message.id,
       conversationId: message.conversationId,

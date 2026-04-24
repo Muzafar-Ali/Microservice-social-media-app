@@ -28,7 +28,7 @@ import {
 } from '../validation/post.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
-import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 
 export class PostController {
   constructor(private postService: PostService) {}

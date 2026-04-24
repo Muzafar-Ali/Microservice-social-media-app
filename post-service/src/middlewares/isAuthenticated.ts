@@ -1,5 +1,5 @@
 import config from '../config/config.js';
-import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { NextFunction, Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes'; // This dependency needs to be added
 import jwt, { JwtPayload } from 'jsonwebtoken';

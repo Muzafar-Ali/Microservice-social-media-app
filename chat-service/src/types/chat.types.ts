@@ -1,3 +1,65 @@
+import { Prisma, MessageType, AttachmentType } from '../generated/prisma/client.js';
+
+export type MessageEntity = {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  type: 'TEXT' | 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE' | 'SYSTEM' | 'SHARED_POST';
+  body: string | null;
+  metadata: unknown | null;
+  clientMessageId: string | null;
+  replyToMessageId: string | null;
+  attachments?: MessageAttachmentEntity[];
+  receipts?: MessageReceiptEntity[];
+  createdAt: Date;
+  editedAt: Date | null;
+  deletedAt: Date | null;
+};
+
+export type MessageAttachmentEntity = {
+  id: string;
+  type: 'IMAGE' | 'VIDEO' | 'AUDIO' | 'FILE';
+  url: string;
+  thumbnailUrl: string | null;
+  mimeType: string | null;
+  fileName: string | null;
+  sizeBytes: number | null;
+  width: number | null;
+  height: number | null;
+  durationSec: number | null;
+  sortOrder: number;
+};
+
+export type MessageReceiptEntity = {
+  userId: string;
+  deliveredAt: Date | null;
+  seenAt: Date | null;
+};
+
+export type CreateMessageAttachmentInput = {
+  type: AttachmentType;
+  url: string;
+  thumbnailUrl?: string | null;
+  mimeType?: string | null;
+  fileName?: string | null;
+  sizeBytes?: number | null;
+  width?: number | null;
+  height?: number | null;
+  durationSec?: number | null;
+  sortOrder?: number;
+};
+
+export type CreateMessageInput = {
+  conversationId: string;
+  senderId: string;
+  type: MessageType;
+  body?: string | null;
+  metadata?: Prisma.InputJsonValue | null;
+  clientMessageId: string;
+  replyToMessageId?: string | null;
+  attachments?: CreateMessageAttachmentInput[];
+};
+
 export type ParticipantDto = {
   userId: string;
   role: 'MEMBER' | 'ADMIN';

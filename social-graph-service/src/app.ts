@@ -8,8 +8,8 @@ import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
 import { SocialGraphRepository } from './repository/socialGraph.repository.js';
 import { SocialGraphEventPublisher } from './events/socialGraph-producer.js';
 import { SocialGraphService } from './services/socialGraph.service.js';
-import { SocialGraphController } from './contorllers/socialGraph.controllers.js';
-import prisma from './config/prismaClinet.js';
+import { SocialGraphController } from './controllers/socialGraph.controllers.js';
+import prisma from './config/prismaClient.js';
 
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
 import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';

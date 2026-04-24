@@ -140,7 +140,7 @@ export class SocialGrapsEventConsumer {
       'Handling follow.created event in user-service',
     );
 
-    await this.userService.handleFollowCreated(data.followerId, data.followeeId);
+    await this.userService.followCreated(data.followerId, data.followeeId);
   }
 
   private async handleFollowRemoved(event: FollowRemovedEvent): Promise<void> {
@@ -156,7 +156,7 @@ export class SocialGrapsEventConsumer {
       'Handling follow.removed event in user-service',
     );
 
-    await this.userService.handleFollowRemoved(data.followerId, data.followeeId);
+    await this.userService.followRemoved(data.followerId, data.followeeId);
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {

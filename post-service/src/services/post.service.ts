@@ -1,6 +1,6 @@
 import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
-import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { postCreatedCounter } from '../monitoring/metrics.js';
 import { PostEventPublisher } from '../events/post-events.producer.js';
 import { MediaType } from '../generated/prisma/enums.js';

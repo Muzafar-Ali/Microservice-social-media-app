@@ -12,7 +12,7 @@ import {
   UpdateProfileImageDto,
   updateProfileImageSchema,
 } from './user.validations.js';
-import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
 
 export class UserController {

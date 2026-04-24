@@ -18,6 +18,7 @@ import { AuthService } from './modules/auth/auth.service.js';
 import { AuthController } from './modules/auth/auth.controllers.js';
 import getSocialGraphKafkaConsumer from './utils/kafka/getSocialGraphKafkaConsumer.js';
 import { SocialGrapsEventConsumer } from './events/consumers/social-graph-event-consumer.js';
+import { OutboxWorker } from './modules/user/user.outboxWorker.js';
 
 export async function createApp() {
   const producer = await getKafkaProducer();
@@ -31,6 +32,7 @@ export async function createApp() {
   const userController = new UserController(userService);
   const authControllers = new AuthController(authService);
   const socialGraphEventConsumer = new SocialGrapsEventConsumer(socialGraphKafkaConsumer, producer, userService);
+  const outboxWorker = new OutboxWorker(prisma, userEventPublisher);
 
   const app = express();
 
@@ -66,5 +68,6 @@ export async function createApp() {
   return {
     app,
     socialGraphEventConsumer,
+    outboxWorker
   };
 }

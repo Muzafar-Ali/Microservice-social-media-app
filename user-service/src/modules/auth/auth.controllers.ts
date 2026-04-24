@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
 import { UserLoginDto, userLoginSchema } from './auth.schema.js';
-import ApiErrorHandler from '../../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { generateJwtToken } from '../../utils/JwtHelpers.js';
 import { TLoginContext } from './auth.types.js';

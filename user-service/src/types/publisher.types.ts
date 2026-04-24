@@ -12,7 +12,7 @@ export type UserCreatedPayload = {
   userId: string;
   username: string;
   displayName: string | null;
-  avatarUrl: {
+  profileImage: {
     secureUrl: string;
     publicId: string;
   } | null;

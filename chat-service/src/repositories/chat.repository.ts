@@ -6,30 +6,7 @@ import {
   MessageType,
   AttachmentType,
 } from '../generated/prisma/client.js';
-
-type CreateMessageAttachmentInput = {
-  type: AttachmentType;
-  url: string;
-  thumbnailUrl?: string | null;
-  mimeType?: string | null;
-  fileName?: string | null;
-  sizeBytes?: number | null;
-  width?: number | null;
-  height?: number | null;
-  durationSec?: number | null;
-  sortOrder?: number;
-};
-
-type CreateMessageInput = {
-  conversationId: string;
-  senderId: string;
-  type: MessageType;
-  body?: string | null;
-  metadata?: Prisma.InputJsonValue | null;
-  clientMessageId: string;
-  replyToMessageId?: string | null;
-  attachments?: CreateMessageAttachmentInput[];
-};
+import { CreateMessageInput } from '../types/chat.types.js';
 
 export class ChatRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -92,6 +69,7 @@ export class ChatRepository {
   }
 
   async createGroupConversation(params: { creatorUserId: string; title?: string; participantUserIds: string[] }) {
+    
     const uniqueParticipantUserIds = Array.from(new Set([params.creatorUserId, ...params.participantUserIds]));
 
     return this.prisma.conversation.create({

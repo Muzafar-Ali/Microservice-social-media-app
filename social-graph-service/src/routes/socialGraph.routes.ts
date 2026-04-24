@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import isAuthenticatedRedis from '../middlewares/isAuthenticatedRedis.middleware.js';
-import { SocialGraphController } from '../contorllers/socialGraph.controllers.js';
+import { SocialGraphController } from '../controllers/socialGraph.controllers.js';
 
 const socialGraphRoutes = (socialGraphController: SocialGraphController) => {
   const router = Router();

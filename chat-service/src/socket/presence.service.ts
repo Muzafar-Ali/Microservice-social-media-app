@@ -18,11 +18,7 @@ const LAST_SEEN_KEY = (userId: string) => `presence:lastSeen:${userId}`;
  */
 export class PresenceService {
   async markOnline(userId: string, socketId: string): Promise<PresenceUpdate> {
-    
-    await Promise.all([
-      redis.sAdd(ONLINE_SET_KEY, userId),
-      redis.sAdd(USER_SOCKETS_KEY(userId), socketId),
-    ]);
+    await Promise.all([redis.sAdd(ONLINE_SET_KEY, userId), redis.sAdd(USER_SOCKETS_KEY(userId), socketId)]);
 
     // When online, we can clear lastSeen or just keep it as last known.
     // We'll keep it, but you can choose to delete it.

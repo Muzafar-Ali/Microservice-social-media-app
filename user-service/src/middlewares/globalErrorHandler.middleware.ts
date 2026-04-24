@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import ApiErrorHandler from '../utils/apiErrorHanlderClass.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
 

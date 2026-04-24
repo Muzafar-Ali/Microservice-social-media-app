@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import MediaServiceEventPublisher from '../events/producer.js';
-import MediaRespository from '../respositories/media.respository.js';
+import MediaRespository from '../repositories/media.repository.js';
 import { PostMediaUploadedDto } from '../validations/media.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 

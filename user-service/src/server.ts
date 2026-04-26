@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import config from './config/config.js';
 import { initRedis } from './config/redisClient.js';
+import executeWithRetry from './utils/executeWithRetry.js';
 import createKafkaTopic from './utils/kafka/createKafkaTopic.js';
 import logger from './utils/logger.js';
 
@@ -10,13 +11,13 @@ async function bootstrap() {
   try {
     // 1. Init external dependencies first
     await initRedis();
-    await createKafkaTopic();
+    await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
     // 2. Create app, Kafka consumer, and outbox worker
     const { app, socialGraphEventConsumer, outboxWorker } = await createApp();
 
     // 3. Start Kafka consumer
-    await socialGraphEventConsumer.start();
+    await executeWithRetry('Kafka consumer start', () => socialGraphEventConsumer.start());
     logger.info('[Kafka] UserEventConsumer started');
 
     // 4. Start outbox event publisher worker

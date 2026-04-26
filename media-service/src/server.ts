@@ -1,5 +1,6 @@
 import { createApp } from './app.js';
 import { initRedis } from './config/redisClient.js';
+import executeWithRetry from './utils/executeWithRetry.js';
 import createKafkaTopic from './utils/kafka/createKafkaTopic.js';
 import logger from './utils/logger.js';
 
@@ -8,7 +9,7 @@ const PORT = process.env.PORT || 4002;
 async function bootstrap() {
   try {
     await initRedis();
-    await createKafkaTopic();
+    await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
     const app = await createApp();
 

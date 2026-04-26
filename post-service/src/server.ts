@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import config from './config/config.js';
 import { initRedis } from './config/redisClient.js';
+import executeWithRetry from './utils/executeWithRetry.js';
 import createKafkaTopic from './utils/kafka/createKafkaTopic.js';
 import logger from './utils/logger.js';
 
@@ -10,25 +11,14 @@ async function bootstrap() {
   try {
     // 1. Init external dependencies first
     await initRedis();
-    await createKafkaTopic();
+    await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
     // 2. Create app and Kafka consumer
     const { app, userEventConsumer, mediaEventConsumer } = await createApp();
 
     // 3. Start Kafka consumer
-    try {
-      await userEventConsumer.start();
-      logger.info('[Kafka] UserEventConsumer started');
-    } catch (error) {
-      logger.error({ error }, '[Kafka] Failed to start UserEventConsumer');
-    }
-
-    try {
-      await mediaEventConsumer.start();
-      logger.info('[Kafka] MediaEventConsumer started');
-    } catch (error) {
-      logger.error({ error }, '[Kafka] Failed to start MediaEventConsumer');
-    }
+    await executeWithRetry('UserEventConsumer start', () => userEventConsumer.start());
+    await executeWithRetry('MediaEventConsumer start', () => mediaEventConsumer.start());
 
     // 4. Start HTTP server
     app.listen(PORT, () => {

@@ -1,10 +1,7 @@
 import { PrismaClient } from '../generated/prisma/client.js';
 import { SOCIAL_GRAPH_EVENT_NAMES } from '../events/socialGraph-event.topics.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
-import {
-  FollowCreatedPayload,
-  UnFollowCreatedPayload,
-} from '../types/social-graph-event-publisher.types.js';
+import { FollowCreatedPayload, UnFollowCreatedPayload } from '../types/social-graph-event-publisher.types.js';
 import logger from '../utils/logger.js';
 
 export class OutboxWorker {

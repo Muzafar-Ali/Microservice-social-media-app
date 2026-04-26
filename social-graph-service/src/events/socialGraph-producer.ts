@@ -12,9 +12,7 @@ import {
 export class SocialGraphEventPublisher {
   constructor(private readonly producer: Producer) {}
 
-  public async publishFollowCreated(
-    input: PublishSocialGraphEventInput<FollowCreatedPayload>,
-  ): Promise<void> {
+  public async publishFollowCreated(input: PublishSocialGraphEventInput<FollowCreatedPayload>): Promise<void> {
     const event: FollowCreatedEvent = {
       eventId: input.eventId,
       eventName: input.eventName,
@@ -28,9 +26,7 @@ export class SocialGraphEventPublisher {
     await this.publishEvent(event);
   }
 
-  public async publishFollowRemoved(
-    input: PublishSocialGraphEventInput<UnFollowCreatedPayload>,
-  ): Promise<void> {
+  public async publishFollowRemoved(input: PublishSocialGraphEventInput<UnFollowCreatedPayload>): Promise<void> {
     const event: UnFollowCreatedEvent = {
       eventId: input.eventId,
       eventName: input.eventName,

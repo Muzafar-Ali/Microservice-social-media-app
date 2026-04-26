@@ -2,7 +2,12 @@ import { Consumer, Producer } from 'kafkajs';
 import { SocialGraphService } from '../../services/socialGraph.service.js';
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from '../socialGraph-event.topics.js';
 import logger from '../../utils/logger.js';
-import { UserCreatedEvent, userCreatedEventSchema, UserUpdatedEvent, userUpdatedEventSchema } from '../../validations/socialGraph.validation.js';
+import {
+  UserCreatedEvent,
+  userCreatedEventSchema,
+  UserUpdatedEvent,
+  userUpdatedEventSchema,
+} from '../../validations/socialGraph.validation.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { FailedMessageContext } from '../../types/social-graph-common.types.js';
 
@@ -14,7 +19,6 @@ class UserEventConsumer {
   ) {}
 
   public async start(): Promise<void> {
-    
     await this.consumer.subscribe({
       topic: KAFKA_TOPICS.USER_EVENTS,
       fromBeginning: false,
@@ -114,7 +118,7 @@ class UserEventConsumer {
             partition,
             offset: message.offset,
             rawValue,
-            reason: "Unhandled processing error",
+            reason: 'Unhandled processing error',
           });
 
           await this.commitNextOffset(topic, partition, message.offset);
@@ -158,13 +162,13 @@ class UserEventConsumer {
       'Handling user.updated event in social-graph-service',
     );
 
-      await this.socialGraphService.upsertUserProfileCache({
-        userId: data.userId,
-        username: data.username,
-        displayName: data.displayName,
-        avatarUrl: data.profileImage?.secureUrl ?? null,
-        status: data.status,
-      });
+    await this.socialGraphService.upsertUserProfileCache({
+      userId: data.userId,
+      username: data.username,
+      displayName: data.displayName,
+      avatarUrl: data.profileImage?.secureUrl ?? null,
+      status: data.status,
+    });
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {

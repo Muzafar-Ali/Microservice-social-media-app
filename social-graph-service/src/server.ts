@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import config from './config/config.js';
 import { initRedis } from './config/redisClient.js';
+import executeWithRetry from './utils/executeWithRetry.js';
 import createKafkaTopic from './utils/kafka/createKafkaTopic.js';
 import logger from './utils/logger.js';
 
@@ -10,13 +11,13 @@ async function bootstrap() {
   try {
     // 1. Init external dependencies first
     await initRedis();
-    await createKafkaTopic();
+    await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
     // 2. Create app and Kafka consumer
     const { app, userEventConsumer, outboxWorker } = await createApp();
 
     // 3. Start Kafka consumer
-    await userEventConsumer.start();
+    await executeWithRetry('Kafka consumer start', () => userEventConsumer.start());
     logger.info('[Kafka] UserEventConsumer started');
 
     // 4. Start outbox event publisher worker
@@ -41,19 +42,22 @@ async function bootstrap() {
     // 5. Start published event cleanup worker
     let isOutboxCleanupRunning = false;
 
-    setInterval(async () => {
-      if (isOutboxCleanupRunning) return;
+    setInterval(
+      async () => {
+        if (isOutboxCleanupRunning) return;
 
-      isOutboxCleanupRunning = true;
+        isOutboxCleanupRunning = true;
 
-      try {
-        await outboxWorker.cleanupPublishedEvents();
-      } catch (error) {
-        logger.error({ error }, 'Outbox cleanup failed');
-      } finally {
-        isOutboxCleanupRunning = false;
-      }
-    }, 24 * 60 * 60 * 1000);
+        try {
+          await outboxWorker.cleanupPublishedEvents();
+        } catch (error) {
+          logger.error({ error }, 'Outbox cleanup failed');
+        } finally {
+          isOutboxCleanupRunning = false;
+        }
+      },
+      24 * 60 * 60 * 1000,
+    );
 
     logger.info('[Outbox] Cleanup worker started');
 

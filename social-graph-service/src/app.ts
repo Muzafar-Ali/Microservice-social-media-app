@@ -57,6 +57,6 @@ export const createApp = async () => {
   return {
     app,
     userEventConsumer,
-    outboxWorker
+    outboxWorker,
   };
 };

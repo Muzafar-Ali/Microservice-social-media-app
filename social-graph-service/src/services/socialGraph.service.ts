@@ -14,10 +14,7 @@ import {
 export class SocialGraphService {
   constructor(private socialGraphRepository: SocialGraphRepository) {}
 
-  followUser = async (
-    authenticatedUserId: string,
-    targetUserId: string,
-  ): Promise<FollowUserResultDto> => {
+  followUser = async (authenticatedUserId: string, targetUserId: string): Promise<FollowUserResultDto> => {
     if (!authenticatedUserId) {
       throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
     }
@@ -26,33 +23,26 @@ export class SocialGraphService {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot follow yourself');
     }
 
-    const targetUserProfileCache =
-      await this.socialGraphRepository.findUserProfileCacheByUserId(targetUserId);
+    const targetUserProfileCache = await this.socialGraphRepository.findUserProfileCacheByUserId(targetUserId);
 
     if (!targetUserProfileCache) {
-      throw new ApiErrorHandler(
-        StatusCodes.NOT_FOUND,
-        'Target user is not available in social graph cache yet',
-      );
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Target user is not available in social graph cache yet');
     }
 
     if (targetUserProfileCache.status !== 'ACTIVE') {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Target user is not active');
     }
 
-    const existingFollowRelation =
-      await this.socialGraphRepository.findFollowRelation(
-        authenticatedUserId,
-        targetUserId,
-      );
+    const existingFollowRelation = await this.socialGraphRepository.findFollowRelation(
+      authenticatedUserId,
+      targetUserId,
+    );
 
     if (existingFollowRelation) {
       throw new ApiErrorHandler(StatusCodes.CONFLICT, 'Follow relation already exists');
     }
 
-    const relationStatus = targetUserProfileCache.isPrivate
-      ? FollowStatus.PENDING
-      : FollowStatus.ACTIVE;
+    const relationStatus = targetUserProfileCache.isPrivate ? FollowStatus.PENDING : FollowStatus.ACTIVE;
 
     return this.socialGraphRepository.createFollowRelationAndQueueFollowCreatedEvent(
       authenticatedUserId,
@@ -61,10 +51,7 @@ export class SocialGraphService {
     );
   };
 
-  unfollowUser = async (
-    authenticatedUserId: string,
-    targetUserId: string,
-  ): Promise<UnfollowUserResponseDto> => {
+  unfollowUser = async (authenticatedUserId: string, targetUserId: string): Promise<UnfollowUserResponseDto> => {
     if (!authenticatedUserId) {
       throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
     }
@@ -73,11 +60,10 @@ export class SocialGraphService {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot unfollow yourself');
     }
 
-    const deletedFollowRelation =
-      await this.socialGraphRepository.deleteFollowRelationAndQueueFollowRemovedEvent(
-        authenticatedUserId,
-        targetUserId,
-      );
+    const deletedFollowRelation = await this.socialGraphRepository.deleteFollowRelationAndQueueFollowRemovedEvent(
+      authenticatedUserId,
+      targetUserId,
+    );
 
     if (!deletedFollowRelation) {
       return {
@@ -106,14 +92,10 @@ export class SocialGraphService {
     userId: string,
     query: { cursor?: string; limit?: number },
   ): Promise<GetFollowersResponseDto> => {
-    const targetUserProfileCache =
-      await this.socialGraphRepository.findUserProfileCacheByUserId(userId);
+    const targetUserProfileCache = await this.socialGraphRepository.findUserProfileCacheByUserId(userId);
 
     if (!targetUserProfileCache) {
-      throw new ApiErrorHandler(
-        StatusCodes.NOT_FOUND,
-        'Target user is not available in social graph cache yet',
-      );
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Target user is not available in social graph cache yet');
     }
 
     const limit = query.limit ?? 20;
@@ -125,22 +107,14 @@ export class SocialGraphService {
     });
 
     const hasMore = followerRelations.length > limit;
-    const paginatedFollowerRelations = hasMore
-      ? followerRelations.slice(0, limit)
-      : followerRelations;
+    const paginatedFollowerRelations = hasMore ? followerRelations.slice(0, limit) : followerRelations;
 
-    const followerUserIds = paginatedFollowerRelations.map(
-      (relation) => relation.followerId,
-    );
+    const followerUserIds = paginatedFollowerRelations.map((relation) => relation.followerId);
 
-    const cachedFollowers =
-      await this.socialGraphRepository.findCachedUsersByIds(followerUserIds);
+    const cachedFollowers = await this.socialGraphRepository.findCachedUsersByIds(followerUserIds);
 
     const cachedFollowersMap = new Map(
-      cachedFollowers.map((cachedFollower) => [
-        cachedFollower.userId,
-        cachedFollower,
-      ]),
+      cachedFollowers.map((cachedFollower) => [cachedFollower.userId, cachedFollower]),
     );
 
     const followers = paginatedFollowerRelations
@@ -161,9 +135,7 @@ export class SocialGraphService {
       })
       .filter((follower): follower is NonNullable<typeof follower> => follower !== null);
 
-    const nextCursor = hasMore
-      ? paginatedFollowerRelations[paginatedFollowerRelations.length - 1]?.id ?? null
-      : null;
+    const nextCursor = hasMore ? (paginatedFollowerRelations[paginatedFollowerRelations.length - 1]?.id ?? null) : null;
 
     return {
       userId,
@@ -175,14 +147,10 @@ export class SocialGraphService {
   getFollowing(userId: string, query: { cursor?: string; limit?: number }) {}
 
   getCounts = async (userId: string): Promise<GetCountsResponseDto> => {
-    const targetUserProfileCache =
-      await this.socialGraphRepository.findUserProfileCacheByUserId(userId);
+    const targetUserProfileCache = await this.socialGraphRepository.findUserProfileCacheByUserId(userId);
 
     if (!targetUserProfileCache) {
-      throw new ApiErrorHandler(
-        StatusCodes.NOT_FOUND,
-        'Target user is not available in social graph cache yet',
-      );
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Target user is not available in social graph cache yet');
     }
 
     const [followersCount, followingCount] = await Promise.all([
@@ -197,15 +165,12 @@ export class SocialGraphService {
     };
   };
 
-  getFollowingUserIds = async (
-    userId: string,
-  ): Promise<GetFollowingUserIdsResponseDto> => {
+  getFollowingUserIds = async (userId: string): Promise<GetFollowingUserIdsResponseDto> => {
     if (!userId) {
       throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
     }
 
-    const followingUserIds =
-      await this.socialGraphRepository.findFollowingUserIds(userId);
+    const followingUserIds = await this.socialGraphRepository.findFollowingUserIds(userId);
 
     return {
       userId,

@@ -17,7 +17,7 @@ export class SocialGraphController {
   followUser = async (req: Request<FollowUserParamsDto>, res: Response, next: NextFunction) => {
     try {
       const { userId } = req;
-      
+
       if (!userId) {
         throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
       }

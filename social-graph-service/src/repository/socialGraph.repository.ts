@@ -2,10 +2,7 @@ import crypto from 'node:crypto';
 import { SOCIAL_GRAPH_EVENT_NAMES } from '../events/socialGraph-event.topics.js';
 import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
 import { FindFollowersInput, UpsertUserProjectionInput } from '../types/social-graph-common.types.js';
-import {
-  FollowCreatedPayload,
-  UnFollowCreatedPayload,
-} from '../types/social-graph-event-publisher.types.js';
+import { FollowCreatedPayload, UnFollowCreatedPayload } from '../types/social-graph-event-publisher.types.js';
 
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}

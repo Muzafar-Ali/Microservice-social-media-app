@@ -10,6 +10,16 @@ export type BaseEvent<TData> = {
   data: TData;
 };
 
+export type PublishSocialGraphEventInput<TPayload> = {
+  eventId: string;
+  eventName: string;
+  eventVersion: number;
+  occurredAt: string;
+  producerService: string;
+  partitionKey: string;
+  payload: TPayload;
+};
+
 export type FollowCreatedPayload = {
   followerId: string;
   followeeId: string;

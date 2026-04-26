@@ -8,7 +8,6 @@ import {
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
-import { UserEventPublisher } from '../../events/producers.js';
 import bcrypt from 'bcrypt';
 import config from '../../config/config.js';
 import logger from '../../utils/logger.js';

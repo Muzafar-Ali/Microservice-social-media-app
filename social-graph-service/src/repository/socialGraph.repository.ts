@@ -1,5 +1,11 @@
+import crypto from 'node:crypto';
+import { SOCIAL_GRAPH_EVENT_NAMES } from '../events/socialGraph-event.topics.js';
 import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
 import { FindFollowersInput, UpsertUserProjectionInput } from '../types/social-graph-common.types.js';
+import {
+  FollowCreatedPayload,
+  UnFollowCreatedPayload,
+} from '../types/social-graph-event-publisher.types.js';
 
 export class SocialGraphRepository {
   constructor(private prisma: PrismaClient) {}
@@ -7,42 +13,6 @@ export class SocialGraphRepository {
   findUserProfileCacheByUserId = async (userId: string): Promise<UserProfileCache | null> => {
     return this.prisma.userProfileCache.findUnique({
       where: { userId },
-    });
-  };
-
-  createFollow() {}
-
-  createFollowRelation = async (followerId: string, followeeId: string, status: FollowStatus): Promise<Follow> => {
-    return this.prisma.follow.create({
-      data: {
-        followerId,
-        followeeId,
-        status,
-      },
-    });
-  };
-
-  deleteFollowRelation = async (followerId: string, followeeId: string): Promise<Follow | null> => {
-    const existingFollowRelation = await this.prisma.follow.findUnique({
-      where: {
-        followerId_followeeId: {
-          followerId,
-          followeeId,
-        },
-      },
-    });
-
-    if (!existingFollowRelation) {
-      return null;
-    }
-
-    return this.prisma.follow.delete({
-      where: {
-        followerId_followeeId: {
-          followerId,
-          followeeId,
-        },
-      },
     });
   };
 
@@ -54,6 +24,103 @@ export class SocialGraphRepository {
           followeeId,
         },
       },
+    });
+  };
+
+  createFollowRelationAndQueueFollowCreatedEvent = async (
+    followerId: string,
+    followeeId: string,
+    status: FollowStatus,
+  ): Promise<Follow> => {
+    return this.prisma.$transaction(async (transactionClient: any) => {
+      const createdFollowRelation = await transactionClient.follow.create({
+        data: {
+          followerId,
+          followeeId,
+          status,
+        },
+      });
+
+      const eventName =
+        status === FollowStatus.PENDING
+          ? SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REQUESTED
+          : SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED;
+
+      const payload: FollowCreatedPayload = {
+        followerId: createdFollowRelation.followerId,
+        followeeId: createdFollowRelation.followeeId,
+        status: createdFollowRelation.status,
+        createdAt: createdFollowRelation.createdAt.toISOString(),
+      };
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventId: crypto.randomUUID(),
+          eventName,
+          eventVersion: 1,
+          aggregateId: createdFollowRelation.id,
+          partitionKey: createdFollowRelation.followerId,
+          payload,
+          producerService: 'social-graph-service',
+          occurredAt: new Date(),
+          status: 'PENDING',
+        },
+      });
+
+      return createdFollowRelation;
+    });
+  };
+
+  deleteFollowRelationAndQueueFollowRemovedEvent = async (
+    followerId: string,
+    followeeId: string,
+  ): Promise<Follow | null> => {
+    return this.prisma.$transaction(async (transactionClient: any) => {
+      const existingFollowRelation = await transactionClient.follow.findUnique({
+        where: {
+          followerId_followeeId: {
+            followerId,
+            followeeId,
+          },
+        },
+      });
+
+      if (!existingFollowRelation) {
+        return null;
+      }
+
+      const deletedFollowRelation = await transactionClient.follow.delete({
+        where: {
+          followerId_followeeId: {
+            followerId,
+            followeeId,
+          },
+        },
+      });
+
+      if (deletedFollowRelation.status === FollowStatus.ACTIVE) {
+        const payload: UnFollowCreatedPayload = {
+          followerId: deletedFollowRelation.followerId,
+          followeeId: deletedFollowRelation.followeeId,
+          removedAt: new Date().toISOString(),
+        };
+
+        await transactionClient.outboxEvent.create({
+          data: {
+            eventId: crypto.randomUUID(),
+            eventName: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED,
+            eventVersion: 1,
+            aggregateId: deletedFollowRelation.id,
+            partitionKey: deletedFollowRelation.followerId,
+            payload,
+            producerService: 'social-graph-service',
+            occurredAt: new Date(),
+            status: 'PENDING',
+          },
+        });
+      }
+
+      return deletedFollowRelation;
     });
   };
 
@@ -74,8 +141,6 @@ export class SocialGraphRepository {
     });
   };
 
-  findFollowing() {}
-  
   countFollowers = async (userId: string): Promise<number> => {
     return this.prisma.follow.count({
       where: {
@@ -115,8 +180,6 @@ export class SocialGraphRepository {
     });
   }
 
-  findCachedUserById() {}
-
   findCachedUsersByIds = async (userIds: string[]): Promise<UserProfileCache[]> => {
     if (userIds.length === 0) {
       return [];
@@ -145,5 +208,4 @@ export class SocialGraphRepository {
 
     return followingRelations.map((relation: any) => relation.followeeId);
   };
-  
 }

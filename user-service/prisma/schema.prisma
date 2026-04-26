@@ -55,21 +55,28 @@ enum OutboxEventStatus {
 }
 
 model OutboxEvent {
-  id           String            @id @default(cuid())
+  id              String            @id @default(cuid())
 
-  eventName    String
-  eventVersion Int
-  aggregateId  String
-  partitionKey String
-  payload      Json
+  eventId         String            @unique
+  eventName       String
+  eventVersion    Int
 
-  status       OutboxEventStatus @default(PENDING)
-  retryCount   Int               @default(0)
-  error        String?
-  publishedAt  DateTime?
+  aggregateId     String
+  partitionKey    String
 
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  payload         Json
+
+  producerService String
+  occurredAt      DateTime
+
+  status          OutboxEventStatus @default(PENDING)
+  retryCount      Int               @default(0)
+  error           String?
+  publishedAt     DateTime?
+  deadLetteredAt  DateTime?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([status, createdAt])
   @@index([status, retryCount])

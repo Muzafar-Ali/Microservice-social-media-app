@@ -126,12 +126,11 @@ export class UserController {
       }
 
       const updatedProfile = await this.userService.updateMyProfile(String(userId), parsedBody.data);
-      const { password, ...userWithoutPassword } = updatedProfile;
 
       res.status(200).json({
         success: true,
         message: 'Profile updated successfully',
-        data: userWithoutPassword,
+        data: updatedProfile,
       });
     } catch (error) {
       next(error);

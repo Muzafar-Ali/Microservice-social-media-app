@@ -27,7 +27,7 @@ export async function createApp() {
   const userEventPublisher = new UserEventPublisher(producer);
   const userRepository = new UserRepository(prisma);
   const authRepository = new AuthRepository(prisma);
-  const userService = new UserService(userRepository, userEventPublisher);
+  const userService = new UserService(userRepository);
   const authService = new AuthService(authRepository);
   const userController = new UserController(userService);
   const authControllers = new AuthController(authService);

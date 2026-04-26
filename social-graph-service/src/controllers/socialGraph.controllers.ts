@@ -1,4 +1,4 @@
-import { NextFunction, Request, response, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { SocialGraphService } from '../services/socialGraph.service.js';
 import {
   CursorPaginationQueryDto,
@@ -73,7 +73,6 @@ export class SocialGraphController {
     next: NextFunction,
   ) => {
     try {
-      console.log('param', req.params)
       const safeParams = followUserParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {

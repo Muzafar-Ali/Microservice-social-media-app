@@ -3,7 +3,7 @@ import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import config from '../config/config.js';
 import logger from '../utils/logger.js';
 
-const globalErrorHandler = (err: ApiErrorHandler, req: Request, res: Response, next: NextFunction) => {
+const globalErrorHandler = (err: ApiErrorHandler, req: Request, res: Response, _next: NextFunction) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'internal service error';
 

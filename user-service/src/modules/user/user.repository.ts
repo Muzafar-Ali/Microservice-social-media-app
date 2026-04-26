@@ -95,11 +95,16 @@ export class UserRepository {
 
       await transactionClient.outboxEvent.create({
         data: {
+          eventId: crypto.randomUUID(),
           eventName: USER_EVENT_NAMES.USER_CREATED,
           eventVersion: 1,
           aggregateId: createdUser.id,
           partitionKey: createdUser.id,
           payload: userCreatedPayload,
+
+          producerService: 'user-service',
+          occurredAt: new Date(),
+
           status: 'PENDING',
         },
       });
@@ -113,7 +118,7 @@ export class UserRepository {
     publicId: string,
     userId: string,
   ): Promise<User> => {
-    return this.prisma.$transaction(async (transactionClient) => {
+    return this.prisma.$transaction(async (transactionClient: any) => {
       const updatedUser = await transactionClient.user.update({
         where: { id: userId },
         data: {
@@ -126,6 +131,7 @@ export class UserRepository {
 
       await transactionClient.outboxEvent.create({
         data: {
+          eventId: crypto.randomUUID(),
           eventName: USER_EVENT_NAMES.USER_UPDATED,
           eventVersion: 1,
           aggregateId: updatedUser.id,
@@ -150,7 +156,7 @@ export class UserRepository {
     userId: string,
     data: UpdateMyProfileDto,
   ): Promise<User> => {
-    return this.prisma.$transaction(async (transactionClient) => {
+    return this.prisma.$transaction(async (transactionClient: any) => {
       const updatedUser = await transactionClient.user.update({
         where: { id: userId },
         data,
@@ -158,6 +164,7 @@ export class UserRepository {
 
       await transactionClient.outboxEvent.create({
         data: {
+          eventId: crypto.randomUUID(),
           eventName: USER_EVENT_NAMES.USER_UPDATED,
           eventVersion: 1,
           aggregateId: updatedUser.id,

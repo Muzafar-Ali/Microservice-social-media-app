@@ -14,6 +14,7 @@ import prisma from './config/prismaClient.js';
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
 import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';
 import UserEventConsumer from './events/consumers/user-event.consumer.js';
+import { OutboxWorker } from './workers/outbox.worker.js';
 
 export const createApp = async () => {
   const producer = await getKafkaProducer();
@@ -21,9 +22,10 @@ export const createApp = async () => {
 
   const socialGraphRepository = new SocialGraphRepository(prisma);
   const socialGraphEventPublisher = new SocialGraphEventPublisher(producer);
-  const socialGraphService = new SocialGraphService(socialGraphRepository, socialGraphEventPublisher);
+  const socialGraphService = new SocialGraphService(socialGraphRepository);
   const socialGraphController = new SocialGraphController(socialGraphService);
   const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, socialGraphService);
+  const outboxWorker = new OutboxWorker(prisma, socialGraphEventPublisher);
 
   const app = express();
 
@@ -55,5 +57,6 @@ export const createApp = async () => {
   return {
     app,
     userEventConsumer,
+    outboxWorker
   };
 };

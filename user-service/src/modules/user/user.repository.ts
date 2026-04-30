@@ -1,4 +1,5 @@
 // src/repositories/user.repository.ts
+import config from '../../config/config.js';
 import { USER_EVENT_NAMES } from '../../events/topics.js';
 import { PrismaClient, User, Prisma } from '../../generated/prisma/client.js';
 import { UserCreatedPayload } from '../../types/publisher.types.js';
@@ -6,6 +7,7 @@ import { UpdateMyProfileDto } from './user.validations.js';
 
 export class UserRepository {
   private prisma: PrismaClient;
+  private readonly producerServiceName = config.serviceName;
 
   constructor(prismaClient: PrismaClient) {
     this.prisma = prismaClient;
@@ -101,7 +103,7 @@ export class UserRepository {
           aggregateId: createdUser.id,
           partitionKey: createdUser.id,
           payload: userCreatedPayload,
-          producerService: 'user-service',
+          producerService: this.producerServiceName,
           occurredAt: new Date(),
           status: 'PENDING',
         },
@@ -142,6 +144,8 @@ export class UserRepository {
             status: updatedUser.status,
             updatedAt: updatedUser.updatedAt.toISOString(),
           },
+          producerService: this.producerServiceName,
+          occurredAt: new Date(),
           status: 'PENDING',
         },
       });
@@ -175,6 +179,8 @@ export class UserRepository {
             status: updatedUser.status,
             updatedAt: updatedUser.updatedAt.toISOString(),
           },
+          producerService: this.producerServiceName,
+          occurredAt: new Date(),
           status: 'PENDING',
         },
       });

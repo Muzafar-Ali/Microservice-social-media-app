@@ -18,6 +18,7 @@ export type UserCreatedPayload = {
   username: string;
   displayName: string | null;
   profileImage: UserProfileImagePayload;
+  producerService: string
   status: string;
   createdAt: string;
   updatedAt?: string;
@@ -28,6 +29,7 @@ export type UserUpdatedPayload = {
   username: string;
   displayName: string | null;
   profileImage: UserProfileImagePayload;
+  producerService: string
   status: string;
   updatedAt: string;
 };

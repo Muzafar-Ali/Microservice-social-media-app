@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma/client.js';
+import { OutboxEvent, PrismaClient } from '../generated/prisma/client.js';
 import { SOCIAL_GRAPH_EVENT_NAMES } from '../events/socialGraph-event.topics.js';
 import { SocialGraphEventPublisher } from '../events/socialGraph-producer.js';
 import { FollowCreatedPayload, UnFollowCreatedPayload } from '../types/social-graph-event-publisher.types.js';
@@ -11,56 +11,43 @@ export class OutboxWorker {
   ) {}
 
   async processPendingEvents(): Promise<void> {
-    const pendingEvents = await this.prisma.outboxEvent.findMany({
-      where: {
-        status: {
-          in: ['PENDING', 'FAILED'],
-        },
-        retryCount: {
-          lt: 5,
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-      take: 50,
+    const claimedEvents = await this.prisma.$transaction(async (transactionClient: any) => {
+      return transactionClient.$queryRaw<OutboxEvent[]>`
+        UPDATE "OutboxEvent"
+        SET 
+          status = 'PROCESSING',
+          error = NULL,
+          "updatedAt" = NOW()
+        WHERE id IN (
+          SELECT id
+          FROM "OutboxEvent"
+          WHERE status IN ('PENDING', 'FAILED')
+            AND "retryCount" < 5
+          ORDER BY "createdAt" ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 50
+        )
+        RETURNING *;
+      `;
     });
 
-    for (const outboxEvent of pendingEvents) {
+    for (const outboxEvent of claimedEvents) {
       try {
-        await this.prisma.outboxEvent.update({
-          where: { id: outboxEvent.id },
-          data: {
-            status: 'PROCESSING',
-            error: null,
-          },
-        });
-
         if (
           outboxEvent.eventName === SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED ||
           outboxEvent.eventName === SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REQUESTED
         ) {
-          await this.socialGraphEventPublisher.publishFollowCreated({
-            eventId: outboxEvent.eventId,
-            eventName: outboxEvent.eventName,
-            eventVersion: outboxEvent.eventVersion,
-            occurredAt: outboxEvent.occurredAt.toISOString(),
-            producerService: outboxEvent.producerService,
-            partitionKey: outboxEvent.partitionKey,
-            payload: outboxEvent.payload as FollowCreatedPayload,
-          });
+          await this.socialGraphEventPublisher.publishFollowCreated(
+            outboxEvent.payload as FollowCreatedPayload,
+            outboxEvent.eventId,
+          );
         }
 
         if (outboxEvent.eventName === SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED) {
-          await this.socialGraphEventPublisher.publishFollowRemoved({
-            eventId: outboxEvent.eventId,
-            eventName: outboxEvent.eventName,
-            eventVersion: outboxEvent.eventVersion,
-            occurredAt: outboxEvent.occurredAt.toISOString(),
-            producerService: outboxEvent.producerService,
-            partitionKey: outboxEvent.partitionKey,
-            payload: outboxEvent.payload as UnFollowCreatedPayload,
-          });
+          await this.socialGraphEventPublisher.publishFollowRemoved(
+            outboxEvent.payload as UnFollowCreatedPayload,
+            outboxEvent.eventId,
+          );
         }
 
         await this.prisma.outboxEvent.update({
@@ -68,6 +55,7 @@ export class OutboxWorker {
           data: {
             status: 'PUBLISHED',
             publishedAt: new Date(),
+            error: null,
           },
         });
       } catch (error) {

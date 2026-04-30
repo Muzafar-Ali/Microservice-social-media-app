@@ -1,40 +1,46 @@
 import { Producer } from 'kafkajs';
-import { KAFKA_TOPICS } from './socialGraph-event.topics.js';
+import { KAFKA_TOPICS, SOCIAL_GRAPH_EVENT_NAMES } from './socialGraph-event.topics.js';
 import logger from '../utils/logger.js';
 import {
   FollowCreatedEvent,
   FollowCreatedPayload,
-  PublishSocialGraphEventInput,
   UnFollowCreatedEvent,
   UnFollowCreatedPayload,
 } from '../types/social-graph-event-publisher.types.js';
+import { FollowStatus } from '../generated/prisma/enums.js';
+import config from '../config/config.js';
 
 export class SocialGraphEventPublisher {
+  private readonly producerServiceName = config.serviceName;
+
   constructor(private readonly producer: Producer) {}
 
-  public async publishFollowCreated(input: PublishSocialGraphEventInput<FollowCreatedPayload>): Promise<void> {
+  public async publishFollowCreated(payload: FollowCreatedPayload, eventId: string): Promise<void> {
     const event: FollowCreatedEvent = {
-      eventId: input.eventId,
-      eventName: input.eventName,
-      eventVersion: input.eventVersion,
-      occurredAt: input.occurredAt,
-      producerService: input.producerService,
-      partitionKey: input.partitionKey,
-      data: input.payload,
+      eventId,
+      eventName:
+        payload.status === FollowStatus.PENDING
+          ? SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REQUESTED
+          : SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED,
+      eventVersion: 1,
+      occurredAt: new Date().toISOString(),
+      producerService: this.producerServiceName,
+      partitionKey: payload.followerId,
+      data: payload,
     };
 
     await this.publishEvent(event);
   }
 
-  public async publishFollowRemoved(input: PublishSocialGraphEventInput<UnFollowCreatedPayload>): Promise<void> {
+  public async publishFollowRemoved(payload: UnFollowCreatedPayload, eventId: string): Promise<void> {
     const event: UnFollowCreatedEvent = {
-      eventId: input.eventId,
-      eventName: input.eventName,
-      eventVersion: input.eventVersion,
-      occurredAt: input.occurredAt,
-      producerService: input.producerService,
-      partitionKey: input.partitionKey,
-      data: input.payload,
+      eventId,
+      eventName: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED,
+      eventVersion: 1,
+      occurredAt: new Date().toISOString(),
+      producerService: this.producerServiceName,
+      partitionKey: payload.followerId,
+      data: payload,
     };
 
     await this.publishEvent(event);

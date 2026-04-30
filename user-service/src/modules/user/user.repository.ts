@@ -101,10 +101,8 @@ export class UserRepository {
           aggregateId: createdUser.id,
           partitionKey: createdUser.id,
           payload: userCreatedPayload,
-
           producerService: 'user-service',
           occurredAt: new Date(),
-
           status: 'PENDING',
         },
       });

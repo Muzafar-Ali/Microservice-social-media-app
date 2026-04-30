@@ -12,7 +12,7 @@ const config = {
   saltRounds: Number(process.env.SALT_ROUNDS),
   dataBaseUrl: process.env.DATABASE_URL,
   // pino logging
-  serviceName: process.env.SERVICE_NAME,
+  serviceName: process.env.SERVICE_NAME || 'user-service',
   logLevel: process.env.LOG_LEVEL,
   db: {
     client: 'postgresql',

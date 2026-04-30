@@ -3,15 +3,16 @@ import { Producer } from 'kafkajs';
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from './topics.js';
 import logger from '../utils/logger.js';
 import { UserCreatedEvent, UserCreatedPayload, UserUpdatedEvent, UserUpdatedPayload } from '../types/publisher.types.js';
+import config from '../config/config.js';
 
 export class UserEventPublisher {
-  private readonly producerServiceName = 'user-service';
+  private readonly producerServiceName = config.serviceName;
 
   constructor(private readonly producer: Producer) {}
 
-  public async publishUserCreated(payload: UserCreatedPayload): Promise<void> {
+  public async publishUserCreated(payload: UserCreatedPayload, eventId: string): Promise<void> {
     const event: UserCreatedEvent = {
-      eventId: crypto.randomUUID(),
+      eventId,
       eventName: USER_EVENT_NAMES.USER_CREATED,
       eventVersion: 1,
       occurredAt: new Date().toISOString(),
@@ -64,9 +65,9 @@ export class UserEventPublisher {
     }
   };
 
-  public async publishUserUpdated(payload: UserUpdatedPayload): Promise<void> {
+  public async publishUserUpdated(payload: UserUpdatedPayload, eventId: string): Promise<void> {
     const event: UserUpdatedEvent = {
-      eventId: crypto.randomUUID(),
+      eventId,
       eventName: USER_EVENT_NAMES.USER_UPDATED,
       eventVersion: 1,
       occurredAt: new Date().toISOString(),

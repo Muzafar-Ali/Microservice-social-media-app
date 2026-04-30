@@ -1,6 +1,6 @@
 import { UserEventPublisher } from '../../events/producers.js';
 import { USER_EVENT_NAMES } from '../../events/topics.js';
-import { PrismaClient } from '../../generated/prisma/client.js';
+import { OutboxEvent, PrismaClient } from '../../generated/prisma/client.js';
 import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.types.js';
 import logger from '../../utils/logger.js';
 
@@ -12,41 +12,40 @@ export class OutboxWorker {
   ) {}
 
   async processPendingEvents(): Promise<void> {
-    const pendingEvents = await this.prisma.outboxEvent.findMany({
-      where: {
-        status: {
-          in: ['PENDING', 'FAILED'],
-        },
-        retryCount: {
-          lt: 5,
-        },
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-      take: 50,
+  const claimedEvents = await this.prisma.$transaction(async (transactionClient) => {
+      return transactionClient.$queryRaw<OutboxEvent[]>`
+        UPDATE "OutboxEvent"
+        SET 
+          status = 'PROCESSING',
+          error = NULL,
+          "updatedAt" = NOW()
+        WHERE id IN (
+          SELECT id
+          FROM "OutboxEvent"
+          WHERE status IN ('PENDING', 'FAILED')
+            AND "retryCount" < 5
+          ORDER BY "createdAt" ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 50
+        )
+        RETURNING *;
+      `;
     });
 
-    for (const outboxEvent of pendingEvents) {
+    for (const outboxEvent of claimedEvents) {
       try {
-        await this.prisma.outboxEvent.update({
-          where: { id: outboxEvent.id },
-          data: {
-            status: 'PROCESSING',
-            error: null,
-          },
-        });
-
         if (outboxEvent.eventName === USER_EVENT_NAMES.USER_CREATED) {
-          const payload = outboxEvent.payload as UserCreatedPayload;
-          
-          await this.userEventPublisher.publishUserCreated(payload);
+          await this.userEventPublisher.publishUserCreated(
+            outboxEvent.payload as UserCreatedPayload,
+            outboxEvent.eventId,
+          );
         }
 
         if (outboxEvent.eventName === USER_EVENT_NAMES.USER_UPDATED) {
-          const payload = outboxEvent.payload as UserUpdatedPayload;
-
-          await this.userEventPublisher.publishUserUpdated(payload);
+          await this.userEventPublisher.publishUserUpdated(
+            outboxEvent.payload as UserUpdatedPayload,
+            outboxEvent.eventId,
+          );
         }
 
         await this.prisma.outboxEvent.update({
@@ -54,6 +53,7 @@ export class OutboxWorker {
           data: {
             status: 'PUBLISHED',
             publishedAt: new Date(),
+            error: null,
           },
         });
       } catch (error) {
@@ -72,6 +72,7 @@ export class OutboxWorker {
           {
             error,
             outboxEventId: outboxEvent.id,
+            eventId: outboxEvent.eventId,
             eventName: outboxEvent.eventName,
           },
           'Outbox event publishing failed',

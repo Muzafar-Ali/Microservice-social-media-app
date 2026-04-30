@@ -56,7 +56,13 @@ export class UserService {
   async getUserByUsername(username: string): Promise<SafeUSer | null> {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
-    const cached = await redis.get(cacheKey);
+    let cached = null;
+    
+    try {
+      cached = await redis.get(cacheKey);
+    } catch (error) {
+      logger.warn({ error, cacheKey }, 'Cache read failed');
+    }
 
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -74,14 +80,24 @@ export class UserService {
     const safeUser = this.toSafeUser(user);
 
     // Cache the user
-    await this.writeUserCache(safeUser);
+    try {
+      await this.writeUserCache(safeUser);
+    } catch (error) {
+      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
+    }
 
     return safeUser;
   }
 
   async getUserById(userId: string): Promise<SafeUSer | null> {
     const cacheKey = getUserCacheKeyById(userId);
-    const cached = await redis.get(cacheKey);
+    let cached = null;
+    
+    try {
+      cached = await redis.get(cacheKey);
+    } catch (error) {
+      logger.warn({ error, cacheKey }, 'Cache read failed');
+    }
 
     if (cached) {
       const parsed = JSON.parse(cached);
@@ -98,7 +114,11 @@ export class UserService {
     const safeUser = this.toSafeUser(user);
 
     // Cache the user
-    await this.writeUserCache(safeUser);
+    try {
+      await this.writeUserCache(safeUser);
+    } catch (error) {
+      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
+    }
 
     return safeUser;
   }
@@ -114,7 +134,11 @@ export class UserService {
     const safeUser = this.toSafeUser(updatedUser);
 
     // Cache the user
-    await this.writeUserCache(safeUser);
+    try {
+      await this.writeUserCache(safeUser);
+    } catch (error) {
+      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
+    }
 
     return safeUser;
   };
@@ -151,7 +175,11 @@ export class UserService {
     }
 
     // Cache the user
-    await this.writeUserCache(safeUser);
+    try {
+      await this.writeUserCache(safeUser);
+    } catch (error) {
+      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
+    }
 
     return safeUser;
   }
@@ -162,7 +190,14 @@ export class UserService {
       this.userRepository.incrementFollowersCount(followeeId, 1),
     ]);
 
-    await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
+    try {
+      await Promise.all([
+        this.refreshUserCacheById(followerId),
+        this.refreshUserCacheById(followeeId),
+      ]);
+    } catch (error) {
+      logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
+    }
   }
 
   async followRemoved(followerId: string, followeeId: string) {
@@ -171,7 +206,14 @@ export class UserService {
       this.userRepository.incrementFollowersCount(followeeId, -1),
     ]);
 
-    await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
+    try {
+      await Promise.all([
+        this.refreshUserCacheById(followerId),
+        this.refreshUserCacheById(followeeId),
+      ]);
+    } catch (error) {
+      logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
+    }
   }
 
   // Helper functions
@@ -188,7 +230,17 @@ export class UserService {
   }
 
   private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
-    await redis.del([getUserCacheKeyById(userId), getUserCacheKeyByUsername(username)]);
+    try {
+      await redis.del([
+        getUserCacheKeyById(userId),
+        getUserCacheKeyByUsername(username),
+      ]);
+    } catch (error) {
+      logger.warn(
+        { userId, username, error },
+        'User cache delete failed'
+      );
+    }
   }
 
   private async refreshUserCacheById(userId: string): Promise<void> {

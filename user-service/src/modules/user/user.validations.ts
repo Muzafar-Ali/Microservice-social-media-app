@@ -62,7 +62,7 @@ export const updateMyProfileSchema = z.object({
     .regex(/^[^<>]+$/, 'Name cannot contain HTML')
     .optional(),
   bio: z.string().trim().max(500).optional(),
-  profileImage: updateProfileImageSchema,
+  profileImage: updateProfileImageSchema.optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
   isPrivate: z.boolean().optional(),
 });

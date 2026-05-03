@@ -1,0 +1,80 @@
+groups:
+  - name: service-health-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service is down"
+          description: "{{ $labels.service }} is down for more than 1 minute."
+
+      - alert: HighHttp5xxErrors
+        expr: sum(rate(http_requests_total{status_code=~"5..", route!="/metrics"}[5m])) by (service) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High 5xx error rate"
+          description: "{{ $labels.service }} has high 5xx errors."
+
+      - alert: HighHttpLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{route!="/metrics"}[5m])) by (le, service)) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency"
+          description: "{{ $labels.service }} P95 latency is above 1 second."
+
+  - name: auth-alerts
+    rules:
+      - alert: HighLoginFailures
+        expr: sum(rate(auth_login_attempts_total{result="failure"}[5m])) by (service) > 0.2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High login failures"
+          description: "{{ $labels.service }} has increased failed login attempts."
+
+  - name: kafka-alerts
+    rules:
+      - alert: KafkaPublishFailures
+        expr: sum(rate(kafka_messages_published_total{result="failure"}[5m])) by (service) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka publish failures"
+          description: "{{ $labels.service }} has Kafka publish failures."
+
+      - alert: KafkaConsumerFailures
+        expr: sum(rate(kafka_messages_consumed_total{result="failure"}[5m])) by (service) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kafka consumer failures"
+          description: "{{ $labels.service }} has Kafka consumer failures."
+
+  - name: outbox-alerts
+    rules:
+      - alert: OutboxEventsStuck
+        expr: outbox_pending_events > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox events are stuck"
+          description: "{{ $labels.service }} has more than 50 pending outbox events."
+
+      - alert: OutboxPublishFailures
+        expr: sum(rate(outbox_events_total{result="failure"}[5m])) by (service) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox publish failures"
+          description: "{{ $labels.service }} has outbox publish failures."

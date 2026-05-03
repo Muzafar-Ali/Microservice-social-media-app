@@ -42,19 +42,22 @@ async function bootstrap() {
     // 5. Start published event cleanup worker
     let isOutboxCleanupRunning = false;
 
-    setInterval(async () => {
-      if (isOutboxCleanupRunning) return;
+    setInterval(
+      async () => {
+        if (isOutboxCleanupRunning) return;
 
-      isOutboxCleanupRunning = true;
+        isOutboxCleanupRunning = true;
 
-      try {
-        await outboxWorker.cleanupPublishedEvents();
-      } catch (error) {
-        logger.error({ error }, 'Outbox cleanup failed');
-      } finally {
-        isOutboxCleanupRunning = false;
-      }
-    }, 24 * 60 * 60 * 1000);
+        try {
+          await outboxWorker.cleanupPublishedEvents();
+        } catch (error) {
+          logger.error({ error }, 'Outbox cleanup failed');
+        } finally {
+          isOutboxCleanupRunning = false;
+        }
+      },
+      24 * 60 * 60 * 1000,
+    );
 
     logger.info('[Outbox] Cleanup worker started');
 

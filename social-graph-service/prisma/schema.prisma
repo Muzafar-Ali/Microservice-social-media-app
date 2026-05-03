@@ -18,12 +18,15 @@ enum FollowStatus {
 }
 
 model Follow {
-  id         String   @id @default(cuid())
-  followerId String
-  followeeId String
-  status     FollowStatus @default(ACTIVE)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String        @id @default(uuid())
+ 
+  followerId  String
+  followeeId  String
+ 
+  status      FollowStatus  @default(ACTIVE)
+ 
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   @@unique([followerId, followeeId])
   @@index([followerId, status, createdAt(sort: Desc)])
@@ -31,14 +34,16 @@ model Follow {
 }
 
 model UserProfileCache {
-  userId       String   @id
-  username     String   @unique
+  userId       String       @id
+  username     String       @unique
   displayName  String?
   avatarUrl    String?
+ 
   status       String
-  isPrivate    Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isPrivate    Boolean      @default(false)
+ 
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@index([status])
 }
@@ -51,25 +56,26 @@ enum OutboxEventStatus {
 }
 
 model OutboxEvent {
-  id              String            @id @default(cuid())
-
-  eventId         String            @unique
+  id              String    @id @default(uuid())
+  eventId         String    @unique
   eventName       String
   eventVersion    Int
+
   aggregateId     String
   partitionKey    String
+  
   payload         Json
 
   producerService String
   occurredAt      DateTime
 
   status          OutboxEventStatus @default(PENDING)
-  retryCount      Int               @default(0)
+  retryCount      Int       @default(0)
   error           String?
+  
   publishedAt     DateTime?
-
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([status, createdAt])
   @@index([status, retryCount])

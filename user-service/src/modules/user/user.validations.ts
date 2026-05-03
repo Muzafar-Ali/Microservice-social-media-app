@@ -6,9 +6,6 @@ export const updateProfileImageSchema = z.object({
 });
 
 export const createUserSchema = z.object({
-  // DB will generate id, so no `id` here
-  // auth-service or gateway will send this (optional if you want auth to choose id)
-  // id: z.string().cuid().optional(),
   username: z
     .string()
     .trim()
@@ -41,8 +38,7 @@ export const createUserSchema = z.object({
     .regex(/^[^<>]*$/, 'Bio cannot contain HTML tags')
     .optional(),
   profileImage: updateProfileImageSchema.optional(),
-  gender: z.enum(['male', 'female', 'other']).optional(),
-  isActive: z.boolean().optional().default(true),
+  gender: z.enum(['male', 'female', 'other']).optional()
 });
 
 export const updateMyProfileSchema = z.object({
@@ -76,16 +72,18 @@ export const getUserByUsernameSchema = z.object({
 });
 
 export const getUserByIdSchema = z.object({
-  id: z.string().trim().min(1, { message: 'User ID is required' }),
+  id: z.uuid({ error: 'User ID is required' }),
 });
 
 export const bulkUserLookupSchema = z.object({
-  ids: z.array(z.string().cuid()).nonempty(),
+   ids: z.array(z.uuid()).nonempty({
+    error: 'At least one user ID is required',
+  }),
 });
 
 export const followCreatedPayloadSchema = z.object({
-  followerId: z.string().min(1, { error: 'followerId is required' }),
-  followeeId: z.string().min(1, { error: 'followeeId is required' }),
+  followerId: z.uuid({ error: 'followerId must be a valid UUID' }),
+  followeeId: z.uuid({ error: 'followeeId must be a valid UUID' }),
   status: z.enum(['ACTIVE', 'PENDING']),
   createdAt: z.iso.datetime({ error: 'createdAt must be a valid ISO datetime' }),
 });
@@ -101,8 +99,8 @@ export const followCreatedEventSchema = z.object({
 });
 
 export const followRemovedPayloadSchema = z.object({
-  followerId: z.string().min(1, { error: 'followerId is required' }),
-  followeeId: z.string().min(1, { error: 'followeeId is required' }),
+  followerId: z.uuid({ error: 'followerId must be a valid UUID' }),
+  followeeId: z.uuid({ error: 'followeeId must be a valid UUID' }),
   removedAt: z.iso.datetime({ error: 'removedAt must be a valid ISO datetime' }),
 });
 

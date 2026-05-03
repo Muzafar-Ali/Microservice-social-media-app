@@ -68,6 +68,6 @@ export async function createApp() {
   return {
     app,
     socialGraphEventConsumer,
-    outboxWorker
+    outboxWorker,
   };
 }

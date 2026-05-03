@@ -30,6 +30,14 @@ export class SocialGrapsEventConsumer {
         if (!message.value) {
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
+          await this.sendToDlq({
+            topic,
+            partition,
+            offset: message.offset,
+            rawValue: '',
+            reason: 'Empty Kafka message value',
+          });
+
           await this.commitNextOffset(topic, partition, message.offset);
           return;
         }
@@ -140,7 +148,11 @@ export class SocialGrapsEventConsumer {
       'Handling follow.created event in user-service',
     );
 
-    await this.userService.followCreated(data.followerId, data.followeeId);
+    await this.userService.followCreated({
+      eventId: event.eventId,
+      followerId: data.followerId,
+      followeeId: data.followeeId,
+    });
   }
 
   private async handleFollowRemoved(event: FollowRemovedEvent): Promise<void> {
@@ -156,7 +168,11 @@ export class SocialGrapsEventConsumer {
       'Handling follow.removed event in user-service',
     );
 
-    await this.userService.followRemoved(data.followerId, data.followeeId);
+    await this.userService.followRemoved({
+      eventId: event.eventId,
+      followerId: data.followerId,
+      followeeId: data.followeeId,
+    });
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {

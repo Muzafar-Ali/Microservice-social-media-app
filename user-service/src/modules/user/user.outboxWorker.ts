@@ -4,7 +4,6 @@ import { OutboxEvent, PrismaClient } from '../../generated/prisma/client.js';
 import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.types.js';
 import logger from '../../utils/logger.js';
 
-
 export class OutboxWorker {
   constructor(
     private readonly prisma: PrismaClient,
@@ -12,7 +11,7 @@ export class OutboxWorker {
   ) {}
 
   async processPendingEvents(): Promise<void> {
-  const claimedEvents = await this.prisma.$transaction(async (transactionClient) => {
+    const claimedEvents = await this.prisma.$transaction(async (transactionClient) => {
       return transactionClient.$queryRaw<OutboxEvent[]>`
         UPDATE "OutboxEvent"
         SET 

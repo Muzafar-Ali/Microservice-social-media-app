@@ -2,7 +2,12 @@ import crypto from 'node:crypto';
 import { Producer } from 'kafkajs';
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from './topics.js';
 import logger from '../utils/logger.js';
-import { UserCreatedEvent, UserCreatedPayload, UserUpdatedEvent, UserUpdatedPayload } from '../types/publisher.types.js';
+import {
+  UserCreatedEvent,
+  UserCreatedPayload,
+  UserUpdatedEvent,
+  UserUpdatedPayload,
+} from '../types/publisher.types.js';
 import config from '../config/config.js';
 
 export class UserEventPublisher {
@@ -63,7 +68,7 @@ export class UserEventPublisher {
 
       throw error;
     }
-  };
+  }
 
   public async publishUserUpdated(payload: UserUpdatedPayload, eventId: string): Promise<void> {
     const event: UserUpdatedEvent = {

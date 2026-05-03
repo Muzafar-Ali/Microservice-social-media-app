@@ -5,7 +5,7 @@ export const followUserParamsSchema = z.object({
 });
 
 export const userCreatedPayloadSchema = z.object({
-  userId: z.string().min(1, { error: 'userId is required' }),
+  userId: z.uuid({ error: 'userId must be a valid UUID' }),
   username: z.string().min(1, { error: 'username is required' }),
   displayName: z.string().nullable(),
   profileImage: z
@@ -40,7 +40,7 @@ export const cursorPaginationQuerySchema = z.object({
 });
 
 export const userUpdatedPayloadSchema = z.object({
-  userId: z.string().min(1, { error: 'userId is required' }),
+  userId: z.uuid({ error: 'userId must be a valid UUID' }),
   username: z.string().min(1, { error: 'username is required' }),
   displayName: z.string().nullable(),
   profileImage: z

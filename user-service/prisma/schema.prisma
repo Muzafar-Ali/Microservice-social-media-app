@@ -33,7 +33,9 @@ model User {
   email           String    @unique
   password        String
   bio             String?   @db.Text
+
   profileImage    Json?
+  
   gender          Gender?
   status          Status    @default(ACTIVE)
   isPrivate       Boolean   @default(false)
@@ -72,6 +74,7 @@ model OutboxEvent {
   status          OutboxEventStatus @default(PENDING)
   retryCount      Int               @default(0)
   error           String?
+
   publishedAt     DateTime?
   deadLetteredAt  DateTime?
 
@@ -82,4 +85,15 @@ model OutboxEvent {
   @@index([status, retryCount])
   @@index([eventName])
   @@index([aggregateId])
+}
+
+model ProcessedEvent {
+  id           String   @id @default(cuid())
+  eventId      String
+  consumerName String
+  
+  processedAt  DateTime @default(now())
+
+  @@unique([eventId, consumerName])
+  @@index([processedAt])
 }

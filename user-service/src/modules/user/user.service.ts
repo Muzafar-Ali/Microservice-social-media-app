@@ -15,9 +15,7 @@ import logger from '../../utils/logger.js';
 export type SafeUSer = Omit<User, 'password'>;
 
 export class UserService {
-  constructor(
-    private userRepository: UserRepository,
-  ) {}
+  constructor(private userRepository: UserRepository) {}
 
   async createUser(dto: CreateUserDto): Promise<SafeUSer> {
     const existingUser = await this.userRepository.findByEmailOrUsername(dto.email, dto.username);
@@ -57,7 +55,7 @@ export class UserService {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
     let cached = null;
-    
+
     try {
       cached = await redis.get(cacheKey);
     } catch (error) {
@@ -92,7 +90,7 @@ export class UserService {
   async getUserById(userId: string): Promise<SafeUSer | null> {
     const cacheKey = getUserCacheKeyById(userId);
     let cached = null;
-    
+
     try {
       cached = await redis.get(cacheKey);
     } catch (error) {
@@ -124,7 +122,6 @@ export class UserService {
   }
 
   updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
-    
     const updatedUser = await this.userRepository.updateProfileImageByIdAndQueueUserUpdatedEvent(
       dto.secureUrl,
       dto.publicId,
@@ -184,42 +181,39 @@ export class UserService {
     return safeUser;
   }
 
-  async followCreated(followerId: string, followeeId: string) {
-    await Promise.all([
-      this.userRepository.incrementFollowingCount(followerId, 1),
-      this.userRepository.incrementFollowersCount(followeeId, 1),
-    ]);
+  async followCreated(input: { eventId: string; followerId: string; followeeId: string }) {
+    const { eventId, followerId, followeeId } = input;
+
+    const wasProcessed = await this.userRepository.applyFollowCreatedEvent({
+      eventId,
+      followerId,
+      followeeId,
+    });
+
+    if (!wasProcessed) return;
 
     try {
-      await Promise.all([
-        this.refreshUserCacheById(followerId),
-        this.refreshUserCacheById(followeeId),
-      ]);
+      await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
     } catch (error) {
       logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
     }
   }
+  async followRemoved(input: { eventId: string; followerId: string; followeeId: string }) {
+    const { eventId, followerId, followeeId } = input;
 
-  async followRemoved(followerId: string, followeeId: string) {
-    await Promise.all([
-      this.userRepository.incrementFollowingCount(followerId, -1),
-      this.userRepository.incrementFollowersCount(followeeId, -1),
-    ]);
+    const wasProcessed = await this.userRepository.applyFollowRemovedEvent({
+      eventId,
+      followerId,
+      followeeId,
+    });
+
+    if (!wasProcessed) return;
 
     try {
-      await Promise.all([
-        this.refreshUserCacheById(followerId),
-        this.refreshUserCacheById(followeeId),
-      ]);
+      await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
     } catch (error) {
       logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
     }
-  }
-
-  // Helper functions
-  private toSafeUser(user: User): SafeUSer {
-    const { password, ...safeUser } = user;
-    return safeUser;
   }
 
   private async writeUserCache(safeUser: SafeUSer): Promise<void> {
@@ -231,15 +225,9 @@ export class UserService {
 
   private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
     try {
-      await redis.del([
-        getUserCacheKeyById(userId),
-        getUserCacheKeyByUsername(username),
-      ]);
+      await redis.del([getUserCacheKeyById(userId), getUserCacheKeyByUsername(username)]);
     } catch (error) {
-      logger.warn(
-        { userId, username, error },
-        'User cache delete failed'
-      );
+      logger.warn({ userId, username, error }, 'User cache delete failed');
     }
   }
 
@@ -252,5 +240,11 @@ export class UserService {
 
     const safeUser = this.toSafeUser(user);
     await this.writeUserCache(safeUser);
+  }
+
+  // Helper functions
+  private toSafeUser(user: User): SafeUSer {
+    const { password, ...safeUser } = user;
+    return safeUser;
   }
 }

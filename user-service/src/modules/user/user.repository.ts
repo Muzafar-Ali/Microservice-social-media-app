@@ -54,30 +54,8 @@ export class UserRepository {
     });
   };
 
-  incrementFollowersCount = async (userId: string, delta: number): Promise<User> => {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        followersCount: {
-          increment: delta,
-        },
-      },
-    });
-  };
-
-  incrementFollowingCount = async (userId: string, delta: number): Promise<User> => {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        followingCount: {
-          increment: delta,
-        },
-      },
-    });
-  };
-
   async createUserAndQueueUserCreatedEvent(data: { userData: Prisma.UserCreateInput }): Promise<User> {
-    return this.prisma.$transaction(async (transactionClient: any) => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
       const createdUser = await transactionClient.user.create({
         data: data.userData,
       });
@@ -111,14 +89,14 @@ export class UserRepository {
 
       return createdUser;
     });
-  };
+  }
 
   updateProfileImageByIdAndQueueUserUpdatedEvent = async (
     secureUrl: string,
     publicId: string,
     userId: string,
   ): Promise<User> => {
-    return this.prisma.$transaction(async (transactionClient: any) => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
       const updatedUser = await transactionClient.user.update({
         where: { id: userId },
         data: {
@@ -154,10 +132,7 @@ export class UserRepository {
     });
   };
 
-  updateUserAndQueueUserUpdatedEvent = async (
-    userId: string,
-    data: UpdateMyProfileDto,
-  ): Promise<User> => {
+  updateUserAndQueueUserUpdatedEvent = async (userId: string, data: UpdateMyProfileDto): Promise<User> => {
     return this.prisma.$transaction(async (transactionClient: any) => {
       const updatedUser = await transactionClient.user.update({
         where: { id: userId },
@@ -188,4 +163,101 @@ export class UserRepository {
       return updatedUser;
     });
   };
+
+  applyFollowCreatedEvent = async (input: {
+    eventId: string;
+    followerId: string;
+    followeeId: string;
+  }): Promise<boolean> => {
+    try {
+      await this.prisma.$transaction(async (transactionClient: any) => {
+        await transactionClient.processedEvent.create({
+          data: {
+            eventId: input.eventId,
+            consumerName: 'user-service:follow-count-projection',
+          },
+        });
+
+        await transactionClient.user.update({
+          where: { id: input.followerId },
+          data: {
+            followingCount: {
+              increment: 1,
+            },
+          },
+        });
+
+        await transactionClient.user.update({
+          where: { id: input.followeeId },
+          data: {
+            followersCount: {
+              increment: 1,
+            },
+          },
+        });
+      });
+
+      return true;
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        return false;
+      }
+
+      throw error;
+    }
+  };
+
+  async applyFollowRemovedEvent(input: { eventId: string; followerId: string; followeeId: string }): Promise<boolean> {
+    try {
+      await this.prisma.$transaction(async (transactionClient: any) => {
+        await transactionClient.processedEvent.create({
+          data: {
+            eventId: input.eventId,
+            consumerName: 'user-service:follow-count-projection',
+          },
+        });
+
+        await transactionClient.user.updateMany({
+          where: {
+            id: input.followerId,
+            followingCount: {
+              gt: 0,
+            },
+          },
+          data: {
+            followingCount: {
+              decrement: 1,
+            },
+          },
+        });
+
+        await transactionClient.user.updateMany({
+          where: {
+            id: input.followeeId,
+            followersCount: {
+              gt: 0,
+            },
+          },
+          data: {
+            followersCount: {
+              decrement: 1,
+            },
+          },
+        });
+      });
+
+      return true;
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        return false;
+      }
+
+      throw error;
+    }
+  }
+
+  // Helper methods
+  private isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
 }

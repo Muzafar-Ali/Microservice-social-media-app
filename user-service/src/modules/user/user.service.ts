@@ -11,6 +11,7 @@ import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import bcrypt from 'bcrypt';
 import config from '../../config/config.js';
 import logger from '../../utils/logger.js';
+import { redisCacheOperationsTotal, userProfileReadsTotal } from '../../monitoring/metrics.js';
 
 export type SafeUSer = Omit<User, 'password'>;
 
@@ -45,6 +46,7 @@ export class UserService {
     try {
       await this.writeUserCache(safeUser);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
@@ -59,10 +61,13 @@ export class UserService {
     try {
       cached = await redis.get(cacheKey);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'read', result: 'error' });
       logger.warn({ error, cacheKey }, 'Cache read failed');
     }
 
     if (cached) {
+      redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
+      userProfileReadsTotal.inc({ lookup_type: 'username', result: 'cache_hit' });
       const parsed = JSON.parse(cached);
       return {
         ...parsed,
@@ -72,8 +77,15 @@ export class UserService {
     }
 
     // Otherwise get from database
+    redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
+
     const user = await this.userRepository.findByUsername(username);
-    if (!user) return null;
+    if (!user) {
+      userProfileReadsTotal.inc({ lookup_type: 'username', result: 'not_found' });
+      return null;
+    }
+
+    userProfileReadsTotal.inc({ lookup_type: 'username', result: 'database_hit' });
 
     const safeUser = this.toSafeUser(user);
 
@@ -81,6 +93,7 @@ export class UserService {
     try {
       await this.writeUserCache(safeUser);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
@@ -94,10 +107,13 @@ export class UserService {
     try {
       cached = await redis.get(cacheKey);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'read', result: 'error' });
       logger.warn({ error, cacheKey }, 'Cache read failed');
     }
 
     if (cached) {
+      redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
+      userProfileReadsTotal.inc({ lookup_type: 'id', result: 'cache_hit' });
       const parsed = JSON.parse(cached);
       return {
         ...parsed,
@@ -106,8 +122,15 @@ export class UserService {
       };
     }
 
+    redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
+
     const user = await this.userRepository.findUserById(userId);
-    if (!user) return null;
+    if (!user) {
+      userProfileReadsTotal.inc({ lookup_type: 'id', result: 'not_found' });
+      return null;
+    }
+
+    userProfileReadsTotal.inc({ lookup_type: 'id', result: 'database_hit' });
 
     const safeUser = this.toSafeUser(user);
 
@@ -115,6 +138,7 @@ export class UserService {
     try {
       await this.writeUserCache(safeUser);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
@@ -134,6 +158,7 @@ export class UserService {
     try {
       await this.writeUserCache(safeUser);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
@@ -175,6 +200,7 @@ export class UserService {
     try {
       await this.writeUserCache(safeUser);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
@@ -195,6 +221,7 @@ export class UserService {
     try {
       await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'refresh', result: 'error' });
       logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
     }
   }
@@ -212,6 +239,7 @@ export class UserService {
     try {
       await Promise.all([this.refreshUserCacheById(followerId), this.refreshUserCacheById(followeeId)]);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'refresh', result: 'error' });
       logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
     }
   }
@@ -221,12 +249,15 @@ export class UserService {
       redis.set(getUserCacheKeyById(safeUser.id), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
       redis.set(getUserCacheKeyByUsername(safeUser.username), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
     ]);
+    redisCacheOperationsTotal.inc({ operation: 'write', result: 'success' }, 2);
   }
 
   private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
     try {
       await redis.del([getUserCacheKeyById(userId), getUserCacheKeyByUsername(username)]);
+      redisCacheOperationsTotal.inc({ operation: 'delete', result: 'success' }, 2);
     } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'delete', result: 'error' });
       logger.warn({ userId, username, error }, 'User cache delete failed');
     }
   }

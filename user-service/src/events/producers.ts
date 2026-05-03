@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { Producer } from 'kafkajs';
 import { KAFKA_TOPICS, USER_EVENT_NAMES } from './topics.js';
 import logger from '../utils/logger.js';
@@ -9,6 +8,7 @@ import {
   UserUpdatedPayload,
 } from '../types/publisher.types.js';
 import config from '../config/config.js';
+import { kafkaMessagesPublishedTotal, kafkaPublishFailuresTotal } from '../monitoring/metrics.js';
 
 export class UserEventPublisher {
   private readonly producerServiceName = config.serviceName;
@@ -45,7 +45,9 @@ export class UserEventPublisher {
         ],
       });
 
-      logger.info(
+      kafkaMessagesPublishedTotal.inc({ topic: KAFKA_TOPICS.USER_EVENTS, event_name: event.eventName });
+
+      logger.debug(
         {
           eventName: event.eventName,
           userId: payload.userId,
@@ -55,6 +57,8 @@ export class UserEventPublisher {
         'Published user event',
       );
     } catch (error) {
+      kafkaPublishFailuresTotal.inc({ topic: KAFKA_TOPICS.USER_EVENTS, event_name: event.eventName });
+
       logger.error(
         {
           error,
@@ -100,7 +104,9 @@ export class UserEventPublisher {
         ],
       });
 
-      logger.info(
+      kafkaMessagesPublishedTotal.inc({ topic: KAFKA_TOPICS.USER_EVENTS, event_name: event.eventName });
+
+      logger.debug(
         {
           eventName: event.eventName,
           userId: payload.userId,
@@ -110,6 +116,8 @@ export class UserEventPublisher {
         'Published user updated event',
       );
     } catch (error) {
+      kafkaPublishFailuresTotal.inc({ topic: KAFKA_TOPICS.USER_EVENTS, event_name: event.eventName });
+
       logger.error(
         {
           error,

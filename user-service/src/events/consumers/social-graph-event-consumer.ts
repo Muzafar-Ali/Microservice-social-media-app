@@ -10,6 +10,12 @@ import {
 } from '../../modules/user/user.validations.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { FailedMessageContext } from '../../types/common.types.js';
+import {
+  kafkaConsumerFailuresTotal,
+  kafkaDlqMessagesTotal,
+  kafkaMessagesConsumedTotal,
+  kafkaOffsetCommitFailuresTotal,
+} from '../../monitoring/metrics.js';
 
 export class SocialGrapsEventConsumer {
   constructor(
@@ -28,6 +34,8 @@ export class SocialGrapsEventConsumer {
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
+          kafkaMessagesConsumedTotal.inc({ topic, event_name: 'unknown' });
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'empty_message' });
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
           await this.sendToDlq({
@@ -46,12 +54,14 @@ export class SocialGrapsEventConsumer {
 
         try {
           const parsedJson = JSON.parse(rawValue);
+          kafkaMessagesConsumedTotal.inc({ topic, event_name: parsedJson.eventName || 'unknown' });
 
           switch (parsedJson.eventName) {
             case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED: {
               const safeEvent = followCreatedEventSchema.safeParse(parsedJson);
 
               if (!safeEvent.success) {
+                kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_created_schema' });
                 logger.error(formatZodError(safeEvent.error));
 
                 await this.sendToDlq({
@@ -75,6 +85,7 @@ export class SocialGrapsEventConsumer {
               const safeEvent = followRemovedEventSchema.safeParse(parsedJson);
 
               if (!safeEvent.success) {
+                kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_removed_schema' });
                 logger.error(formatZodError(safeEvent.error));
 
                 await this.sendToDlq({
@@ -95,6 +106,8 @@ export class SocialGrapsEventConsumer {
             }
 
             default: {
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'unknown_event' });
+
               logger.warn(
                 {
                   topic,
@@ -110,6 +123,8 @@ export class SocialGrapsEventConsumer {
             }
           }
         } catch (error) {
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'processing_error' });
+
           logger.error(
             {
               error,
@@ -138,7 +153,7 @@ export class SocialGrapsEventConsumer {
   private async handleFollowCreated(event: FollowCreatedEvent): Promise<void> {
     const data = event.data;
 
-    logger.info(
+    logger.debug(
       {
         eventName: event.eventName,
         eventId: event.eventId,
@@ -158,7 +173,7 @@ export class SocialGrapsEventConsumer {
   private async handleFollowRemoved(event: FollowRemovedEvent): Promise<void> {
     const data = event.data;
 
-    logger.info(
+    logger.debug(
       {
         eventName: event.eventName,
         eventId: event.eventId,
@@ -178,22 +193,28 @@ export class SocialGrapsEventConsumer {
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
     const nextOffset = (BigInt(currentOffset) + 1n).toString();
 
-    await this.consumer.commitOffsets([
-      {
-        topic,
-        partition,
-        offset: nextOffset,
-      },
-    ]);
+    try {
+      await this.consumer.commitOffsets([
+        {
+          topic,
+          partition,
+          offset: nextOffset,
+        },
+      ]);
 
-    logger.info(
-      {
-        topic,
-        partition,
-        committedOffset: nextOffset,
-      },
-      'Committed user Kafka offset in social-graph-service',
-    );
+      logger.debug(
+        {
+          topic,
+          partition,
+          committedOffset: nextOffset,
+        },
+        'Committed user Kafka offset in social-graph-service',
+      );
+    } catch (error) {
+      kafkaOffsetCommitFailuresTotal.inc({ topic });
+      logger.error({ error, topic, partition, nextOffset }, 'Failed to commit user Kafka offset');
+      throw error;
+    }
   }
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
@@ -215,6 +236,12 @@ export class SocialGrapsEventConsumer {
           }),
         },
       ],
+    });
+
+    kafkaDlqMessagesTotal.inc({
+      source_topic: context.topic,
+      dlq_topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS_DLQ,
+      reason: context.reason,
     });
 
     logger.error(context, 'Sent social graph event to DLQ from user-service');

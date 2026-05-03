@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { SOCIAL_GRAPH_EVENT_NAMES } from '../events/socialGraph-event.topics.js';
-import { Follow, FollowStatus, PrismaClient, UserProfileCache } from '../generated/prisma/client.js';
+import { Follow, FollowStatus, PrismaClient, UserProfileCache, Prisma } from '../generated/prisma/client.js';
 import { FindFollowersInput, UpsertUserProjectionInput } from '../types/social-graph-common.types.js';
 import { FollowCreatedPayload, UnFollowCreatedPayload } from '../types/social-graph-event-publisher.types.js';
 
@@ -29,7 +29,7 @@ export class SocialGraphRepository {
     followeeId: string,
     status: FollowStatus,
   ): Promise<Follow> => {
-    return this.prisma.$transaction(async (transactionClient: any) => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
       const createdFollowRelation = await transactionClient.follow.create({
         data: {
           followerId,
@@ -72,7 +72,7 @@ export class SocialGraphRepository {
     followerId: string,
     followeeId: string,
   ): Promise<Follow | null> => {
-    return this.prisma.$transaction(async (transactionClient: any) => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
       const existingFollowRelation = await transactionClient.follow.findUnique({
         where: {
           followerId_followeeId: {

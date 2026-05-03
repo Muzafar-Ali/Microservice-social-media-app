@@ -14,6 +14,7 @@ import {
 } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
+import { userCreatedCounter, userUpdatedCounter } from '../../monitoring/metrics.js';
 
 export class UserController {
   constructor(private userService: UserService) {}
@@ -27,6 +28,7 @@ export class UserController {
       }
 
       const user = await this.userService.createUser(parsedData.data);
+      userCreatedCounter.inc();
 
       res.status(201).json({
         success: true,
@@ -98,6 +100,7 @@ export class UserController {
       }
 
       await this.userService.updateUserProfileImage(parsedData.data, String(userId));
+      userUpdatedCounter.inc({ update_type: 'profile_image' });
 
       res.status(200).json({
         success: true,
@@ -126,6 +129,7 @@ export class UserController {
       }
 
       const updatedProfile = await this.userService.updateMyProfile(String(userId), parsedBody.data);
+      userUpdatedCounter.inc({ update_type: 'profile' });
 
       res.status(200).json({
         success: true,

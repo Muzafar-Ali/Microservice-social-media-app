@@ -133,7 +133,7 @@ export class UserRepository {
   };
 
   updateUserAndQueueUserUpdatedEvent = async (userId: string, data: UpdateMyProfileDto): Promise<User> => {
-    return this.prisma.$transaction(async (transactionClient: any) => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
       const updatedUser = await transactionClient.user.update({
         where: { id: userId },
         data,
@@ -170,7 +170,7 @@ export class UserRepository {
     followeeId: string;
   }): Promise<boolean> => {
     try {
-      await this.prisma.$transaction(async (transactionClient: any) => {
+      await this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
         await transactionClient.processedEvent.create({
           data: {
             eventId: input.eventId,
@@ -209,7 +209,7 @@ export class UserRepository {
 
   async applyFollowRemovedEvent(input: { eventId: string; followerId: string; followeeId: string }): Promise<boolean> {
     try {
-      await this.prisma.$transaction(async (transactionClient: any) => {
+      await this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
         await transactionClient.processedEvent.create({
           data: {
             eventId: input.eventId,

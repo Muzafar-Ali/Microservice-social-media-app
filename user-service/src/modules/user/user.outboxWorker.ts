@@ -1,6 +1,13 @@
 import { UserEventPublisher } from '../../events/producers.js';
 import { USER_EVENT_NAMES } from '../../events/topics.js';
 import { OutboxEvent, PrismaClient } from '../../generated/prisma/client.js';
+import {
+  outboxCleanupDeletedTotal,
+  outboxEventsClaimedTotal,
+  outboxEventsPublishedTotal,
+  outboxPendingEventsGauge,
+  outboxPublishFailuresTotal,
+} from '../../monitoring/metrics.js';
 import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.types.js';
 import logger from '../../utils/logger.js';
 
@@ -32,6 +39,7 @@ export class OutboxWorker {
     });
 
     for (const outboxEvent of claimedEvents) {
+      outboxEventsClaimedTotal.inc({ event_name: outboxEvent.eventName });
       try {
         if (outboxEvent.eventName === USER_EVENT_NAMES.USER_CREATED) {
           await this.userEventPublisher.publishUserCreated(
@@ -55,7 +63,11 @@ export class OutboxWorker {
             error: null,
           },
         });
+
+        outboxEventsPublishedTotal.inc({ event_name: outboxEvent.eventName });
       } catch (error) {
+        outboxPublishFailuresTotal.inc({ event_name: outboxEvent.eventName });
+
         await this.prisma.outboxEvent.update({
           where: { id: outboxEvent.id },
           data: {
@@ -78,6 +90,8 @@ export class OutboxWorker {
         );
       }
     }
+
+    await this.updateOutboxPendingEventsGauge();
   }
 
   async cleanupPublishedEvents(): Promise<void> {
@@ -92,11 +106,28 @@ export class OutboxWorker {
       },
     });
 
+    outboxCleanupDeletedTotal.inc(result.count);
+
     logger.info(
       {
         deletedCount: result.count,
       },
       'Published outbox events cleaned up',
     );
+  }
+
+  private async updateOutboxPendingEventsGauge(): Promise<void> {
+    const pendingEventsCount = await this.prisma.outboxEvent.count({
+      where: {
+        status: {
+          in: ['PENDING', 'FAILED'],
+        },
+        retryCount: {
+          lt: 5,
+        },
+      },
+    });
+
+    outboxPendingEventsGauge.set(pendingEventsCount);
   }
 }

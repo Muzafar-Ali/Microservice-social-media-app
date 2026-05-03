@@ -38,7 +38,7 @@ export const createUserSchema = z.object({
     .regex(/^[^<>]*$/, 'Bio cannot contain HTML tags')
     .optional(),
   profileImage: updateProfileImageSchema.optional(),
-  gender: z.enum(['male', 'female', 'other']).optional()
+  gender: z.enum(['male', 'female', 'other']).optional(),
 });
 
 export const updateMyProfileSchema = z.object({
@@ -76,7 +76,7 @@ export const getUserByIdSchema = z.object({
 });
 
 export const bulkUserLookupSchema = z.object({
-   ids: z.array(z.uuid()).nonempty({
+  ids: z.array(z.uuid()).nonempty({
     error: 'At least one user ID is required',
   }),
 });

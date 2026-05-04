@@ -5,9 +5,22 @@ const isProduction = config.environment === 'production';
 
 const productionLogger = pino({
   level: config.logLevel || 'info',
-  base: { service: config.serviceName || 'social-graph-service' },
-  redact: ['req.headers.authorization'],
+  base: {
+    service: config.serviceName || 'social-graph-service',
+    env: config.environment,
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: [
+    'req.headers.authorization',
+    '*.password',
+    '*.token',
+    '*.accessToken',
+    '*.refreshToken',
+    '*.apiKey',
+    '*.secret',
+  ],
 });
+
 
 const developmentLogger = pino({
   level: 'debug',

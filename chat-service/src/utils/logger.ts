@@ -1,21 +1,24 @@
 import pino from 'pino';
 import config from '../config/config.js';
 
+const isProduction = config.environment === 'production';
+
 const productionLogger = pino({
   level: config.logLevel || 'info',
   base: {
-    services: config.serviceName || 'chat-service',
+    service: config.serviceName || 'chat-service',
+    env: config.environment,
   },
-  redact: {
-    paths: [
-      'req.headers.authorization',
-      'req.headers.cookie',
-      'req.body.password',
-      'req.body.token',
-      'req.body.refreshToken',
-    ],
-    censor: '[REDACTED]',
-  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: [
+    'req.headers.authorization',
+    '*.password',
+    '*.token',
+    '*.accessToken',
+    '*.refreshToken',
+    '*.apiKey',
+    '*.secret',
+  ],
 });
 
 const developmentLogger = pino({
@@ -30,7 +33,6 @@ const developmentLogger = pino({
   },
 });
 
-const isProduction = config.environment === 'production';
 const logger = isProduction ? productionLogger : developmentLogger;
 
 export default logger;

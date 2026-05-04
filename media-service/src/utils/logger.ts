@@ -1,6 +1,26 @@
 import config from '../config/config.js';
 import pino from 'pino';
 
+const isProduction = config.environment === 'production';
+
+const productionLogger = pino({
+  level: config.logLevel || 'info',
+  base: {
+    service: config.serviceName || 'media-service',
+    env: config.environment,
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: [
+    'req.headers.authorization',
+    '*.password',
+    '*.token',
+    '*.accessToken',
+    '*.refreshToken',
+    '*.apiKey',
+    '*.secret',
+  ],
+});
+
 const developmentLogger = pino({
   level: 'debug',
   transport: {
@@ -13,15 +33,6 @@ const developmentLogger = pino({
   },
 });
 
-const productionLogger = pino({
-  level: config.logLevel || 'info',
-  base: {
-    service: config.serviceName || 'media-service',
-  },
-  redact: ['req.headers.authorization', '*.password'],
-});
-
-const isProduction = config.environment === 'production';
 const logger = isProduction ? productionLogger : developmentLogger;
 
 export default logger;

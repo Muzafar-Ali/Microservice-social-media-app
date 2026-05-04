@@ -151,11 +151,12 @@ services:
   # ---------------------------------------------------------------
   prometheus:
     image: prom/prometheus
-    restart: always
+    restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus_data:/prometheus # volume
     depends_on:
       - user-service
@@ -163,9 +164,17 @@ services:
     networks:
       - backend-network
 
+  node-exporter:
+    image: prom/node-exporter:latest
+    restart: unless-stopped
+    expose:
+      - "9100"
+    networks:
+      - backend-network
+
   grafana:
     image: grafana/grafana-oss:latest
-    restart: always
+    restart: unless-stopped
     ports:
       - "5000:3000"
     depends_on:
@@ -181,7 +190,7 @@ services:
   # ---------------------------------------------------------------
   loki:
     image: grafana/loki:2.9.8
-    restart: always
+    restart: unless-stopped
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -195,12 +204,11 @@ services:
   # ---------------------------------------------------------------
   promtail:
     image: grafana/promtail:2.9.8
-    restart: always
+    restart: unless-stopped
     volumes:
       - /var/log:/var/log:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
-      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki

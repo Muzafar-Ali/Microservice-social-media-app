@@ -41,3 +41,15 @@ scrape_configs:
       - targets: ["social-graph-service:4005"]
         labels:
           service: "social-graph-service"
+          
+  - job_name: "node"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "node-exporter"
+
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["prometheus:9090"]
+        labels:
+          service: "prometheus"

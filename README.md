@@ -563,7 +563,35 @@ The Media Service does not use a local database in the current implementation. I
 
 ## Observability
 
-System metrics and monitoring are exposed via Prometheus and visualized through Grafana dashboards. Structured logs are generated using Pino.
+The system includes a production-style observability stack for monitoring, debugging, and system health analysis.
+
+### Monitoring
+
+- 📊 Metrics collection using Prometheus across all services  
+- 📈 Grafana dashboards for real-time system performance and health visibility  
+- ⚡ End-to-end monitoring for APIs and background workflows  
+
+### Alerting
+
+- 🚨 Configured alerting for:
+  - Service availability issues
+  - Performance degradation
+  - System and application failures  
+- ⏱️ Alert evaluation and grouping for controlled signal noise  
+
+### Logging
+
+- 📝 Centralized structured logging using Pino  
+- 🔍 Log aggregation and querying through Loki  
+- 🧠 Consistent log format with service-level context (service, environment, level)  
+
+### Observability Design
+
+- 🔗 Correlation between metrics, logs, and system events for faster debugging  
+- 🧩 Service-level dashboards for scalable monitoring architecture  
+- 🛠️ End-to-end pipeline from application logs to visualization  
+
+---
 
 Monitoring services:
 
@@ -571,6 +599,8 @@ Monitoring services:
 |---|---|---|
 | Prometheus | `9090` | Metrics collection |
 | Grafana | `5000` | Dashboard visualization |
+| Loki | `3100` | Log aggregation |
+| Promtail | `9080` | Log shipping |
 | Redpanda Console | `8080` | Kafka inspection |
 | Kafdrop | `19000` | Kafka topic/browser UI |
 

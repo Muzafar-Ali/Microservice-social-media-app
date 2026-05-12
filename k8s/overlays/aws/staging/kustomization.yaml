@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base
+  - storage/aws-gp3-storageclass.yaml
+
+patches:
+  - path: patches/configmap-aws-staging.yaml
+  - path: patches/application-replicas-aws-staging.yaml
+  - path: patches/application-resources-aws-staging.yaml
+  - path: patches/database-storage-aws-staging.yaml
+  - path: patches/kafka-storage-aws-staging.yaml
+  - path: ingress/alb-ingress-aws-staging.yaml
+
+images:
+  - name: social-media/web-gateway
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/social-media/web-gateway
+    newTag: staging-CHANGE_ME_IMAGE_TAG
+  - name: social-media/user-service
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/social-media/user-service
+    newTag: staging-CHANGE_ME_IMAGE_TAG
+  - name: social-media/media-service
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/social-media/media-service
+    newTag: staging-CHANGE_ME_IMAGE_TAG
+  - name: social-media/post-service
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/social-media/post-service
+    newTag: staging-CHANGE_ME_IMAGE_TAG
+  - name: social-media/chat-service
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/social-media/chat-service
+    newTag: staging-CHANGE_ME_IMAGE_TAG
+  - name: social-media/social-graph-service
+    newName: AWS_ACCOUNT_ID.dkr.ecr.AWS_REGION.amazonaws.com/social-media/social-graph-service
+    newTag: staging-CHANGE_ME_IMAGE_TAG

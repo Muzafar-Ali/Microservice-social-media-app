@@ -3,7 +3,6 @@ import { AuthService } from './auth.service.js';
 import { UserLoginDto, userLoginSchema } from './auth.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
-import { generateJwtToken } from '../../utils/JwtHelpers.js';
 import { TLoginContext } from './auth.types.js';
 import { createWebSession, setWebSessionCookie } from '../../utils/sessionHelpers.js';
 
@@ -74,17 +73,17 @@ export class AuthController {
 
       const user = await this.authService.userLogin(dto, loginContext);
 
-      const accessToken = generateJwtToken({
+      const sessionId = await createWebSession({
         userId: user.id,
-        email: user.email,
-        username: user.username,
+        ip: loginContext.ip,
+        userAgent: loginContext.userAgent,
       });
 
       res.status(200).json({
         success: true,
         message: 'logged in successfully',
         data: {
-          accessToken,
+          sessionId,
           userId: user.id,
           username: user.username,
           email: user.email,

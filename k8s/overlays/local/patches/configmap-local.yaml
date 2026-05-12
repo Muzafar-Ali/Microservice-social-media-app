@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: social-media-config
+  namespace: social-media
+data:
+  NODE_ENV: "development"
+  LOG_LEVEL: "debug"
+  KAFKA_BROKERS: "kafka-0.kafka-headless:9092"

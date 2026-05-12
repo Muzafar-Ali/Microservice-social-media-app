@@ -52,3 +52,18 @@ export const setWebSessionCookie = (res: Response, sessionId: string) => {
     maxAge: SESSION_TTL_SECONDS * 1000,
   });
 };
+
+export const clearWebSessionCookie = (res: Response) => {
+  const isProduction = config.environment === 'production';
+
+  res.clearCookie('sid', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    path: '/',
+  });
+};
+
+export const deleteSession = async (sessionId: string) => {
+  await redis.del(sessionCacheKey(sessionId));
+};

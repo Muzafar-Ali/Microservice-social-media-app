@@ -4,7 +4,7 @@ import { UserLoginDto, userLoginSchema } from './auth.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { TLoginContext } from './auth.types.js';
-import { createWebSession, setWebSessionCookie } from '../../utils/sessionHelpers.js';
+import { clearWebSessionCookie, createWebSession, deleteSession, setWebSessionCookie } from '../../utils/sessionHelpers.js';
 
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -88,6 +88,49 @@ export class AuthController {
           username: user.username,
           email: user.email,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  webLogoutHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const sessionId = req.cookies?.sid;
+
+      if (sessionId) {
+        await deleteSession(sessionId);
+      }
+
+      clearWebSessionCookie(res);
+
+      res.status(200).json({
+        success: true,
+        message: 'logged out successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  mobileLogoutHandler = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authHeader = req.headers.authorization;
+      let sessionId: string | undefined;
+
+      if (authHeader?.startsWith('Bearer ')) {
+        sessionId = authHeader.split(' ')[1];
+      }
+
+      if (!sessionId) {
+        throw new ApiErrorHandler(401, 'Please login');
+      }
+
+      await deleteSession(sessionId);
+
+      res.status(200).json({
+        success: true,
+        message: 'logged out successfully',
       });
     } catch (error) {
       next(error);

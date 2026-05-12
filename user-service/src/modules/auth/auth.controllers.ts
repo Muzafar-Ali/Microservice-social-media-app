@@ -4,7 +4,12 @@ import { UserLoginDto, userLoginSchema } from './auth.schema.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { TLoginContext } from './auth.types.js';
-import { clearWebSessionCookie, createWebSession, deleteSession, setWebSessionCookie } from '../../utils/sessionHelpers.js';
+import {
+  clearWebSessionCookie,
+  createWebSession,
+  deleteSession,
+  setWebSessionCookie,
+} from '../../utils/sessionHelpers.js';
 
 export class AuthController {
   constructor(private authService: AuthService) {}

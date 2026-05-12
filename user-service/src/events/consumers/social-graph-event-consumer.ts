@@ -18,6 +18,9 @@ import {
 } from '../../monitoring/metrics.js';
 
 export class SocialGrapsEventConsumer {
+  private readonly maxProcessingAttempts = 3;
+  private readonly retryBaseDelayMs = 500;
+
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
@@ -51,79 +54,12 @@ export class SocialGrapsEventConsumer {
         }
 
         const rawValue = message.value.toString();
+        let parsedJson: { eventName?: string };
 
         try {
-          const parsedJson = JSON.parse(rawValue);
-          kafkaMessagesConsumedTotal.inc({ topic, event_name: parsedJson.eventName || 'unknown' });
-
-          switch (parsedJson.eventName) {
-            case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED: {
-              const safeEvent = followCreatedEventSchema.safeParse(parsedJson);
-
-              if (!safeEvent.success) {
-                kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_created_schema' });
-                logger.error(formatZodError(safeEvent.error));
-
-                await this.sendToDlq({
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  rawValue,
-                  reason: 'Invalid follow.created schema',
-                });
-
-                await this.commitNextOffset(topic, partition, message.offset);
-                return;
-              }
-
-              await this.handleFollowCreated(safeEvent.data);
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-
-            case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED: {
-              const safeEvent = followRemovedEventSchema.safeParse(parsedJson);
-
-              if (!safeEvent.success) {
-                kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_removed_schema' });
-                logger.error(formatZodError(safeEvent.error));
-
-                await this.sendToDlq({
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  rawValue,
-                  reason: 'Invalid follow.removed schema',
-                });
-
-                await this.commitNextOffset(topic, partition, message.offset);
-                return;
-              }
-
-              await this.handleFollowRemoved(safeEvent.data);
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-
-            default: {
-              kafkaConsumerFailuresTotal.inc({ topic, reason: 'unknown_event' });
-
-              logger.warn(
-                {
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  eventName: parsedJson.eventName,
-                },
-                'Ignoring unknown user event in user-service',
-              );
-
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-          }
+          parsedJson = JSON.parse(rawValue) as { eventName?: string };
         } catch (error) {
-          kafkaConsumerFailuresTotal.inc({ topic, reason: 'processing_error' });
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_json' });
 
           logger.error(
             {
@@ -133,7 +69,7 @@ export class SocialGrapsEventConsumer {
               offset: message.offset,
               rawValue,
             },
-            'Failed to process user Kafka message in social-graph-service',
+            'Received invalid JSON Kafka message in user-service',
           );
 
           await this.sendToDlq({
@@ -141,10 +77,116 @@ export class SocialGrapsEventConsumer {
             partition,
             offset: message.offset,
             rawValue,
-            reason: 'Unhandled processing error',
+            reason: 'Invalid JSON message value',
           });
 
           await this.commitNextOffset(topic, partition, message.offset);
+          return;
+        }
+
+        kafkaMessagesConsumedTotal.inc({ topic, event_name: parsedJson.eventName || 'unknown' });
+
+        switch (parsedJson.eventName) {
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED: {
+            const safeEvent = followCreatedEventSchema.safeParse(parsedJson);
+
+            if (!safeEvent.success) {
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_created_schema' });
+              logger.error(formatZodError(safeEvent.error));
+
+              await this.sendToDlq({
+                topic,
+                partition,
+                offset: message.offset,
+                rawValue,
+                reason: 'Invalid follow.created schema',
+              });
+
+              await this.commitNextOffset(topic, partition, message.offset);
+              return;
+            }
+
+            try {
+              await this.processWithRetry(() => this.handleFollowCreated(safeEvent.data), {
+                topic,
+                partition,
+                offset: message.offset,
+                eventName: safeEvent.data.eventName,
+                eventId: safeEvent.data.eventId,
+              });
+            } catch (error) {
+              await this.handleRetryExhausted({
+                error,
+                topic,
+                partition,
+                offset: message.offset,
+                rawValue,
+                reason: 'Retry exhausted while processing follow.created',
+              });
+            }
+
+            await this.commitNextOffset(topic, partition, message.offset);
+            return;
+          }
+
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED: {
+            const safeEvent = followRemovedEventSchema.safeParse(parsedJson);
+
+            if (!safeEvent.success) {
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_removed_schema' });
+              logger.error(formatZodError(safeEvent.error));
+
+              await this.sendToDlq({
+                topic,
+                partition,
+                offset: message.offset,
+                rawValue,
+                reason: 'Invalid follow.removed schema',
+              });
+
+              await this.commitNextOffset(topic, partition, message.offset);
+              return;
+            }
+
+            try {
+              await this.processWithRetry(() => this.handleFollowRemoved(safeEvent.data), {
+                topic,
+                partition,
+                offset: message.offset,
+                eventName: safeEvent.data.eventName,
+                eventId: safeEvent.data.eventId,
+              });
+            } catch (error) {
+              await this.handleRetryExhausted({
+                error,
+                topic,
+                partition,
+                offset: message.offset,
+                rawValue,
+                reason: 'Retry exhausted while processing follow.removed',
+              });
+            }
+
+            await this.commitNextOffset(topic, partition, message.offset);
+            return;
+          }
+
+          default: {
+            kafkaConsumerFailuresTotal.inc({ topic, reason: 'unknown_event' });
+
+            logger.warn(
+              {
+                topic,
+                partition,
+                offset: message.offset,
+                eventName: parsedJson.eventName,
+              },
+              'Ignoring unknown user event in user-service',
+            );
+
+            await this.commitNextOffset(topic, partition, message.offset);
+            return;
+          }
         }
       },
     });
@@ -188,6 +230,63 @@ export class SocialGrapsEventConsumer {
       followerId: data.followerId,
       followeeId: data.followeeId,
     });
+  }
+
+  private async processWithRetry(
+    operation: () => Promise<void>,
+    context: {
+      topic: string;
+      partition: number;
+      offset: string;
+      eventName: string;
+      eventId: string;
+    },
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= this.maxProcessingAttempts; attempt++) {
+      try {
+        await operation();
+        return;
+      } catch (error) {
+        kafkaConsumerFailuresTotal.inc({ topic: context.topic, reason: 'processing_retry' });
+
+        logger.warn(
+          {
+            error,
+            attempt,
+            maxAttempts: this.maxProcessingAttempts,
+            ...context,
+          },
+          'Kafka event processing attempt failed in user-service',
+        );
+
+        if (attempt === this.maxProcessingAttempts) {
+          throw error;
+        }
+
+        await this.sleep(this.retryBaseDelayMs * attempt);
+      }
+    }
+  }
+
+  private async handleRetryExhausted(context: FailedMessageContext & { error: unknown }): Promise<void> {
+    kafkaConsumerFailuresTotal.inc({ topic: context.topic, reason: 'processing_retry_exhausted' });
+
+    logger.error(
+      {
+        error: context.error,
+        topic: context.topic,
+        partition: context.partition,
+        offset: context.offset,
+        rawValue: context.rawValue,
+      },
+      'Kafka event processing retries exhausted in user-service',
+    );
+
+    await this.sendToDlq(context);
+  }
+
+  private async sleep(delayMs: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {

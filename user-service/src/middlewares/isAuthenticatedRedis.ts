@@ -18,7 +18,6 @@ declare global {
   }
 }
 
-
 const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     let sessionId = req.cookies?.sid;

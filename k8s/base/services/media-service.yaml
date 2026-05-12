@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: media-service
+  namespace: social-media
+  labels:
+    app.kubernetes.io/name: media-service
+    app.kubernetes.io/component: application
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: media-service
+    app.kubernetes.io/component: application
+  ports:
+    - name: http
+      port: 4002
+      targetPort: http

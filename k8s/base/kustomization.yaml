@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: social-media
+
+resources:
+  - namespace.yaml  
+  - configmap.yaml
+  - secret.example.yaml
+  - databases/user-db.yaml
+  - databases/post-db.yaml
+  - databases/chat-db.yaml
+  - databases/social-graph-db.yaml
+  - databases/redis-cache.yaml
+  - databases/kafka.yaml
+  - deployments/web-gateway.yaml
+  - deployments/user-service.yaml
+  - deployments/media-service.yaml
+  - deployments/post-service.yaml
+  - deployments/chat-service.yaml
+  - deployments/social-graph-service.yaml
+  - services/web-gateway.yaml
+  - services/user-service.yaml
+  - services/media-service.yaml
+  - services/post-service.yaml
+  - services/chat-service.yaml
+  - services/social-graph-service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: social-media-platform

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: post-service
+  namespace: social-media
+  labels:
+    app.kubernetes.io/name: post-service
+    app.kubernetes.io/component: application
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: post-service
+    app.kubernetes.io/component: application
+  ports:
+    - name: http
+      port: 4003
+      targetPort: http

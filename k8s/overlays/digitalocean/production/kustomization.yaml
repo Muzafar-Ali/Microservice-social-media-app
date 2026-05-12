@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base
+  - storage/do-block-storageclass.yaml
+
+patches:
+  - path: patches/configmap-digitalocean-production.yaml
+  - path: patches/application-replicas-digitalocean-production.yaml
+  - path: patches/application-resources-digitalocean-production.yaml
+  - path: patches/database-storage-digitalocean-production.yaml
+  - path: patches/kafka-storage-digitalocean-production.yaml
+  - path: ingress/nginx-ingress-digitalocean-production.yaml
+
+images:
+  - name: social-media/web-gateway
+    newName: registry.digitalocean.com/CHANGE_ME_REGISTRY/social-media/web-gateway
+    newTag: production-CHANGE_ME_IMAGE_TAG
+  - name: social-media/user-service
+    newName: registry.digitalocean.com/CHANGE_ME_REGISTRY/social-media/user-service
+    newTag: production-CHANGE_ME_IMAGE_TAG
+  - name: social-media/media-service
+    newName: registry.digitalocean.com/CHANGE_ME_REGISTRY/social-media/media-service
+    newTag: production-CHANGE_ME_IMAGE_TAG
+  - name: social-media/post-service
+    newName: registry.digitalocean.com/CHANGE_ME_REGISTRY/social-media/post-service
+    newTag: production-CHANGE_ME_IMAGE_TAG
+  - name: social-media/chat-service
+    newName: registry.digitalocean.com/CHANGE_ME_REGISTRY/social-media/chat-service
+    newTag: production-CHANGE_ME_IMAGE_TAG
+  - name: social-media/social-graph-service
+    newName: registry.digitalocean.com/CHANGE_ME_REGISTRY/social-media/social-graph-service
+    newTag: production-CHANGE_ME_IMAGE_TAG

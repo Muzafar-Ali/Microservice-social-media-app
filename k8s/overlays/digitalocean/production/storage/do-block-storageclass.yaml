@@ -1,0 +1,12 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: do-block-storage
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: dobs.csi.digitalocean.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+parameters:
+  fsType: ext4

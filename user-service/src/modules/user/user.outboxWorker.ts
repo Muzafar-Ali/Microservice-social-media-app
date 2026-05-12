@@ -12,18 +12,23 @@ import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.ty
 import logger from '../../utils/logger.js';
 
 export class OutboxWorker {
+  private readonly processingTimeoutMs = 5 * 60 * 1000;
+
   constructor(
     private readonly prisma: PrismaClient,
     private readonly userEventPublisher: UserEventPublisher,
   ) {}
 
   async processPendingEvents(): Promise<void> {
+    await this.recoverStaleProcessingEvents();
+
     const claimedEvents = await this.prisma.$transaction(async (transactionClient) => {
       return transactionClient.$queryRaw<OutboxEvent[]>`
         UPDATE "OutboxEvent"
         SET 
           status = 'PROCESSING',
           error = NULL,
+          "processingStartedAt" = NOW(),
           "updatedAt" = NOW()
         WHERE id IN (
           SELECT id
@@ -92,6 +97,34 @@ export class OutboxWorker {
     }
 
     await this.updateOutboxPendingEventsGauge();
+  }
+
+  private async recoverStaleProcessingEvents(): Promise<void> {
+    const staleBefore = new Date(Date.now() - this.processingTimeoutMs);
+
+    const recoveredEvents = await this.prisma.$queryRaw<Array<{ id: string; eventName: string }>>`
+      UPDATE "OutboxEvent"
+      SET
+        status = 'PENDING',
+        error = 'Recovered stale PROCESSING event after worker timeout',
+        "processingStartedAt" = NULL,
+        "updatedAt" = NOW()
+      WHERE status = 'PROCESSING'
+        AND "processingStartedAt" IS NOT NULL
+        AND "processingStartedAt" < ${staleBefore}
+        AND "retryCount" < 5
+      RETURNING id, "eventName";
+    `;
+
+    for (const event of recoveredEvents) {
+      logger.warn(
+        {
+          outboxEventId: event.id,
+          eventName: event.eventName,
+        },
+        'Recovered stale outbox event stuck in PROCESSING',
+      );
+    }
   }
 
   async cleanupPublishedEvents(): Promise<void> {

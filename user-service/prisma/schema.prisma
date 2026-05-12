@@ -75,6 +75,7 @@ model OutboxEvent {
   retryCount      Int               @default(0)
   error           String?
 
+  processingStartedAt DateTime?
   publishedAt     DateTime?
   deadLetteredAt  DateTime?
 

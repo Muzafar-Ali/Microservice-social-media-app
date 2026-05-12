@@ -4,7 +4,7 @@ kind: Kustomization
 namespace: social-media
 
 resources:
-  - namespace.yaml  
+  - namespace.yaml
   - configmap.yaml
   - secret.example.yaml
   - databases/user-db.yaml
@@ -25,6 +25,7 @@ resources:
   - services/post-service.yaml
   - services/chat-service.yaml
   - services/social-graph-service.yaml
+  - ingress.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: social-media-platform

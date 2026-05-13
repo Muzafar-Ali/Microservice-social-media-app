@@ -14,6 +14,7 @@ import logger from '../../utils/logger.js';
 import { redisCacheOperationsTotal, userProfileReadsTotal } from '../../monitoring/metrics.js';
 
 export type SafeUSer = Omit<User, 'password'>;
+export type PublicUserProfile = Omit<SafeUSer, 'email'>;
 
 export class UserService {
   constructor(private userRepository: UserRepository) {}
@@ -64,7 +65,7 @@ export class UserService {
     return safeUser;
   }
 
-  async getUserByUsername(username: string): Promise<SafeUSer | null> {
+  async getUserByUsername(username: string): Promise<PublicUserProfile | null> {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
     let cached = null;
@@ -107,10 +108,10 @@ export class UserService {
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
-    return safeUser;
+    return this.toPublicUserProfile(safeUser);
   }
 
-  async getUserById(userId: string): Promise<SafeUSer | null> {
+  async getUserById(userId: string): Promise<PublicUserProfile | null> {
     const cacheKey = getUserCacheKeyById(userId);
     let cached = null;
 
@@ -151,7 +152,7 @@ export class UserService {
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
-    return safeUser;
+    return this.toPublicUserProfile(safeUser);
   }
 
   updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {

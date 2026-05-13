@@ -317,4 +317,9 @@ export class UserService {
   private isUniqueConstraintError(error: unknown): boolean {
     return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
+
+  private toPublicUserProfile(user: SafeUSer): PublicUserProfile {
+    const { email, ...publicUser } = user;
+    return publicUser;
+  }
 }

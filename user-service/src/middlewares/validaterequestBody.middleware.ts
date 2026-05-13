@@ -1,0 +1,25 @@
+import { NextFunction, Request, Response } from 'express';
+import formatZodError from '../utils/formatZodError.js';
+import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
+import z from 'zod';
+
+const validateRequestBody = (schema: z.ZodObject<any>) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = schema.safeParse(req.body);
+
+      if (!result.success) {
+        const errorMessages = formatZodError(result.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      req.body = result.data;
+
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+export default validateRequestBody;

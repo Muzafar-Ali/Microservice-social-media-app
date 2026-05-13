@@ -1,7 +1,7 @@
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import logger from '../../utils/logger.js';
 import { AuthRepository } from './auth.repository.js';
-import { UserLoginDto } from './auth.schema.js';
+import { UserLoginDto } from './auth.validations.js';
 import bcrypt from 'bcrypt';
 import { TLoginContext } from './auth.types.js';
 import { isLoginLocked, recordFailedLoginAttempt, resetFailedLoginAttempts } from '../../utils/loginAttemptsTracker.js';

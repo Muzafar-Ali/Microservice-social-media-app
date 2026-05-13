@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
-import { UserLoginDto, userLoginSchema } from './auth.schema.js';
+import { UserLoginDto, userLoginSchema } from './auth.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { TLoginContext } from './auth.types.js';

@@ -19,6 +19,7 @@ import { AuthController } from './modules/auth/auth.controllers.js';
 import getSocialGraphKafkaConsumer from './utils/kafka/getSocialGraphKafkaConsumer.js';
 import { SocialGrapsEventConsumer } from './events/consumers/social-graph-event-consumer.js';
 import { OutboxWorker } from './modules/user/user.outboxWorker.js';
+import { redis } from './config/redisClient.js';
 
 export async function createApp() {
   const producer = await getKafkaProducer();
@@ -53,7 +54,39 @@ export async function createApp() {
   app.use(metricsMiddleware);
 
   app.get('/health', (_req, res) => {
-    res.send('Health is ok');
+    res.status(200).json({
+      status: 'ok',
+      service: 'user-service',
+    });
+  });
+
+  app.get('/ready', async (_req, res) => {
+    const checks = {
+      postgres: false,
+      redis: false,
+    };
+
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      checks.postgres = true;
+    } catch {
+      checks.postgres = false;
+    }
+
+    try {
+      await redis.ping();
+      checks.redis = true;
+    } catch {
+      checks.redis = false;
+    }
+
+    const ready = Object.values(checks).every(Boolean);
+
+    res.status(ready ? 200 : 503).json({
+      status: ready ? 'ready' : 'not_ready',
+      service: 'user-service',
+      checks,
+    });
   });
 
   // expose /metrics for Prometheus

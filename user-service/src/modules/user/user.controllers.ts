@@ -2,15 +2,12 @@ import { Request, Response, NextFunction } from 'express';
 import { UserService } from './user.service.js';
 import {
   CreateUserDto,
-  createUserSchema,
   GetUserByIdDto,
   getUserByIdSchema,
   GetUserByUsernameDto,
   getUserByUsernameSchema,
   UpdateMyProfileDto,
-  updateMyProfileSchema,
   UpdateProfileImageDto,
-  updateProfileImageSchema,
 } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
@@ -21,13 +18,9 @@ export class UserController {
 
   createUser = async (req: Request<Record<string, never>, any, CreateUserDto>, res: Response, next: NextFunction) => {
     try {
-      const parsedData = createUserSchema.safeParse(req.body);
+      const safeData = req.body;
 
-      if (!parsedData.success) {
-        throw new ApiErrorHandler(400, formatZodError(parsedData.error));
-      }
-
-      const user = await this.userService.createUser(parsedData.data);
+      const user = await this.userService.createUser(safeData);
       userCreatedCounter.inc();
 
       res.status(201).json({
@@ -42,13 +35,13 @@ export class UserController {
 
   getProfileById = async (req: Request<GetUserByIdDto>, res: Response, next: NextFunction) => {
     try {
-      const parsedId = getUserByIdSchema.safeParse(req.params);
+      const safeParams = getUserByIdSchema.safeParse(req.params);
 
-      if (!parsedId.success) {
-        throw new ApiErrorHandler(400, formatZodError(parsedId.error));
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
 
-      const profile = await this.userService.getUserById(String(parsedId.data.id));
+      const profile = await this.userService.getUserById(String(safeParams.data.id));
 
       if (!profile) {
         throw new ApiErrorHandler(404, 'user not found');
@@ -65,13 +58,13 @@ export class UserController {
 
   getProfileByUsername = async (req: Request<GetUserByUsernameDto>, res: Response, next: NextFunction) => {
     try {
-      const parsedData = getUserByUsernameSchema.safeParse(req.params);
+      const safeParams = getUserByUsernameSchema.safeParse(req.params);
 
-      if (!parsedData.success) {
-        throw new ApiErrorHandler(400, formatZodError(parsedData.error));
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
 
-      const profile = await this.userService.getUserByUsername(parsedData.data.username);
+      const profile = await this.userService.getUserByUsername(safeParams.data.username);
 
       if (!profile) {
         throw new ApiErrorHandler(404, 'user not found');
@@ -92,14 +85,10 @@ export class UserController {
     next: NextFunction,
   ) => {
     try {
-      const parsedData = updateProfileImageSchema.safeParse(req.body);
+      const safeData = req.body;
       const userId = req.userId;
 
-      if (!parsedData.success) {
-        throw new ApiErrorHandler(400, formatZodError(parsedData.error));
-      }
-
-      await this.userService.updateUserProfileImage(parsedData.data, String(userId));
+      await this.userService.updateUserProfileImage(safeData, String(userId));
       userUpdatedCounter.inc({ update_type: 'profile_image' });
 
       res.status(200).json({
@@ -117,18 +106,14 @@ export class UserController {
     next: NextFunction,
   ) => {
     try {
+      const safeData = req.body;
       const userId = req.userId;
 
       if (!userId) {
         throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
-      const parsedBody = updateMyProfileSchema.safeParse(req.body);
-      if (!parsedBody.success) {
-        throw new ApiErrorHandler(400, formatZodError(parsedBody.error));
-      }
-
-      const updatedProfile = await this.userService.updateMyProfile(String(userId), parsedBody.data);
+      const updatedProfile = await this.userService.updateMyProfile(String(userId), safeData);
       userUpdatedCounter.inc({ update_type: 'profile' });
 
       res.status(200).json({

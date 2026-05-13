@@ -38,7 +38,18 @@ export class UserService {
       gender: dto.gender,
     };
 
-    const createdUser = await this.userRepository.createUserAndQueueUserCreatedEvent({ userData });
+    let createdUser: User;
+
+    // Database-level protection against concurrent duplicate inserts.
+    try {
+      createdUser = await this.userRepository.createUserAndQueueUserCreatedEvent({ userData });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        throw new ApiErrorHandler(409, 'Username or email already exists');
+      }
+
+      throw error;
+    }
 
     const safeUser = this.toSafeUser(createdUser);
 
@@ -277,5 +288,9 @@ export class UserService {
   private toSafeUser(user: User): SafeUSer {
     const { password, ...safeUser } = user;
     return safeUser;
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
 }

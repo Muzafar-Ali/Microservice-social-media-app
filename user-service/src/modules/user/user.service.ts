@@ -79,12 +79,11 @@ export class UserService {
     if (cached) {
       redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
       userProfileReadsTotal.inc({ lookup_type: 'username', result: 'cache_hit' });
-      const parsed = JSON.parse(cached);
-      return {
-        ...parsed,
-        createdAt: new Date(parsed.createdAt),
-        updatedAt: new Date(parsed.updatedAt),
-      };
+      const parsedUser = await this.parseCachedUser(cached, cacheKey);
+
+      if (parsedUser) {
+        return parsedUser;
+      }
     }
 
     // Otherwise get from database
@@ -125,12 +124,11 @@ export class UserService {
     if (cached) {
       redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
       userProfileReadsTotal.inc({ lookup_type: 'id', result: 'cache_hit' });
-      const parsed = JSON.parse(cached);
-      return {
-        ...parsed,
-        createdAt: new Date(parsed.createdAt),
-        updatedAt: new Date(parsed.updatedAt),
-      };
+      const parsedUser = await this.parseCachedUser(cached, cacheKey);
+
+      if (parsedUser) {
+        return parsedUser;
+      }
     }
 
     redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
@@ -255,6 +253,7 @@ export class UserService {
     }
   }
 
+  // Helper functions
   private async writeUserCache(safeUser: SafeUSer): Promise<void> {
     await Promise.all([
       redis.set(getUserCacheKeyById(safeUser.id), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
@@ -284,7 +283,31 @@ export class UserService {
     await this.writeUserCache(safeUser);
   }
 
-  // Helper functions
+  private async parseCachedUser(cached: string, cacheKey: string): Promise<SafeUSer | null> {
+    try {
+      const parsed = JSON.parse(cached);
+
+      return {
+        ...parsed,
+        createdAt: new Date(parsed.createdAt),
+        updatedAt: new Date(parsed.updatedAt),
+      };
+    } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'parse', result: 'error' });
+      logger.warn({ error, cacheKey }, 'Invalid user cache payload');
+
+      try {
+        await redis.del(cacheKey);
+        redisCacheOperationsTotal.inc({ operation: 'delete', result: 'success' });
+      } catch (deleteError) {
+        redisCacheOperationsTotal.inc({ operation: 'delete', result: 'error' });
+        logger.warn({ error: deleteError, cacheKey }, 'Invalid user cache delete failed');
+      }
+
+      return null;
+    }
+  }
+
   private toSafeUser(user: User): SafeUSer {
     const { password, ...safeUser } = user;
     return safeUser;

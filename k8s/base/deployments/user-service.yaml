@@ -96,7 +96,7 @@ spec:
                   key: USER_POSTGRES_DB
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10

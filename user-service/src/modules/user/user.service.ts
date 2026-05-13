@@ -14,6 +14,7 @@ import logger from '../../utils/logger.js';
 import { redisCacheOperationsTotal, userProfileReadsTotal } from '../../monitoring/metrics.js';
 
 export type SafeUSer = Omit<User, 'password'>;
+export type PublicUserProfile = Omit<SafeUSer, 'email'>;
 
 export class UserService {
   constructor(private userRepository: UserRepository) {}
@@ -38,7 +39,18 @@ export class UserService {
       gender: dto.gender,
     };
 
-    const createdUser = await this.userRepository.createUserAndQueueUserCreatedEvent({ userData });
+    let createdUser: User;
+
+    // Database-level protection against concurrent duplicate inserts.
+    try {
+      createdUser = await this.userRepository.createUserAndQueueUserCreatedEvent({ userData });
+    } catch (error) {
+      if (this.isUniqueConstraintError(error)) {
+        throw new ApiErrorHandler(409, 'Username or email already exists');
+      }
+
+      throw error;
+    }
 
     const safeUser = this.toSafeUser(createdUser);
 
@@ -53,7 +65,7 @@ export class UserService {
     return safeUser;
   }
 
-  async getUserByUsername(username: string): Promise<SafeUSer | null> {
+  async getUserByUsername(username: string): Promise<PublicUserProfile | null> {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
     let cached = null;
@@ -68,12 +80,11 @@ export class UserService {
     if (cached) {
       redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
       userProfileReadsTotal.inc({ lookup_type: 'username', result: 'cache_hit' });
-      const parsed = JSON.parse(cached);
-      return {
-        ...parsed,
-        createdAt: new Date(parsed.createdAt),
-        updatedAt: new Date(parsed.updatedAt),
-      };
+      const parsedUser = await this.parseCachedUser(cached, cacheKey);
+
+      if (parsedUser) {
+        return parsedUser;
+      }
     }
 
     // Otherwise get from database
@@ -97,10 +108,10 @@ export class UserService {
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
-    return safeUser;
+    return this.toPublicUserProfile(safeUser);
   }
 
-  async getUserById(userId: string): Promise<SafeUSer | null> {
+  async getUserById(userId: string): Promise<PublicUserProfile | null> {
     const cacheKey = getUserCacheKeyById(userId);
     let cached = null;
 
@@ -114,12 +125,11 @@ export class UserService {
     if (cached) {
       redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
       userProfileReadsTotal.inc({ lookup_type: 'id', result: 'cache_hit' });
-      const parsed = JSON.parse(cached);
-      return {
-        ...parsed,
-        createdAt: new Date(parsed.createdAt),
-        updatedAt: new Date(parsed.updatedAt),
-      };
+      const parsedUser = await this.parseCachedUser(cached, cacheKey);
+
+      if (parsedUser) {
+        return parsedUser;
+      }
     }
 
     redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
@@ -142,7 +152,7 @@ export class UserService {
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
-    return safeUser;
+    return this.toPublicUserProfile(safeUser);
   }
 
   updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
@@ -244,6 +254,7 @@ export class UserService {
     }
   }
 
+  // Helper functions
   private async writeUserCache(safeUser: SafeUSer): Promise<void> {
     await Promise.all([
       redis.set(getUserCacheKeyById(safeUser.id), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
@@ -273,9 +284,37 @@ export class UserService {
     await this.writeUserCache(safeUser);
   }
 
-  // Helper functions
+  private async parseCachedUser(cached: string, cacheKey: string): Promise<SafeUSer | null> {
+    try {
+      const parsed = JSON.parse(cached);
+
+      return {
+        ...parsed,
+        createdAt: new Date(parsed.createdAt),
+        updatedAt: new Date(parsed.updatedAt),
+      };
+    } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'parse', result: 'error' });
+      logger.warn({ error, cacheKey }, 'Invalid user cache payload');
+
+      try {
+        await redis.del(cacheKey);
+        redisCacheOperationsTotal.inc({ operation: 'delete', result: 'success' });
+      } catch (deleteError) {
+        redisCacheOperationsTotal.inc({ operation: 'delete', result: 'error' });
+        logger.warn({ error: deleteError, cacheKey }, 'Invalid user cache delete failed');
+      }
+
+      return null;
+    }
+  }
+
   private toSafeUser(user: User): SafeUSer {
     const { password, ...safeUser } = user;
     return safeUser;
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
 }

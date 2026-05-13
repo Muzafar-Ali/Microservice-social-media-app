@@ -20,7 +20,7 @@ export const userLoginSchema = z
     password: z
       .string()
       .min(1, { error: 'must provide password' })
-      .max(32, { error: 'password can not excced 32 charachters long' }),
+      .max(128, { error: 'password can not exceed 128 characters long' }),
   })
   .refine((data) => data.username || data.email, {
     message: 'Either username or email is required',

@@ -14,6 +14,7 @@ import logger from '../../utils/logger.js';
 import { redisCacheOperationsTotal, userProfileReadsTotal } from '../../monitoring/metrics.js';
 
 export type SafeUSer = Omit<User, 'password'>;
+export type PublicUserProfile = Omit<SafeUSer, 'email'>;
 
 export class UserService {
   constructor(private userRepository: UserRepository) {}
@@ -53,7 +54,7 @@ export class UserService {
     return safeUser;
   }
 
-  async getUserByUsername(username: string): Promise<SafeUSer | null> {
+  async getUserByUsername(username: string): Promise<PublicUserProfile | null> {
     // Check if user is cached already by username
     const cacheKey = getUserCacheKeyByUsername(username);
     let cached = null;
@@ -69,11 +70,11 @@ export class UserService {
       redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
       userProfileReadsTotal.inc({ lookup_type: 'username', result: 'cache_hit' });
       const parsed = JSON.parse(cached);
-      return {
+      return this.toPublicUserProfile({
         ...parsed,
         createdAt: new Date(parsed.createdAt),
         updatedAt: new Date(parsed.updatedAt),
-      };
+      });
     }
 
     // Otherwise get from database
@@ -97,10 +98,10 @@ export class UserService {
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
-    return safeUser;
+    return this.toPublicUserProfile(safeUser);
   }
 
-  async getUserById(userId: string): Promise<SafeUSer | null> {
+  async getUserById(userId: string): Promise<PublicUserProfile | null> {
     const cacheKey = getUserCacheKeyById(userId);
     let cached = null;
 
@@ -115,11 +116,11 @@ export class UserService {
       redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
       userProfileReadsTotal.inc({ lookup_type: 'id', result: 'cache_hit' });
       const parsed = JSON.parse(cached);
-      return {
+      return this.toPublicUserProfile({
         ...parsed,
         createdAt: new Date(parsed.createdAt),
         updatedAt: new Date(parsed.updatedAt),
-      };
+      });
     }
 
     redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
@@ -142,7 +143,7 @@ export class UserService {
       logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
     }
 
-    return safeUser;
+    return this.toPublicUserProfile(safeUser);
   }
 
   updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
@@ -277,5 +278,10 @@ export class UserService {
   private toSafeUser(user: User): SafeUSer {
     const { password, ...safeUser } = user;
     return safeUser;
+  }
+
+  private toPublicUserProfile(user: SafeUSer): PublicUserProfile {
+    const { email, ...publicProfile } = user;
+    return publicProfile;
   }
 }

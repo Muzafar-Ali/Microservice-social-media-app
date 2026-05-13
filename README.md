@@ -46,6 +46,8 @@ Implements authentication, feed generation, media processing, real-time messagin
 
 ---
 
+![Scalable Microservices Architecture](diagram.png)
+
 ## High-Level Architecture
 
 ```txt

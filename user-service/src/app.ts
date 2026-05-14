@@ -17,7 +17,7 @@ import { AuthRepository } from './modules/auth/auth.repository.js';
 import { AuthService } from './modules/auth/auth.service.js';
 import { AuthController } from './modules/auth/auth.controllers.js';
 import getSocialGraphKafkaConsumer from './utils/kafka/getSocialGraphKafkaConsumer.js';
-import { SocialGrapsEventConsumer } from './events/consumers/social-graph-event-consumer.js';
+import { SocialGraphEventConsumer } from './events/consumers/social-graph-event-consumer.js';
 import { OutboxWorker } from './modules/user/user.outboxWorker.js';
 import { redis } from './config/redisClient.js';
 
@@ -32,7 +32,7 @@ export async function createApp() {
   const authService = new AuthService(authRepository);
   const userController = new UserController(userService);
   const authControllers = new AuthController(authService);
-  const socialGraphEventConsumer = new SocialGrapsEventConsumer(socialGraphKafkaConsumer, producer, userService);
+  const socialGraphEventConsumer = new SocialGraphEventConsumer(socialGraphKafkaConsumer, producer, userService);
   const outboxWorker = new OutboxWorker(prisma, userEventPublisher);
 
   const app = express();

@@ -60,7 +60,7 @@ spec:
             - configMapRef:
                 name: social-media-config
             - secretRef:
-                name: social-media-secret
+                name: chat-service-secret
           env:
             - name: PORT
               value: "4004"
@@ -69,7 +69,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: chat-service-secret
                   key: CHAT_DATABASE_URL
           readinessProbe:
             tcpSocket:

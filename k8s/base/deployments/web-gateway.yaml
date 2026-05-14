@@ -40,8 +40,6 @@ spec:
           envFrom:
             - configMapRef:
                 name: social-media-config
-            - secretRef:
-                name: social-media-secret
           env:
             - name: PORT
               value: "8088"

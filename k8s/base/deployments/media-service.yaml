@@ -41,7 +41,7 @@ spec:
             - configMapRef:
                 name: social-media-config
             - secretRef:
-                name: social-media-secret
+                name: media-service-secret
           env:
             - name: PORT
               value: "4002"

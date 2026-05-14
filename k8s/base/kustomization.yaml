@@ -6,7 +6,11 @@ namespace: social-media
 resources:
   - namespace.yaml
   - configmap.yaml
-  - secret.example.yaml
+  - secrets/user-service-secret.yaml
+  - secrets/post-service-secret.yaml
+  - secrets/chat-service-secret.yaml
+  - secrets/media-service-secret.yaml
+  - secrets/social-graph-service-secret.yaml
   - databases/user-db.yaml
   - databases/post-db.yaml
   - databases/chat-db.yaml

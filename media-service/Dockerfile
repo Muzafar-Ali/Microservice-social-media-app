@@ -1,20 +1,26 @@
-FROM node:22
+FROM node:22-alpine AS builder
+
 WORKDIR /app
 
-# 1. Install dependencies first (cached)
 COPY package*.json ./
 RUN npm ci
 
-# 3. Copy the rest of source code (includes tsconfig, env.app, env.db, src/, etc.)
 COPY . .
 
-# 2. Copy Prisma schema and generate client for Debian
-# COPY prisma ./prisma
-# RUN npx prisma generate
-
-# 4. Build TypeScript → JS
 RUN npm run build
 
+
+FROM node:22-alpine AS production
+
+WORKDIR /app
+
 ENV NODE_ENV=production
+
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 4002
+
 CMD ["node", "dist/server.js"]

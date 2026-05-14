@@ -63,7 +63,7 @@ spec:
             - configMapRef:
                 name: social-media-config
             - secretRef:
-                name: social-media-secret
+                name: user-service-secret
           env:
             - name: PORT
               value: "4001"
@@ -72,7 +72,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: user-service-secret
                   key: USER_DATABASE_URL
             - name: DB_HOST
               valueFrom:
@@ -82,17 +82,17 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: user-service-secret
                   key: USER_POSTGRES_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: user-service-secret
                   key: USER_POSTGRES_PASSWORD
             - name: DB_NAME
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: user-service-secret
                   key: USER_POSTGRES_DB
           readinessProbe:
             httpGet:

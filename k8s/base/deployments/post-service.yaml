@@ -63,7 +63,7 @@ spec:
             - configMapRef:
                 name: social-media-config
             - secretRef:
-                name: social-media-secret
+                name: post-service-secret
           env:
             - name: PORT
               value: "4003"
@@ -72,7 +72,7 @@ spec:
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: post-service-secret
                   key: POST_DATABASE_URL
           readinessProbe:
             httpGet:

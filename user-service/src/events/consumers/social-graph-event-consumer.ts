@@ -17,7 +17,7 @@ import {
   kafkaOffsetCommitFailuresTotal,
 } from '../../monitoring/metrics.js';
 
-export class SocialGrapsEventConsumer {
+export class SocialGraphEventConsumer {
   private readonly maxProcessingAttempts = 3;
   private readonly retryBaseDelayMs = 500;
 

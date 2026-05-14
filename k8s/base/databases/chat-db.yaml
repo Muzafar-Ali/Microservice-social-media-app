@@ -48,17 +48,17 @@ spec:
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: chat-service-secret
                   key: CHAT_POSTGRES_DB
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: chat-service-secret
                   key: CHAT_POSTGRES_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: social-media-secret
+                  name: chat-service-secret
                   key: CHAT_POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata

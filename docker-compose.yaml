@@ -310,6 +310,7 @@ services:
   user-service:
     build: 
       context: ./user-service
+      dockerfile: Dockerfile.dev
       args:
         DATABASE_URL: ${DATABASE_URL_USER}
     ports:
@@ -333,7 +334,9 @@ services:
       - backend-network
 
   media-service:
-    build: ./media-service
+    build: 
+      context: ./media-service
+      dockerfile: Dockerfile.dev
     ports:
       - "4002:4002"
     depends_on:
@@ -353,6 +356,7 @@ services:
   post-service:
     build: 
       context: ./post-service
+      dockerfile: Dockerfile.dev
       args:
         DATABASE_URL: ${DATABASE_URL_POST}
     ports:
@@ -378,6 +382,7 @@ services:
   chat-service:
     build: 
       context: ./chat-service
+      dockerfile: Dockerfile.dev
       args:
         DATABASE_URL: ${DATABASE_URL_CHAT}
     ports:
@@ -403,6 +408,7 @@ services:
   social-graph-service:
     build: 
       context: ./social-graph-service
+      dockerfile: Dockerfile.dev
       args:
         DATABASE_URL: ${DATABASE_URL_SOCIAL_GRAPH}
     ports:
@@ -429,7 +435,9 @@ services:
   #                   🚪 API Gateways (routing-only)
   # =================================================================
   web-gateway:
-    build: ./api-gateway/web-gateway
+    build: 
+      context: ./api-gateway/web-gateway
+      dockerfile: Dockerfile.dev
     ports:
       - "8088:8088"
     environment:

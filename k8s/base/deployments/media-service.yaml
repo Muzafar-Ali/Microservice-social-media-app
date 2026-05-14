@@ -39,14 +39,20 @@ spec:
               containerPort: 4002
           envFrom:
             - configMapRef:
-                name: social-media-config
+                name: media-service-config
             - secretRef:
                 name: media-service-secret
           env:
             - name: PORT
-              value: "4002"
+              valueFrom:
+                configMapKeyRef:
+                  name: media-service-config
+                  key: PORT
             - name: SERVICE_NAME
-              value: "media-service"
+              valueFrom:
+                configMapKeyRef:
+                  name: media-service-config
+                  key: SERVICE_NAME
           readinessProbe:
             tcpSocket:
               port: http

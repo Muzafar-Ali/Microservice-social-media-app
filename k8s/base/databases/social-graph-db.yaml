@@ -47,19 +47,19 @@ spec:
           env:
             - name: POSTGRES_DB
               valueFrom:
-                secretKeyRef:
-                  name: social-graph-service-secret
-                  key: SOCIAL_GRAPH_POSTGRES_DB
+                configMapKeyRef:
+                  name: social-graph-service-config
+                  key: DB_NAME
             - name: POSTGRES_USER
               valueFrom:
-                secretKeyRef:
-                  name: social-graph-service-secret
-                  key: SOCIAL_GRAPH_POSTGRES_USER
+                configMapKeyRef:
+                  name: social-graph-service-config
+                  key: DB_USER
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: social-graph-service-secret
-                  key: SOCIAL_GRAPH_POSTGRES_PASSWORD
+                  key: DB_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           readinessProbe:

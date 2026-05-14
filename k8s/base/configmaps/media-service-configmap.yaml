@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: media-service-config
+  namespace: social-media
+data:
+  PORT: "4002"
+  NODE_ENV: "production"
+  REDIS_URL: "redis://redis-cache:6379"
+
+  SERVICE_NAME: "media-service"
+  LOG_LEVEL: "warn"
+  SALT_ROUNDS: "10"

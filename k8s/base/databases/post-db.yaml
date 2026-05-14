@@ -47,19 +47,21 @@ spec:
           env:
             - name: POSTGRES_DB
               valueFrom:
-                secretKeyRef:
-                  name: post-service-secret
-                  key: POST_POSTGRES_DB
+                configMapKeyRef:
+                  name: post-service-config
+                  key: DB_NAME
+
             - name: POSTGRES_USER
               valueFrom:
-                secretKeyRef:
-                  name: post-service-secret
-                  key: POST_POSTGRES_USER
+                configMapKeyRef:
+                  name: post-service-config
+                  key: DB_USER
+
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: post-service-secret
-                  key: POST_POSTGRES_PASSWORD
+                  key: DB_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           readinessProbe:

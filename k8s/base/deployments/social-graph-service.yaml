@@ -43,7 +43,10 @@ spec:
               done
           env:
             - name: DB_HOST
-              value: "social-graph-db"
+              valueFrom:
+                configMapKeyRef:
+                  name: social-graph-service-config
+                  key: DB_HOST
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -61,19 +64,25 @@ spec:
               containerPort: 4005
           envFrom:
             - configMapRef:
-                name: social-media-config
+                name: social-graph-service-config
             - secretRef:
                 name: social-graph-service-secret
           env:
             - name: PORT
-              value: "4005"
+              valueFrom:
+                configMapKeyRef:
+                  name: social-graph-service-config
+                  key: PORT
             - name: SERVICE_NAME
-              value: "social-graph-service"
+              valueFrom:
+                configMapKeyRef:
+                  name: social-graph-service-config
+                  key: SERVICE_NAME
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: social-graph-service-secret
-                  key: SOCIAL_GRAPH_DATABASE_URL
+                  key: DATABASE_URL
           readinessProbe:
             httpGet:
               path: /health

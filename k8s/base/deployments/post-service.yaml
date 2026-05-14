@@ -61,19 +61,25 @@ spec:
               containerPort: 4003
           envFrom:
             - configMapRef:
-                name: social-media-config
+                name: post-service-config
             - secretRef:
                 name: post-service-secret
           env:
             - name: PORT
-              value: "4003"
+              valueFrom:
+                configMapKeyRef:
+                  name: post-service-config
+                  key: PORT
             - name: SERVICE_NAME
-              value: "post-service"
+              valueFrom:
+                configMapKeyRef:
+                  name: post-service-config
+                  key: SERVICE_NAME
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: post-service-secret
-                  key: POST_DATABASE_URL
+                  key: DATABASE_URL
           readinessProbe:
             httpGet:
               path: /health

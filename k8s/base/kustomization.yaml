@@ -5,7 +5,6 @@ namespace: social-media
 
 resources:
   - namespace.yaml
-  - configmap.yaml
   - configmaps/user-service-configmap.yaml
   - configmaps/post-service-configmap.yaml
   - configmaps/chat-service-configmap.yaml

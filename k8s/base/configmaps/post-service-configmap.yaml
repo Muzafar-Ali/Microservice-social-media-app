@@ -13,6 +13,7 @@ data:
   DB_NAME: "post-db"
 
   REDIS_URL: "redis://redis-cache:6379"
+  KAFKA_BROKERS: "kafka-0.kafka-headless:9092"
 
   SERVICE_NAME: "post-service"
   LOG_LEVEL: "warn"

@@ -12,5 +12,8 @@ data:
   DB_USER: "postgres"
   DB_NAME: "social-graph-db"
 
+  REDIS_URL: "redis://redis-cache:6379"
+  KAFKA_BROKERS: "kafka-0.kafka-headless:9092"
+
   SERVICE_NAME: "social-graph-service"
   LOG_LEVEL: "warn"

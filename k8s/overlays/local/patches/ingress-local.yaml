@@ -8,8 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: social-media.local
-      http:
+    - http:
         paths:
           - path: /
             pathType: Prefix

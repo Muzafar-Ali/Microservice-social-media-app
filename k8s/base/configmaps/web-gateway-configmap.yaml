@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-gateway-config
+  namespace: social-media
+data:
+  NODE_ENV: "production"
+  PORT: "8088"
+
+  SERVICE_NAME: "web-gateway"
+  LOG_LEVEL: "warn"

@@ -43,7 +43,10 @@ spec:
               done
           env:
             - name: DB_HOST
-              value: "user-db"
+              valueFrom:
+                configMapKeyRef:
+                  name: user-service-config
+                  key: DB_HOST
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -61,39 +64,45 @@ spec:
               containerPort: 4001
           envFrom:
             - configMapRef:
-                name: social-media-config
+                name: user-service-config
             - secretRef:
                 name: user-service-secret
           env:
             - name: PORT
-              value: "4001"
+              valueFrom:
+                configMapKeyRef:
+                  name: user-service-config
+                  key: PORT
             - name: SERVICE_NAME
-              value: "user-service"
+              valueFrom:
+                configMapKeyRef:
+                  name: user-service-config
+                  key: SERVICE_NAME
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: user-service-secret
-                  key: USER_DATABASE_URL
+                  key: DATABASE_URL
             - name: DB_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: social-media-config
-                  key: USER_DB_HOST
+                  name: user-service-config
+                  key: DB_HOST
             - name: DB_USER
               valueFrom:
-                secretKeyRef:
-                  name: user-service-secret
-                  key: USER_POSTGRES_USER
+                configMapKeyRef:
+                  name: user-service-config
+                  key: DB_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: user-service-secret
-                  key: USER_POSTGRES_PASSWORD
+                  key: DB_PASSWORD
             - name: DB_NAME
               valueFrom:
-                secretKeyRef:
-                  name: user-service-secret
-                  key: USER_POSTGRES_DB
+                configMapKeyRef:
+                  name: user-service-config
+                  key: DB_NAME
           readinessProbe:
             httpGet:
               path: /ready

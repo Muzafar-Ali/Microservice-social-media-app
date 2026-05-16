@@ -58,19 +58,25 @@ spec:
               containerPort: 4004
           envFrom:
             - configMapRef:
-                name: social-media-config
+                name: chat-service-config
             - secretRef:
                 name: chat-service-secret
           env:
             - name: PORT
-              value: "4004"
+              valueFrom:
+                configMapKeyRef:
+                  name: chat-service-config
+                  key: PORT
             - name: SERVICE_NAME
-              value: "chat-service"
+              valueFrom:
+                configMapKeyRef:
+                  name: chat-service-config
+                  key: SERVICE_NAME
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: chat-service-secret
-                  key: CHAT_DATABASE_URL
+                  key: DATABASE_URL
           readinessProbe:
             tcpSocket:
               port: http

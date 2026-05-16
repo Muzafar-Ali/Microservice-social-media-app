@@ -4,21 +4,113 @@ metadata:
   name: kafka
   namespace: social-media
 spec:
-  replicas: 1
+  replicas: 3
+
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+
   template:
     spec:
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 0
       containers:
         - name: kafka
+          image: confluentinc/cp-kafka:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/bash
+            - -ec
+            - |
+              ORDINAL="${HOSTNAME##*-}"
+              NODE_ID="$((ORDINAL + 1))"
+
+              export KAFKA_NODE_ID="${NODE_ID}"
+              export KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://${HOSTNAME}.kafka-headless.social-media.svc.cluster.local:9092"
+
+              if [ "${ORDINAL}" = "0" ]; then
+                export KAFKA_PROCESS_ROLES="broker,controller"
+                export KAFKA_LISTENERS="PLAINTEXT://:9092,CONTROLLER://:9093"
+              else
+                export KAFKA_PROCESS_ROLES="broker"
+                export KAFKA_LISTENERS="PLAINTEXT://:9092"
+              fi
+
+              exec /etc/confluent/docker/run
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: false
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
           env:
+            - name: KAFKA_ENABLE_KRAFT
+              $patch: delete
+            - name: KAFKA_KRAFT_CLUSTER_ID
+              $patch: delete
+            - name: KAFKA_CFG_PROCESS_ROLES
+              $patch: delete
+            - name: KAFKA_CFG_CONTROLLER_LISTENER_NAMES
+              $patch: delete
+            - name: KAFKA_CFG_LISTENERS
+              $patch: delete
+            - name: KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP
+              $patch: delete
+            - name: KAFKA_CFG_INTER_BROKER_LISTENER_NAME
+              $patch: delete
             - name: KAFKA_CFG_CONTROLLER_QUORUM_VOTERS
-              value: "0@kafka-0.kafka-headless.social-media.svc.cluster.local:9093"
+              $patch: delete
+            - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+              $patch: delete
             - name: KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR
-              value: "1"
+              $patch: delete
             - name: KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
-              value: "1"
+              $patch: delete
             - name: KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR
-              value: "1"
+              $patch: delete
             - name: KAFKA_CFG_DEFAULT_REPLICATION_FACTOR
-              value: "1"
+              $patch: delete
             - name: KAFKA_CFG_MIN_INSYNC_REPLICAS
+              $patch: delete
+            - name: ALLOW_PLAINTEXT_LISTENER
+              $patch: delete
+            - name: KAFKA_NODE_ID
               value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka-0.kafka-headless:9092"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@kafka-0.kafka-headless:9093"
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: "PLAINTEXT"
+            - name: CLUSTER_ID
+              value: "MkU3OEVBNTcwNTJENDM2Qk"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "2"
+            - name: KAFKA_DEFAULT_REPLICATION_FACTOR
+              value: "3"
+            - name: KAFKA_MIN_INSYNC_REPLICAS
+              value: "2"

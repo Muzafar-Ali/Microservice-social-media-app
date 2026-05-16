@@ -39,7 +39,7 @@ spec:
               containerPort: 8088
           envFrom:
             - configMapRef:
-                name: social-media-config
+                name: web-gateway-config
           env:
             - name: PORT
               value: "8088"

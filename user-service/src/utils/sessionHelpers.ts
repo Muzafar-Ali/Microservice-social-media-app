@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { redis } from '../config/redisClient.js';
-import { sessionCacheKey } from './cacheKeys/sessionCacheKeys.js';
 import config from '../config/config.js';
 import { Response } from 'express';
+import { sessionCacheKey } from '../cache/cache.keys.js';
 
 export const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
@@ -29,9 +29,7 @@ export const createWebSession = async (params: { userId: string; ip?: string; us
     userAgent: params.userAgent,
   };
 
-  const key = sessionCacheKey(sessionId);
-
-  await redis.set(key, JSON.stringify(sessionData), {
+  await redis.set(sessionCacheKey(sessionId), JSON.stringify(sessionData), {
     expiration: {
       type: 'EX',
       value: SESSION_TTL_SECONDS,

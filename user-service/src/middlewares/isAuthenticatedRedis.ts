@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { StatusCodes } from 'http-status-codes';
 import { redis } from '../config/redisClient.js';
-import { sessionCacheKey } from '../utils/cacheKeys/sessionCacheKeys.js';
+import { sessionCacheKey } from '../cache/cache.keys.js';
 
 type SessionPayload = {
   userId: string;

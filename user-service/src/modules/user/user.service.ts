@@ -1,4 +1,3 @@
-import { redis } from '../../config/redisClient.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.validations.js';
@@ -162,8 +161,9 @@ export class UserService {
 
     const safeUser = this.toSafeUser(updatedUser);
 
+    // Cache invalidation for old username mappings
     if (isUsernameChanging) {
-      await this.deleteUserCacheByIdentity(existingUser.id, existingUser.username);
+      await cacheService.deleteMany([userCacheKeyById(existingUser.id), userCacheKeyByUsername(existingUser.username)]);
     }
 
     // Cache the user
@@ -221,10 +221,6 @@ export class UserService {
       cacheService.set(userCacheKeyById(safeUser.id), safeUser, CACHE_TTL.USER),
       cacheService.set(userCacheKeyByUsername(safeUser.username), safeUser, CACHE_TTL.USER),
     ]);
-  }
-
-  private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
-    await cacheService.deleteMany([userCacheKeyById(userId), userCacheKeyByUsername(username)]);
   }
 
   private async refreshUserCacheById(userId: string): Promise<void> {

@@ -6,6 +6,12 @@ global:
 rule_files:
   - /etc/prometheus/alert-rules.yml
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
 scrape_configs:
   - job_name: "user-service"
     metrics_path: /metrics
@@ -48,12 +54,44 @@ scrape_configs:
         labels:
           service: "node-exporter"
 
+  # -----------------------------
+  # Monitoring Stack
+  # -----------------------------
   - job_name: "prometheus"
     static_configs:
       - targets: ["prometheus:9090"]
         labels:
           service: "prometheus"
 
+  # -----------------------------
+  # Host & Container Metrics
+  # -----------------------------
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          service: "node-exporter"
+
   - job_name: "cadvisor"
     static_configs:
       - targets: ["cadvisor:8080"]
+        labels:
+          service: "cadvisor"
+
+  # -----------------------------
+  # Redis Metrics
+  # -----------------------------
+  - job_name: "redis-exporter"
+    static_configs:
+      - targets: ["redis-exporter:9121"]
+        labels:
+          service: "redis-exporter"
+
+  # -----------------------------
+  # Kafka Metrics
+  # -----------------------------
+  - job_name: "kafka-exporter"
+    static_configs:
+      - targets: ["kafka-exporter:9308"]
+        labels:
+          service: "kafka-exporter"

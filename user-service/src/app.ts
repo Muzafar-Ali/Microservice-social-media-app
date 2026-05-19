@@ -53,6 +53,7 @@ export async function createApp() {
 
   app.use(metricsMiddleware);
 
+  // Kubernetes liveness probe
   app.get('/health', (_req, res) => {
     res.status(200).json({
       status: 'ok',
@@ -60,6 +61,7 @@ export async function createApp() {
     });
   });
 
+  // Kubernetes readiness probe
   app.get('/ready', async (_req, res) => {
     const checks = {
       postgres: false,

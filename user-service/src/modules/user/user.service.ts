@@ -1,10 +1,4 @@
-import { redis } from '../../config/redisClient.js';
 import { Prisma, User } from '../../generated/prisma/client.js';
-import {
-  getUserCacheKeyById,
-  getUserCacheKeyByUsername,
-  USER_CACHE_TTL_SECONDS,
-} from '../../utils/cacheKeys/userCacheKeys.js';
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
@@ -12,14 +6,17 @@ import bcrypt from 'bcrypt';
 import config from '../../config/config.js';
 import logger from '../../utils/logger.js';
 import { redisCacheOperationsTotal, userProfileReadsTotal } from '../../monitoring/metrics.js';
+import { userCacheKeyById, userCacheKeyByUsername } from '../../cache/cache.keys.js';
+import { CACHE_TTL } from '../../cache/cache.ttl.js';
+import { cacheService } from '../../cache/cache.service.js';
 
-export type SafeUSer = Omit<User, 'password'>;
-export type PublicUserProfile = Omit<SafeUSer, 'email'>;
+export type SafeUser = Omit<User, 'password'>;
+export type PublicUserProfile = Omit<SafeUser, 'email'>;
 
 export class UserService {
   constructor(private userRepository: UserRepository) {}
 
-  async createUser(dto: CreateUserDto): Promise<SafeUSer> {
+  async createUser(dto: CreateUserDto): Promise<SafeUser> {
     const existingUser = await this.userRepository.findByEmailOrUsername(dto.email, dto.username);
 
     if (existingUser) {
@@ -66,31 +63,17 @@ export class UserService {
   }
 
   async getUserByUsername(username: string): Promise<PublicUserProfile | null> {
-    // Check if user is cached already by username
-    const cacheKey = getUserCacheKeyByUsername(username);
-    let cached = null;
+    const cacheKey = userCacheKeyByUsername(username);
 
-    try {
-      cached = await redis.get(cacheKey);
-    } catch (error) {
-      redisCacheOperationsTotal.inc({ operation: 'read', result: 'error' });
-      logger.warn({ error, cacheKey }, 'Cache read failed');
-    }
+    const cachedUser = await cacheService.get(cacheKey);
 
-    if (cached) {
-      redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
+    if (cachedUser) {
       userProfileReadsTotal.inc({ lookup_type: 'username', result: 'cache_hit' });
-      const parsedUser = await this.parseCachedUser(cached, cacheKey);
-
-      if (parsedUser) {
-        return parsedUser;
-      }
+      return this.toPublicUserProfile(cachedUser as SafeUser);
     }
-
-    // Otherwise get from database
-    redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
 
     const user = await this.userRepository.findByUsername(username);
+
     if (!user) {
       userProfileReadsTotal.inc({ lookup_type: 'username', result: 'not_found' });
       return null;
@@ -100,41 +83,23 @@ export class UserService {
 
     const safeUser = this.toSafeUser(user);
 
-    // Cache the user
-    try {
-      await this.writeUserCache(safeUser);
-    } catch (error) {
-      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
-      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
-    }
+    await this.writeUserCache(safeUser);
 
     return this.toPublicUserProfile(safeUser);
   }
 
   async getUserById(userId: string): Promise<PublicUserProfile | null> {
-    const cacheKey = getUserCacheKeyById(userId);
-    let cached = null;
+    const cacheKey = userCacheKeyById(userId);
 
-    try {
-      cached = await redis.get(cacheKey);
-    } catch (error) {
-      redisCacheOperationsTotal.inc({ operation: 'read', result: 'error' });
-      logger.warn({ error, cacheKey }, 'Cache read failed');
-    }
+    const cachedUser = await cacheService.get(cacheKey);
 
-    if (cached) {
-      redisCacheOperationsTotal.inc({ operation: 'read', result: 'hit' });
+    if (cachedUser) {
       userProfileReadsTotal.inc({ lookup_type: 'id', result: 'cache_hit' });
-      const parsedUser = await this.parseCachedUser(cached, cacheKey);
-
-      if (parsedUser) {
-        return parsedUser;
-      }
+      return this.toPublicUserProfile(cachedUser as SafeUser);
     }
-
-    redisCacheOperationsTotal.inc({ operation: 'read', result: 'miss' });
 
     const user = await this.userRepository.findUserById(userId);
+
     if (!user) {
       userProfileReadsTotal.inc({ lookup_type: 'id', result: 'not_found' });
       return null;
@@ -144,18 +109,12 @@ export class UserService {
 
     const safeUser = this.toSafeUser(user);
 
-    // Cache the user
-    try {
-      await this.writeUserCache(safeUser);
-    } catch (error) {
-      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
-      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
-    }
+    await this.writeUserCache(safeUser);
 
     return this.toPublicUserProfile(safeUser);
   }
 
-  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUSer | null> => {
+  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUser | null> => {
     const updatedUser = await this.userRepository.updateProfileImageByIdAndQueueUserUpdatedEvent(
       dto.secureUrl,
       dto.publicId,
@@ -175,7 +134,7 @@ export class UserService {
     return safeUser;
   };
 
-  async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto): Promise<SafeUSer> {
+  async updateMyProfile(authenticatedUserId: string, updatePayload: UpdateMyProfileDto): Promise<SafeUser> {
     const existingUser = await this.userRepository.findUserById(authenticatedUserId);
 
     if (!existingUser) {
@@ -202,8 +161,9 @@ export class UserService {
 
     const safeUser = this.toSafeUser(updatedUser);
 
+    // Cache invalidation for old username mappings
     if (isUsernameChanging) {
-      await this.deleteUserCacheByIdentity(existingUser.id, existingUser.username);
+      await cacheService.deleteMany([userCacheKeyById(existingUser.id), userCacheKeyByUsername(existingUser.username)]);
     }
 
     // Cache the user
@@ -235,6 +195,7 @@ export class UserService {
       logger.warn({ error, followerId, followeeId }, 'User cache refresh failed');
     }
   }
+
   async followRemoved(input: { eventId: string; followerId: string; followeeId: string }) {
     const { eventId, followerId, followeeId } = input;
 
@@ -255,22 +216,11 @@ export class UserService {
   }
 
   // Helper functions
-  private async writeUserCache(safeUser: SafeUSer): Promise<void> {
+  private async writeUserCache(safeUser: SafeUser): Promise<void> {
     await Promise.all([
-      redis.set(getUserCacheKeyById(safeUser.id), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
-      redis.set(getUserCacheKeyByUsername(safeUser.username), JSON.stringify(safeUser), { EX: USER_CACHE_TTL_SECONDS }),
+      cacheService.set(userCacheKeyById(safeUser.id), safeUser, CACHE_TTL.USER),
+      cacheService.set(userCacheKeyByUsername(safeUser.username), safeUser, CACHE_TTL.USER),
     ]);
-    redisCacheOperationsTotal.inc({ operation: 'write', result: 'success' }, 2);
-  }
-
-  private async deleteUserCacheByIdentity(userId: string, username: string): Promise<void> {
-    try {
-      await redis.del([getUserCacheKeyById(userId), getUserCacheKeyByUsername(username)]);
-      redisCacheOperationsTotal.inc({ operation: 'delete', result: 'success' }, 2);
-    } catch (error) {
-      redisCacheOperationsTotal.inc({ operation: 'delete', result: 'error' });
-      logger.warn({ userId, username, error }, 'User cache delete failed');
-    }
   }
 
   private async refreshUserCacheById(userId: string): Promise<void> {
@@ -284,32 +234,7 @@ export class UserService {
     await this.writeUserCache(safeUser);
   }
 
-  private async parseCachedUser(cached: string, cacheKey: string): Promise<SafeUSer | null> {
-    try {
-      const parsed = JSON.parse(cached);
-
-      return {
-        ...parsed,
-        createdAt: new Date(parsed.createdAt),
-        updatedAt: new Date(parsed.updatedAt),
-      };
-    } catch (error) {
-      redisCacheOperationsTotal.inc({ operation: 'parse', result: 'error' });
-      logger.warn({ error, cacheKey }, 'Invalid user cache payload');
-
-      try {
-        await redis.del(cacheKey);
-        redisCacheOperationsTotal.inc({ operation: 'delete', result: 'success' });
-      } catch (deleteError) {
-        redisCacheOperationsTotal.inc({ operation: 'delete', result: 'error' });
-        logger.warn({ error: deleteError, cacheKey }, 'Invalid user cache delete failed');
-      }
-
-      return null;
-    }
-  }
-
-  private toSafeUser(user: User): SafeUSer {
+  private toSafeUser(user: User): SafeUser {
     const { password, ...safeUser } = user;
     return safeUser;
   }
@@ -318,7 +243,7 @@ export class UserService {
     return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
 
-  private toPublicUserProfile(user: SafeUSer): PublicUserProfile {
+  private toPublicUserProfile(user: SafeUser): PublicUserProfile {
     const { email, ...publicUser } = user;
     return publicUser;
   }

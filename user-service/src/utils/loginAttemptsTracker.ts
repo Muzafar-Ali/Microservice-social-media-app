@@ -1,7 +1,7 @@
+import { failedLoginAttemptsCacheKey, loginLockoutCacheKey } from '../cache/cache.keys.js';
 import { redis } from '../config/redisClient.js';
 import { TLoginContext } from '../modules/auth/auth.types.js';
 import logger from './logger.js';
-import { failedLoginAttemptsCacheKey, loginLockoutCacheKey } from './cacheKeys/authCacheKeys.js';
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_TTL_SECONDS = 15 * 60; // 15 minutes

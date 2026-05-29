@@ -41,7 +41,7 @@ export class UserController {
         throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
 
-      const profile = await this.userService.getUserById(String(safeParams.data.id));
+      const profile = await this.userService.getUserById(safeParams.data.id);
 
       if (!profile) {
         throw new ApiErrorHandler(404, 'user not found');

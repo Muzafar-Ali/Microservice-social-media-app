@@ -4,7 +4,7 @@ networks:
 
 services:
   # =================================================================
-  #                   🧱 Infra / Shared Components
+  #                🧱 Message Broker - Kafka Cluster
   # =================================================================
   kafka-1:
     image: confluentinc/cp-kafka:latest
@@ -98,7 +98,7 @@ services:
 
 
   # ---------------------------------------------------------------
-  #                 🔎 Kafka UI: Redpanda Console
+  #           🔎 Kafka Management UI
   # ---------------------------------------------------------------
   redpanda-console:
     image: docker.redpanda.com/redpandadata/console:latest
@@ -129,7 +129,7 @@ services:
       - backend-network
 
   # ---------------------------------------------------------------
-  #                 🔎 Cache
+  #                 🔎 Cache - Redis
   # ---------------------------------------------------------------
   redis-cache:
     image: redis:7
@@ -146,8 +146,12 @@ services:
     networks:
       - backend-network
 
+  # =================================================================
+  #             🔭 Monitoring & Observability Stack
+  # =================================================================
+
   # ---------------------------------------------------------------
-  #          🔎 Metrics - 📊 Dashboard + Alerts 
+  # 01. Metrics Collection - Prometheus
   # ---------------------------------------------------------------
   prometheus:
     image: prom/prometheus
@@ -157,13 +161,20 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
-      - prometheus_data:/prometheus # volume
+      - prometheus_data:/prometheus
     depends_on:
       - user-service
       - media-service
+      - node-exporter
+      - cadvisor
+      - redis-exporter
+      - kafka-exporter
     networks:
       - backend-network
 
+  # ---------------------------------------------------------------
+  # 02. Host & Container Metrics Exporters
+  # ---------------------------------------------------------------
   node-exporter:
     image: prom/node-exporter:latest
     restart: unless-stopped
@@ -186,21 +197,56 @@ services:
     networks:
       - backend-network
 
-  grafana:
-    image: grafana/grafana-oss:latest
+  # ---------------------------------------------------------------
+  # 03. Application Dependency Metrics Exporters
+  # ---------------------------------------------------------------
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
     restart: unless-stopped
-    ports:
-      - "5000:3000"
+    environment:
+      REDIS_ADDR: redis://redis-cache:6379
+    expose:
+      - "9121"
     depends_on:
-      - prometheus
-      - loki
-    volumes:
-      - grafana_data:/var/lib/grafana
+      - redis-cache
+    networks:
+      - backend-network
+
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    restart: unless-stopped
+    command:
+      - "--kafka.server=kafka-1:9092"
+      - "--kafka.server=kafka-2:9092"
+      - "--kafka.server=kafka-3:9092"
+    expose:
+      - "9308"
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
     networks:
       - backend-network
 
   # ---------------------------------------------------------------
-  #                 📦 Logs Storage
+  # 04. Alerting - Alertmanager
+  # ---------------------------------------------------------------
+  alertmanager:
+    image: prom/alertmanager:latest
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    networks:
+      - backend-network
+
+  # ---------------------------------------------------------------
+  # 05. Logs Storage - Loki
   # ---------------------------------------------------------------
   loki:
     image: grafana/loki:2.9.8
@@ -214,7 +260,7 @@ services:
       - backend-network
 
   # ---------------------------------------------------------------
-  #                 📤 Logs Collector
+  # 06. Logs Collector - Promtail
   # ---------------------------------------------------------------
   promtail:
     image: grafana/promtail:2.9.8
@@ -226,6 +272,23 @@ services:
     command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
+    networks:
+      - backend-network
+
+  # ---------------------------------------------------------------
+  # 07. Dashboard & Visualization - Grafana
+  # ---------------------------------------------------------------
+  grafana:
+    image: grafana/grafana-oss:latest
+    restart: unless-stopped
+    ports:
+      - "5000:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - alertmanager
+    volumes:
+      - grafana_data:/var/lib/grafana
     networks:
       - backend-network
 
@@ -465,28 +528,33 @@ volumes:
 
   post_db_data:
     driver: local
-  
+
   chat_db_data:
     driver: local
-  
+
   social_graph_db_data:
     driver: local
-  
+
   grafana_data:
     driver: local
-  
+
   prometheus_data:
+    driver: local
 
   loki_data:
     driver: local
 
+  alertmanager_data:
+    driver: local
+
   redis_data:
-  
+    driver: local
+
   kafka_1_data:
     driver: local
-  
+
   kafka_2_data:
     driver: local
-  
+
   kafka_3_data:
     driver: local

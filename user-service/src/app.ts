@@ -95,6 +95,7 @@ export async function createApp() {
   app.get('/metrics', metricsHandler);
 
   app.use('/api/user', userRoutes(userController));
+  app.use('/api/users', userRoutes(userController));
   app.use('/api/auth', authRoutes(authControllers));
 
   app.use(notFoundHandler);

@@ -1,7 +1,7 @@
 // src/repositories/user.repository.ts
 import config from '../../config/config.js';
 import { USER_EVENT_NAMES } from '../../events/topics.js';
-import { PrismaClient, User, Prisma } from '../../generated/prisma/client.js';
+import { PrismaClient, User, Prisma, Status } from '../../generated/prisma/client.js';
 import { UserCreatedPayload } from '../../types/publisher.types.js';
 import { UpdateMyProfileDto } from './user.validations.js';
 
@@ -137,6 +137,38 @@ export class UserRepository {
       const updatedUser = await transactionClient.user.update({
         where: { id: userId },
         data,
+      });
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventId: crypto.randomUUID(),
+          eventName: USER_EVENT_NAMES.USER_UPDATED,
+          eventVersion: 1,
+          aggregateId: updatedUser.id,
+          partitionKey: updatedUser.id,
+          payload: {
+            userId: updatedUser.id,
+            username: updatedUser.username,
+            displayName: updatedUser.name,
+            avatarUrl: updatedUser.profileImage,
+            status: updatedUser.status,
+            updatedAt: updatedUser.updatedAt.toISOString(),
+          },
+          producerService: this.producerServiceName,
+          occurredAt: new Date(),
+          status: 'PENDING',
+        },
+      });
+
+      return updatedUser;
+    });
+  };
+
+  updateUserStatusAndQueueUserUpdatedEvent = async (userId: string, status: Status): Promise<User> => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const updatedUser = await transactionClient.user.update({
+        where: { id: userId },
+        data: { status },
       });
 
       await transactionClient.outboxEvent.create({

@@ -35,10 +35,9 @@ export class AuthService {
       throw new ApiErrorHandler(401, 'Invalid credentials');
     }
 
-    // Check status (optional)
-    if (user.status === 'BLOCKED') {
-      authLoginAttemptsTotal.inc({ result: 'blocked', reason: 'account_blocked' });
-      throw new ApiErrorHandler(403, 'Account is blocked');
+    if (user.status === 'BLOCKED' || user.status === 'SUSPENDED' || user.status === 'DELETED') {
+      authLoginAttemptsTotal.inc({ result: 'blocked', reason: `account_${user.status.toLowerCase()}` });
+      throw new ApiErrorHandler(403, 'Account is not allowed to login');
     }
 
     //  Verify password

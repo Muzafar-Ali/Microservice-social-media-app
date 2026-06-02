@@ -23,7 +23,15 @@ enum Status {
   ACTIVE
   BLOCKED
   SUSPENDED
+  DEACTIVATED
   DELETED
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+  SUPPORT
 }
 
 model User {
@@ -38,6 +46,7 @@ model User {
   
   gender          Gender?
   status          Status    @default(ACTIVE)
+  role            Role      @default(USER)
   isPrivate       Boolean   @default(false)
 
   followersCount  Int       @default(0)
@@ -47,6 +56,7 @@ model User {
   updatedAt       DateTime  @updatedAt
 
   @@index([username])
+  @@index([role])
 }
 
 enum OutboxEventStatus {

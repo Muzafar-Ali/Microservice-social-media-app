@@ -21,6 +21,16 @@ app.use(
   }),
 );
 
+// Route: /api/users/* -> user-service/*
+app.use(
+  '/api/users',
+  createProxyMiddleware({
+    target: config.userServiceUrl,
+    changeOrigin: true,
+    pathRewrite: (path, _req) => `/api/users${path}`, // ✅ adds prefix back
+  }),
+);
+
 // Route: /api/auth/* -> user-service/*
 app.use(
   '/api/auth',
@@ -105,6 +115,7 @@ const server = app.listen(port, () => {
   console.log(`[web-gateway] listening on http://localhost:${port}`);
   console.log(`  /api/auth  -> ${config.userServiceUrl}`);
   console.log(`  /api/user  -> ${config.userServiceUrl}`);
+  console.log(`  /api/users -> ${config.userServiceUrl}`);
   console.log(`  /api/media -> ${config.mediaServiceUrl}`);
   console.log(`  /api/posts -> ${config.postServiceLUrl}`);
   console.log(`  /api/chat  -> ${config.chatServiceUrl}`);

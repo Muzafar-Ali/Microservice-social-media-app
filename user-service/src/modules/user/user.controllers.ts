@@ -8,6 +8,7 @@ import {
   getUserByUsernameSchema,
   UpdateMyProfileDto,
   UpdateProfileImageDto,
+  UpdateUserStatusDto,
 } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
@@ -120,6 +121,93 @@ export class UserController {
         success: true,
         message: 'Profile updated successfully',
         data: updatedProfile,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateUserStatus = async (
+    req: Request<GetUserByIdDto, any, UpdateUserStatusDto>,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    try {
+      const safeParams = getUserByIdSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(400, formatZodError(safeParams.error));
+      }
+
+      const updatedUser = await this.userService.updateUserStatus(safeParams.data.id, req.body.status);
+      userUpdatedCounter.inc({ update_type: 'status' });
+
+      res.status(200).json({
+        success: true,
+        message: 'User status updated successfully',
+        data: updatedUser,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deactivateMyAccount = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
+      const updatedUser = await this.userService.deactivateMyAccount(String(userId));
+      userUpdatedCounter.inc({ update_type: 'status' });
+
+      res.status(200).json({
+        success: true,
+        message: 'Account deactivated successfully',
+        data: updatedUser,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  reactivateMyAccount = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
+      const updatedUser = await this.userService.reactivateMyAccount(String(userId));
+      userUpdatedCounter.inc({ update_type: 'status' });
+
+      res.status(200).json({
+        success: true,
+        message: 'Account reactivated successfully',
+        data: updatedUser,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteMyAccount = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.userId;
+
+      if (!userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
+      await this.userService.deleteMyAccount(String(userId));
+      userUpdatedCounter.inc({ update_type: 'status' });
+
+      res.status(200).json({
+        success: true,
+        message: 'Account deleted successfully',
       });
     } catch (error) {
       next(error);

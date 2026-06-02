@@ -1,4 +1,4 @@
-import { Prisma, User } from '../../generated/prisma/client.js';
+import { Prisma, Status, User } from '../../generated/prisma/client.js';
 import { UserRepository } from './user.repository.js';
 import { CreateUserDto, UpdateMyProfileDto, UpdateProfileImageDto } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
@@ -177,6 +177,42 @@ export class UserService {
     return safeUser;
   }
 
+  async updateUserStatus(userId: string, status: Status): Promise<SafeUser> {
+    const existingUser = await this.userRepository.findUserById(userId);
+
+    if (!existingUser) {
+      throw new ApiErrorHandler(404, 'user not found');
+    }
+
+    if (existingUser.status === 'DELETED') {
+      throw new ApiErrorHandler(410, 'deleted accounts cannot be updated');
+    }
+
+    return this.setUserStatus(existingUser, status);
+  }
+
+  async deactivateMyAccount(authenticatedUserId: string): Promise<SafeUser> {
+    const existingUser = await this.requireMutableUser(authenticatedUserId);
+
+    return this.setUserStatus(existingUser, 'DEACTIVATED');
+  }
+
+  async reactivateMyAccount(authenticatedUserId: string): Promise<SafeUser> {
+    const existingUser = await this.requireMutableUser(authenticatedUserId);
+
+    if (existingUser.status === 'BLOCKED' || existingUser.status === 'SUSPENDED') {
+      throw new ApiErrorHandler(403, 'account cannot be reactivated while blocked or suspended');
+    }
+
+    return this.setUserStatus(existingUser, 'ACTIVE');
+  }
+
+  async deleteMyAccount(authenticatedUserId: string): Promise<void> {
+    const existingUser = await this.requireMutableUser(authenticatedUserId);
+
+    await this.setUserStatus(existingUser, 'DELETED');
+  }
+
   async followCreated(input: { eventId: string; followerId: string; followeeId: string }) {
     const { eventId, followerId, followeeId } = input;
 
@@ -232,6 +268,40 @@ export class UserService {
 
     const safeUser = this.toSafeUser(user);
     await this.writeUserCache(safeUser);
+  }
+
+  private async requireMutableUser(userId: string): Promise<User> {
+    const existingUser = await this.userRepository.findUserById(userId);
+
+    if (!existingUser) {
+      throw new ApiErrorHandler(404, 'user not found');
+    }
+
+    if (existingUser.status === 'DELETED') {
+      throw new ApiErrorHandler(410, 'account already deleted');
+    }
+
+    return existingUser;
+  }
+
+  private async setUserStatus(existingUser: User, status: Status): Promise<SafeUser> {
+    if (existingUser.status === status) {
+      return this.toSafeUser(existingUser);
+    }
+
+    const updatedUser = await this.userRepository.updateUserStatusAndQueueUserUpdatedEvent(existingUser.id, status);
+    const safeUser = this.toSafeUser(updatedUser);
+
+    await cacheService.deleteMany([userCacheKeyById(existingUser.id), userCacheKeyByUsername(existingUser.username)]);
+
+    try {
+      await this.writeUserCache(safeUser);
+    } catch (error) {
+      redisCacheOperationsTotal.inc({ operation: 'write', result: 'error' });
+      logger.warn({ userId: safeUser.id, error }, 'User cache write failed');
+    }
+
+    return safeUser;
   }
 
   private toSafeUser(user: User): SafeUser {

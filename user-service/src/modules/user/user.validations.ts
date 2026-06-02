@@ -75,6 +75,10 @@ export const getUserByIdSchema = z.object({
   id: z.uuid({ error: 'User ID is required' }),
 });
 
+export const updateUserStatusSchema = z.object({
+  status: z.enum(['ACTIVE', 'BLOCKED', 'SUSPENDED', 'DEACTIVATED']),
+});
+
 export const bulkUserLookupSchema = z.object({
   ids: z.array(z.uuid()).nonempty({
     error: 'At least one user ID is required',
@@ -119,5 +123,6 @@ export type GetUserByIdDto = z.infer<typeof getUserByIdSchema>;
 export type GetUserByUsernameDto = z.infer<typeof getUserByUsernameSchema>;
 export type UpdateMyProfileDto = z.infer<typeof updateMyProfileSchema>;
 export type UpdateProfileImageDto = z.infer<typeof updateProfileImageSchema>;
+export type UpdateUserStatusDto = z.infer<typeof updateUserStatusSchema>;
 export type FollowCreatedEvent = z.infer<typeof followCreatedEventSchema>;
 export type FollowRemovedEvent = z.infer<typeof followRemovedEventSchema>;

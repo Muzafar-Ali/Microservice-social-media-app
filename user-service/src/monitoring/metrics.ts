@@ -50,6 +50,34 @@ export const authLoginAttemptsTotal = new client.Counter({
   labelNames: ['result', 'reason'],
 });
 
+// Tracks password reset requests by result
+export const passwordResetRequestsTotal = new client.Counter({
+  name: 'password_reset_requests_total',
+  help: 'Total password reset requests grouped by result',
+  labelNames: ['result'],
+});
+
+// Tracks password reset confirmations by result
+export const passwordResetConfirmationsTotal = new client.Counter({
+  name: 'password_reset_confirmations_total',
+  help: 'Total password reset confirmations grouped by result',
+  labelNames: ['result'],
+});
+
+// Tracks password changes by result
+export const passwordChangesTotal = new client.Counter({
+  name: 'password_changes_total',
+  help: 'Total password change attempts grouped by result',
+  labelNames: ['result'],
+});
+
+// Tracks auth session operations by operation and result
+export const authSessionsTotal = new client.Counter({
+  name: 'auth_sessions_total',
+  help: 'Total auth session operations grouped by operation and result',
+  labelNames: ['operation', 'result'],
+});
+
 // Tracks successful user creation
 export const userCreatedCounter = new client.Counter({
   name: 'user_created_total',
@@ -156,6 +184,10 @@ export const outboxCleanupDeletedTotal = new client.Counter({
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(httpRequestDurationSeconds);
 register.registerMetric(authLoginAttemptsTotal);
+register.registerMetric(passwordResetRequestsTotal);
+register.registerMetric(passwordResetConfirmationsTotal);
+register.registerMetric(passwordChangesTotal);
+register.registerMetric(authSessionsTotal);
 register.registerMetric(userCreatedCounter);
 register.registerMetric(userUpdatedCounter);
 register.registerMetric(userProfileReadsTotal);

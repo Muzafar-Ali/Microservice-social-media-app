@@ -1,0 +1,183 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  # Receives OTLP traces/metrics/logs from instrumented services.
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Scrapes existing Prometheus metrics without changing old services.
+  prometheus:
+    config:
+      global:
+        scrape_interval: 15s
+        scrape_timeout: 10s
+      scrape_configs:
+        - job_name: user-service
+          metrics_path: /metrics
+          static_configs:
+            - targets: [user-service:4001]
+              labels:
+                service: user-service
+
+        # - job_name: post-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [post-service:4003]
+        #       labels:
+        #         service: post-service
+
+        # - job_name: chat-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [chat-service:4004]
+        #       labels:
+        #         service: chat-service
+
+        # - job_name: media-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [media-service:4002]
+        #       labels:
+        #         service: media-service
+
+        # - job_name: social-graph-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [social-graph-service:4005]
+        #       labels:
+        #         service: social-graph-service
+
+        - job_name: node-exporter
+          static_configs:
+            - targets: [node-exporter:9100]
+              labels:
+                service: node-exporter
+
+        - job_name: cadvisor
+          static_configs:
+            - targets: [cadvisor:8080]
+              labels:
+                service: cadvisor
+
+        - job_name: redis-exporter
+          static_configs:
+            - targets: [redis-exporter:9121]
+              labels:
+                service: redis-exporter
+
+        - job_name: kafka-exporter
+          static_configs:
+            - targets: [kafka-exporter:9308]
+              labels:
+                service: kafka-exporter
+
+  # Collects Docker stdout/stderr logs. Your Pino JSON logs are parsed and sent to Loki.
+  # filelog:
+  #   include:
+  #     - /var/lib/docker/containers/*/*-json.log
+  #   start_at: end
+  #   include_file_path: true
+  #   operators:
+  #     - id: docker-json-parser
+  #       type: json_parser
+  #       timestamp:
+  #         parse_from: attributes.time
+  #         layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+  #     - id: docker-log-to-body
+  #       type: move
+  #       from: attributes.log
+  #       to: body
+  #     - id: app-json-parser
+  #       type: json_parser
+  #       parse_from: body
+  #       on_error: send
+  filelog:
+    include:
+      - /var/lib/docker/containers/*/*-json.log
+
+    start_at: end
+
+    operators:
+      - id: docker-json-parser
+        type: json_parser
+        parse_from: body
+
+        timestamp:
+          parse_from: attributes.time
+          layout_type: gotime
+          layout: "2006-01-02T15:04:05.999999999Z07:00"
+
+      - id: docker-log-to-body
+        type: move
+        from: attributes.log
+        to: body
+      
+processors:
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: production
+        action: upsert
+
+exporters:
+  # Prometheus scrapes this endpoint to store all metrics collected by the Collector.
+  prometheus:
+    endpoint: 0.0.0.0:9464
+    send_timestamps: true
+    metric_expiration: 5m
+    enable_open_metrics: true
+
+
+  # Send traces to Tempo.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Send logs to Loki using Loki native OTLP ingestion.
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  telemetry:
+    metrics:
+      address: 0.0.0.0:8888
+
+  pipelines:
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus]
+
+
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp/tempo]
+
+    logs:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlphttp/loki]

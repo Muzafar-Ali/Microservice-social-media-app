@@ -159,16 +159,11 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ./monitoring/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alert-rules.yaml:/etc/prometheus/alert-rules.yaml:ro
       - prometheus_data:/prometheus
     depends_on:
-      - user-service
-      - media-service
-      - node-exporter
-      - cadvisor
-      - redis-exporter
-      - kafka-exporter
+      - otel-collector
     networks:
       - backend-network
 
@@ -235,12 +230,12 @@ services:
     image: prom/alertmanager:latest
     restart: unless-stopped
     ports:
-      - "9093:9093"
+      - "9095:9093"
     volumes:
-      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./monitoring/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
       - alertmanager_data:/alertmanager
     command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--config.file=/etc/alertmanager/alertmanager.yaml"
       - "--storage.path=/alertmanager"
     networks:
       - backend-network
@@ -249,7 +244,7 @@ services:
   # 05. Logs Storage - Loki
   # ---------------------------------------------------------------
   loki:
-    image: grafana/loki:2.9.8
+    image: grafana/loki:3.3.2
     restart: unless-stopped
     ports:
       - "3100:3100"
@@ -260,23 +255,52 @@ services:
       - backend-network
 
   # ---------------------------------------------------------------
-  # 06. Logs Collector - Promtail
+  # 06. Traces Storage - Tempo
   # ---------------------------------------------------------------
-  promtail:
-    image: grafana/promtail:2.9.8
+  tempo:
+    image: grafana/tempo:2.6.1
     restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
     volumes:
-      - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
-    command: -config.file=/etc/promtail/config.yml
-    depends_on:
-      - loki
+      - ./monitoring/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    expose:
+      - "3200"
+      - "4317"
+      - "4318"
     networks:
       - backend-network
 
   # ---------------------------------------------------------------
-  # 07. Dashboard & Visualization - Grafana
+  # 07. Central Telemetry Pipeline - OpenTelemetry Collector
+  # ---------------------------------------------------------------
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    user: "0:0"
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./monitoring/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "13133:13133" # Collector health check
+    expose:
+      - "9464"
+      - "8888"
+    depends_on:
+      - loki
+      - tempo
+      - node-exporter
+      - cadvisor
+      - redis-exporter
+      - kafka-exporter
+    networks:
+      - backend-network
+
+  # ---------------------------------------------------------------
+  # 08. Dashboard & Visualization - Grafana
   # ---------------------------------------------------------------
   grafana:
     image: grafana/grafana-oss:latest
@@ -286,9 +310,12 @@ services:
     depends_on:
       - prometheus
       - loki
+      - tempo
+      - otel-collector
       - alertmanager
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
     networks:
       - backend-network
 
@@ -389,10 +416,17 @@ services:
         condition: service_healthy
       redis-cache:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     command: >
       sh -c "npx prisma migrate deploy && node dist/server.js"
     env_file:
       - ./user-service/.env.docker
+    environment:
+      SERVICE_NAME: user-service
+      OTEL_TRACES_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      OTEL_RESOURCE_ATTRIBUTES: service.name=user-service,deployment.environment=production
     networks:
       - backend-network
 
@@ -542,6 +576,9 @@ volumes:
     driver: local
 
   loki_data:
+    driver: local
+
+  tempo_data:
     driver: local
 
   alertmanager_data:

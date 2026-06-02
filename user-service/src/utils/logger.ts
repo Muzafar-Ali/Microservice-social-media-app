@@ -39,8 +39,8 @@ const createProductionLogger = () =>
     ...commonLoggerOptions,
     level: config.logLevel || 'info',
     base: {
-      service: config.serviceName || 'user-service',
-      env: config.environment || 'production',
+      'service.name': config.serviceName || 'user-service',
+      'deployment.environment': config.environment || 'production',
     },
     timestamp: pino.stdTimeFunctions.isoTime,
     formatters: {

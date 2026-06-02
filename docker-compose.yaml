@@ -159,7 +159,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - ./monitoring/prometheus.yaml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alert-rules.yaml:/etc/prometheus/alert-rules.yaml:ro
       - prometheus_data:/prometheus
     depends_on:
@@ -276,6 +276,7 @@ services:
   # ---------------------------------------------------------------
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.114.0
+    user: "0:0"
     restart: unless-stopped
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     volumes:

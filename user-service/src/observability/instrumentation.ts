@@ -58,18 +58,18 @@ if (isTracingEnabled) {
   telemetrySdk.start();
 }
 
-const shutdownTelemetry = async (signal: NodeJS.Signals) => {
+const shutdownTelemetry = async () => {
   try {
     await telemetrySdk?.shutdown();
-  } finally {
-    process.kill(process.pid, signal);
+  } catch (error) {
+    console.error('Error shutting down telemetry SDK', error);
   }
 };
 
 process.once('SIGTERM', () => {
-  void shutdownTelemetry('SIGTERM');
+  void shutdownTelemetry();
 });
 
 process.once('SIGINT', () => {
-  void shutdownTelemetry('SIGINT');
+  void shutdownTelemetry();
 });

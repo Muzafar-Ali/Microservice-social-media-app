@@ -25,33 +25,33 @@ receivers:
               labels:
                 service: user-service
 
-        - job_name: post-service
-          metrics_path: /metrics
-          static_configs:
-            - targets: [post-service:4003]
-              labels:
-                service: post-service
+        # - job_name: post-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [post-service:4003]
+        #       labels:
+        #         service: post-service
 
-        - job_name: chat-service
-          metrics_path: /metrics
-          static_configs:
-            - targets: [chat-service:4004]
-              labels:
-                service: chat-service
+        # - job_name: chat-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [chat-service:4004]
+        #       labels:
+        #         service: chat-service
 
-        - job_name: media-service
-          metrics_path: /metrics
-          static_configs:
-            - targets: [media-service:4002]
-              labels:
-                service: media-service
+        # - job_name: media-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [media-service:4002]
+        #       labels:
+        #         service: media-service
 
-        - job_name: social-graph-service
-          metrics_path: /metrics
-          static_configs:
-            - targets: [social-graph-service:4005]
-              labels:
-                service: social-graph-service
+        # - job_name: social-graph-service
+        #   metrics_path: /metrics
+        #   static_configs:
+        #     - targets: [social-graph-service:4005]
+        #       labels:
+        #         service: social-graph-service
 
         - job_name: node-exporter
           static_configs:
@@ -78,26 +78,46 @@ receivers:
                 service: kafka-exporter
 
   # Collects Docker stdout/stderr logs. Your Pino JSON logs are parsed and sent to Loki.
+  # filelog:
+  #   include:
+  #     - /var/lib/docker/containers/*/*-json.log
+  #   start_at: end
+  #   include_file_path: true
+  #   operators:
+  #     - id: docker-json-parser
+  #       type: json_parser
+  #       timestamp:
+  #         parse_from: attributes.time
+  #         layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+  #     - id: docker-log-to-body
+  #       type: move
+  #       from: attributes.log
+  #       to: body
+  #     - id: app-json-parser
+  #       type: json_parser
+  #       parse_from: body
+  #       on_error: send
   filelog:
     include:
-      - /var/lib/docker/containers/*/*.log
+      - /var/lib/docker/containers/*/*-json.log
+
     start_at: end
-    include_file_path: true
+
     operators:
       - id: docker-json-parser
         type: json_parser
+        parse_from: body
+
         timestamp:
           parse_from: attributes.time
-          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+          layout_type: gotime
+          layout: "2006-01-02T15:04:05.999999999Z07:00"
+
       - id: docker-log-to-body
         type: move
         from: attributes.log
         to: body
-      - id: app-json-parser
-        type: json_parser
-        parse_from: body
-        on_error: send
-
+      
 processors:
   memory_limiter:
     check_interval: 5s

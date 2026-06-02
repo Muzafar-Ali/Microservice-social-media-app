@@ -5,10 +5,10 @@ import isAuthenticatedRedis from '../../middlewares/isAuthenticatedRedis.js';
 const authRoutes = (authController: AuthController) => {
   const router = Router();
 
-  router.route('/web/login').post(authController.webLoginHandler);
-  router.route('/mobile/login').post(authController.mobileLoginHandler);
-  router.route('/web/logout').post(isAuthenticatedRedis, authController.webLogoutHandler);
-  router.route('/mobile/logout').post(isAuthenticatedRedis, authController.mobileLogoutHandler);
+  router.route('/web/login').post(authController.webLogin);
+  router.route('/mobile/login').post(authController.mobileLogin);
+  router.route('/web/logout').post(isAuthenticatedRedis, authController.webLogout);
+  router.route('/mobile/logout').post(isAuthenticatedRedis, authController.mobileLogout);
   router.route('/password/forgot').post(authController.requestPasswordReset);
   router.route('/password/reset').post(authController.resetPassword);
   router.route('/password/change').post(isAuthenticatedRedis, authController.changePassword);

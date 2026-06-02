@@ -11,7 +11,8 @@ import { CACHE_TTL } from '../../cache/cache.ttl.js';
 import { cacheService } from '../../cache/cache.service.js';
 
 export type SafeUser = Omit<User, 'password'>;
-export type PublicUserProfile = Omit<SafeUser, 'email'>;
+export type LimitedPrivateUserProfile = Pick<SafeUser, 'id' | 'username' | 'name' | 'profileImage' | 'isPrivate'>;
+export type PublicUserProfile = Omit<SafeUser, 'email'> | LimitedPrivateUserProfile;
 
 export class UserService {
   constructor(private userRepository: UserRepository) {}
@@ -314,6 +315,16 @@ export class UserService {
   }
 
   private toPublicUserProfile(user: SafeUser): PublicUserProfile {
+    if (user.isPrivate) {
+      return {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        profileImage: user.profileImage,
+        isPrivate: true,
+      };
+    }
+
     const { email, ...publicUser } = user;
     return publicUser;
   }

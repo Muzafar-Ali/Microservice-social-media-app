@@ -19,11 +19,7 @@ import { clearWebSessionCookie, setWebSessionCookie } from '../../utils/sessionH
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  webLogin = async (
-    req: Request<Record<string, never>, any, UserLoginDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  webLogin = async (req: Request<Record<string, never>, any, UserLoginDto>, res: Response, next: NextFunction) => {
     try {
       const safeData = userLoginSchema.safeParse(req.body);
 

@@ -15,11 +15,7 @@ import {
 import crypto from 'crypto';
 import config from '../../config/config.js';
 import { redis } from '../../config/redisClient.js';
-import {
-  passwordResetTokenCacheKey,
-  passwordResetUserCacheKey,
-  sessionCacheKey,
-} from '../../cache/cache.keys.js';
+import { passwordResetTokenCacheKey, passwordResetUserCacheKey, sessionCacheKey } from '../../cache/cache.keys.js';
 import { generateSessionId, SESSION_TTL_SECONDS } from '../../utils/sessionHelpers.js';
 
 const PASSWORD_RESET_TOKEN_TTL_SECONDS = 15 * 60;

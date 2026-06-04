@@ -21,9 +21,9 @@
     "test:integration": "jest --config jest.config.ts tests/integration",
     "test:auth": "jest --config jest.config.ts tests/unit/modules/auth",
     "test:user": "jest --config jest.config.ts tests/unit/modules/user",
-    "test:controllers": "jest --config jest.config.ts tests/unit/modules/*/controllers",
-    "test:services": "jest --config jest.config.ts tests/unit/modules/*/services",
-    "test:validations": "jest --config jest.config.ts tests/unit/modules/*/validations"
+    "test:controllers": "jest --config jest.config.ts tests/unit/modules/.*/controllers",
+    "test:services": "jest --config jest.config.ts tests/unit/modules/.*/services",
+    "test:validations": "jest --config jest.config.ts tests/unit/modules/.*/validations"
   },
   "author": "",
   "license": "ISC",

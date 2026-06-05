@@ -51,12 +51,33 @@ model User {
 
   followersCount  Int       @default(0)
   followingCount  Int       @default(0)
+  sessions         UserSession[]
 
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@index([username])
   @@index([role])
+}
+
+model UserSession {
+  id               String    @id
+  userId           String
+  refreshTokenHash String    @unique
+
+  deviceName       String?
+  userAgent        String?
+
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+
+  expiresAt        DateTime
+  revokedAt        DateTime?
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
 }
 
 enum OutboxEventStatus {

@@ -10,6 +10,14 @@ export const sessionCacheKey = (sessionId: string) => {
   return `auth:session:${sessionId}`;
 };
 
+export const passwordResetTokenCacheKey = (tokenHash: string) => {
+  return `auth:password-reset:token:${tokenHash}`;
+};
+
+export const passwordResetUserCacheKey = (userId: string) => {
+  return `auth:password-reset:user:${userId}`;
+};
+
 export const userCacheKeyById = (userId: string) => {
   return `users:id:${userId}`;
 };

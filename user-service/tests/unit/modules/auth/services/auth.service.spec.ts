@@ -95,6 +95,7 @@ import {
   createUser,
   createUserLoginDto,
 } from '../../../../factories/auth.factory.js';
+import { sessionCacheKey } from '../../../../../src/cache/cache.keys.js';
 
 const hashToken = (token: string) =>
   crypto.createHash('sha256').update(token).digest('hex');
@@ -879,7 +880,10 @@ describe('AuthService', () => {
       expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith(
         'user-1',
       );
-      expect(redis.del).toHaveBeenCalledWith(expect.any(Array));
+      expect(redis.del).toHaveBeenCalledWith([
+        sessionCacheKey('session-1'),
+        sessionCacheKey('session-2'),
+      ]);
       expect(authSessionsTotal.inc).toHaveBeenCalledWith({
         operation: 'revoke_all',
         result: 'success',

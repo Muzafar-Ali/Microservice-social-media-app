@@ -1,8 +1,8 @@
 # Microservice Social Media Platform
 
-Distributed backend system powered by Node.js, TypeScript, PostgreSQL, Redis, Kafka, Socket.IO, and Docker.
+Distributed backend system powered by Node.js, TypeScript, PostgreSQL, Redis, Kafka, Socket.IO, and Docker, and OpenTelemetry.
 
-Implements authentication, feed generation, media processing, real-time messaging, and social graph relationships using independently deployed services coordinated through event-driven communication.
+Implements authentication, social graph management, feed generation, media processing, and real-time messaging through independently deployable services coordinated via event-driven architecture.
 
 ---
 
@@ -17,13 +17,13 @@ Implements authentication, feed generation, media processing, real-time messagin
 - Media upload workflows integrated with Cloudinary
 - Feed generation with cursor-based pagination
 - Structured validation using Zod
-- Observability using Prometheus and Grafana
+- Full observability stack with OpenTelemetry, Prometheus, Grafana, Loki, and Tempo
+- Distributed tracing, centralized logging, and metrics correlation
 - Containerized infrastructure using Docker Compose
 - Unit testing for core modules
 
 
 ---
-
 ## Tech Stack
 
 | Area | Technologies |
@@ -39,11 +39,11 @@ Implements authentication, feed generation, media processing, real-time messagin
 | Real-time | Socket.IO |
 | Media Storage | Cloudinary |
 | Validation | Zod |
-| Logging | Pino |
-| Monitoring | Prometheus, Grafana |
+| Metrics | OpenTelemetry, Prometheus, Grafana |
+| Logging | Pino, OpenTelemetry, Loki |
+| Distributed Tracing | OpenTelemetry, Tempo |
 | Testing | Jest, ts-jest, Supertest, jest-mock-extended |
 | Containerization | Docker, Docker Compose |
-
 ---
 
 ## High-Level Architecture
@@ -142,34 +142,6 @@ user-service
 
 Manages user registration, login, profile lookup, profile image updates, Redis web sessions, JWT mobile login, and publishing user domain events.
 
-Capabilities:
-
-- Create users
-- Login for web clients using Redis-backed session cookies
-- Login for mobile clients using JWT access tokens
-- Get profile by user ID
-- Get profile by username
-- Update profile image
-- Publish user events to Kafka
-- Consume social graph events to update user-related counters/cache
-- Outbox worker support for reliable event publishing
-
-Important routes:
-
-| Method | Route | Description |
-|---|---|---|
-| `POST` | `/api/user` | Create a new user |
-| `GET` | `/api/user/profile/id/:id` | Get profile by ID |
-| `GET` | `/api/user/profile/username/:username` | Get profile by username |
-| `PATCH` | `/api/user/profile/profile-image` | Update authenticated user profile image |
-| `POST` | `/api/auth/web/login` | Web login with Redis session cookie |
-| `POST` | `/api/auth/mobile/login` | Mobile login with JWT token |
-
-Database models include:
-
-- `User`
-- `OutboxEvent`
-
 Kafka topics used:
 
 - `user-events`
@@ -188,56 +160,6 @@ post-service
 
 Manages post creation, post retrieval, profile grid feed, profile feed windows, home feed pagination, likes, comments, and synchronization with user/media events.
 
-Capabilities:
-
-- Create text, media, or mixed posts
-- Support carousel-style media through ordered media records
-- Fetch single post by ID
-- Fetch all posts with pagination
-- Fetch authenticated user posts
-- Fetch user profile grid posts
-- Fetch profile feed windows
-- Fetch personalized home feed
-- Support before/after cursor pagination
-- Like and unlike posts
-- List post likes
-- Create, list, and delete comments
-- Cache user profile data from user events
-- React to media upload completion events
-- Publish post lifecycle events
-
-Important routes:
-
-| Method | Route | Description |
-|---|---|---|
-| `POST` | `/api/posts` | Create post |
-| `GET` | `/api/posts` | Get all posts |
-| `GET` | `/api/posts/me` | Get authenticated user posts |
-| `GET` | `/api/posts/feed/home` | Get home feed |
-| `GET` | `/api/posts/feed/home/before` | Get newer home feed posts |
-| `GET` | `/api/posts/feed/home/after` | Get older home feed posts |
-| `GET` | `/api/posts/user/:profileUserId/grid/cursor` | Cursor-based profile grid |
-| `GET` | `/api/posts/user/:profileUserId/grid` | Offset-based profile grid |
-| `GET` | `/api/posts/user/:profileUserId/feed/window` | Profile feed window |
-| `GET` | `/api/posts/user/:profileUserId/feed/after` | Profile feed after cursor |
-| `GET` | `/api/posts/user/:userId` | Get posts by user ID |
-| `GET` | `/api/posts/:postId` | Get post by ID |
-| `PATCH` | `/api/posts/:postId` | Update post |
-| `DELETE` | `/api/posts/:postId` | Delete post |
-| `POST` | `/api/posts/:postId/like` | Like post |
-| `DELETE` | `/api/posts/:postId/like` | Unlike post |
-| `GET` | `/api/posts/:postId/like` | Get post likes |
-| `POST` | `/api/posts/:postId/comments` | Create comment |
-| `GET` | `/api/posts/:postId/comments` | Get comments |
-| `DELETE` | `/api/posts/:postId/comments/:commentId` | Delete comment |
-
-Database models include:
-
-- `Post`
-- `PostMedia`
-- `PostLike`
-- `PostComment`
-- `UserProfileCache`
 
 Kafka topics used:
 
@@ -258,23 +180,6 @@ media-service
 ```
 
 Manages Cloudinary media upload signatures and publishing media upload completion events after successful media upload metadata is received.
-
-Capabilities:
-
-- Generate profile image upload signatures
-- Generate post media upload signatures
-- Validate uploaded media metadata
-- Publish media upload completion events
-- Integrate Cloudinary with the backend workflow
-
-Important routes:
-
-| Method | Route | Description |
-|---|---|---|
-| `POST` | `/api/media/upload/profile-image/signature` | Generate profile image upload signature |
-| `POST` | `/api/media/upload/profile-image/update` | Update authenticated user profile image after upload |
-| `POST` | `/api/media/upload/media/signature` | Generate post media upload signature |
-| `POST` | `/api/media/upload/media` | Confirm uploaded media and publish event |
 
 Kafka topics used:
 
@@ -362,33 +267,6 @@ social-graph-service
 ```
 
 Manages user follow/unfollow relationships, follower lists, following IDs, follower/following counts, user profile cache, and publishing social graph events.
-
-Capabilities:
-
-- Follow users
-- Unfollow users
-- Get followers
-- Get follower/following counts
-- Get authenticated user following IDs
-- Consume user events and cache profile data
-- Publish social graph events
-- Use outbox worker for reliable event delivery
-
-Important routes:
-
-| Method | Route | Description |
-|---|---|---|
-| `POST` | `/api/social-graph/follow/:targetUserId` | Follow a user |
-| `DELETE` | `/api/social-graph/follow/:targetUserId` | Unfollow a user |
-| `GET` | `/api/social-graph/users/:targetUserId/followers` | Get followers |
-| `GET` | `/api/social-graph/users/:targetUserId/counts` | Get follower/following counts |
-| `GET` | `/api/social-graph/me/following/ids` | Get authenticated user's following IDs |
-
-Database models include:
-
-- `Follow`
-- `UserProfileCache`
-- `OutboxEvent`
 
 Kafka topics used:
 
@@ -566,44 +444,47 @@ The Media Service does not use a local database in the current implementation. I
 The system includes a production-style observability stack for monitoring, debugging, and system health analysis.
 
 ### Monitoring
-
-- 📊 Metrics collection using Prometheus across all services  
+- 📊 Metrics collection using Prometheus and OpenTelemetry
 - 📈 Grafana dashboards for real-time system performance and health visibility  
 - ⚡ End-to-end monitoring for APIs and background workflows  
 
-### Alerting
-
-- 🚨 Configured alerting for:
-  - Service availability issues
-  - Performance degradation
-  - System and application failures  
-- ⏱️ Alert evaluation and grouping for controlled signal noise  
+### Distributed Tracing
+- Distributed tracing implemented using OpenTelemetry
+- Traces are collected and exported to Grafana Tempo
+- Helps track request flow across microservices and identify latency issues
 
 ### Logging
 
-- 📝 Centralized structured logging using Pino  
-- 🔍 Log aggregation and querying through Loki  
-- 🧠 Consistent log format with service-level context (service, environment, level)  
+- Centralized structured logging using Pino
+- Application logs are collected through OpenTelemetry
+- Logs are exported to Loki for aggregation and querying
+- Consistent log format with service-level context such as service name, environment, trace ID, span ID, and log level  
+
+### Alerting
+- Configured alerting for:
+  - Service availability issues
+  - Performance degradation
+  - System and application failures
+- Alert evaluation and grouping to reduce unnecessary noise
 
 ### Observability Design
-
-- 🔗 Correlation between metrics, logs, and system events for faster debugging  
-- 🧩 Service-level dashboards for scalable monitoring architecture  
-- 🛠️ End-to-end pipeline from application logs to visualization  
+- Correlation between metrics, logs, and traces for faster debugging
+- Service-level dashboards for scalable monitoring architecture
+- End-to-end observability pipeline from application telemetry to visualization
 
 ---
 
 Monitoring services:
 
-| Tool | Port | Purpose |
-|---|---|---|
-| Prometheus | `9090` | Metrics collection |
-| Grafana | `5000` | Dashboard visualization |
-| Loki | `3100` | Log aggregation |
-| Promtail | `9080` | Log shipping |
-| Redpanda Console | `8080` | Kafka inspection |
-| Kafdrop | `19000` | Kafka topic/browser UI |
-
+| Tool                    | Port          | Purpose                                        |
+| ----------------------- | ------------- | ---------------------------------------------- |
+| Prometheus              | `9090`        | Metrics collection                             |
+| Grafana                 | `5000`        | Dashboard visualization                        |
+| Loki                    | `3100`        | Log aggregation                                |
+| Tempo                   | `3200`        | Distributed trace storage                      |
+| OpenTelemetry Collector | `4317 / 4318` | Collects and exports metrics, logs, and traces |
+| Redpanda Console        | `8080`        | Kafka inspection                               |
+| Kafdrop                 | `19000`       | Kafka topic/browser UI                         |
 ---
 
 ## Local Development Setup
@@ -689,17 +570,43 @@ docker compose up --build
 
 This starts:
 
-- 3 Kafka brokers
-- Redis
+### Infrastructure
+
+- 3-node Kafka cluster
+- Redis cache
 - PostgreSQL databases
+  - User DB
+  - Post DB
+  - Chat DB
+  - Social Graph DB
+
+### Business Services
+
 - User Service
 - Media Service
 - Post Service
 - Chat Service
 - Social Graph Service
 - API Gateway
+
+### Observability Stack
+
+- OpenTelemetry Collector
 - Prometheus
 - Grafana
+- Loki
+- Tempo
+- Alertmanager
+
+### Metrics Exporters
+
+- Node Exporter
+- cAdvisor
+- Redis Exporter
+- Kafka Exporter
+
+### Management & Monitoring UIs
+
 - Redpanda Console
 - Kafdrop
 
@@ -709,91 +616,157 @@ To stop everything:
 docker compose down
 ```
 
-To remove containers and volumes:
+To stop everything and remove volumes:
 
 ```bash
 docker compose down -v
 ```
 
 ---
-
 ## Running Services Manually
 
-For local service-by-service development:
+For local service-by-service development, start the required infrastructure first (Kafka, Redis, PostgreSQL, and observability services) using Docker Compose.
+
+### User Service
 
 ```bash
 cd user-service
+
 npm install
-npm run build
-npm run dev
-```
-
-For Prisma-based services:
-
-```bash
 npm run prisma:generate
 npm run prisma:migrate
 npm run build
 npm run dev
 ```
 
-Repeat similarly for:
+### Post Service
 
-```txt
-user-service
-post-service
-chat-service
-social-graph-service
-media-service
-api-gateway/web-gateway
+```bash
+cd post-service
+
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run build
+npm run dev
 ```
+
+### Chat Service
+
+```bash
+cd chat-service
+
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run build
+npm run dev
+```
+
+### Social Graph Service
+
+```bash
+cd social-graph-service
+
+npm install
+npm run prisma:generate
+npm run prisma:migrate
+npm run build
+npm run dev
+```
+
+### Media Service
+
+```bash
+cd media-service
+
+npm install
+npm run build
+npm run dev
+```
+
+### API Gateway
+
+```bash
+cd api-gateway/web-gateway
+
+npm install
+npm run build
+npm run dev
+```
+
+### Prerequisites
+
+The following infrastructure must be running before starting services locally:
+
+- Kafka Cluster
+- Redis
+- PostgreSQL Databases
+- OpenTelemetry Collector
+- Prometheus
+- Grafana
+- Loki
+- Tempo
 
 ---
 
 ## Useful URLs
 
 | Service | URL |
-|---|---|
-| API Gateway | `http://localhost:8088` |
-| User Service | `http://localhost:4001` |
-| Media Service | `http://localhost:4002` |
-| Post Service | `http://localhost:4003` |
-| Chat Service | `http://localhost:4004` |
-| Social Graph Service | `http://localhost:4005` |
-| Prometheus | `http://localhost:9090` |
-| Grafana | `http://localhost:5000` |
-| Redpanda Console | `http://localhost:8080` |
-| Kafdrop | `http://localhost:19000` |
+|----------|----------|
+| API Gateway | http://localhost:8088 |
+| User Service | http://localhost:4001 |
+| Media Service | http://localhost:4002 |
+| Post Service | http://localhost:4003 |
+| Chat Service | http://localhost:4004 |
+| Social Graph Service | http://localhost:4005 |
+| Grafana | http://localhost:5000 |
+| Prometheus | http://localhost:9090 |
+| Alertmanager | http://localhost:9095 |
+| OpenTelemetry Collector Health | http://localhost:13133 |
+| cAdvisor | http://localhost:8081 |
+| Redpanda Console | http://localhost:8080 |
+| Kafdrop | http://localhost:19000 |
+```
 
 ---
 
 ## Testing
 
-The project includes Jest-based tests for selected modules.
+The project uses **Jest**, **ts-jest**, **Supertest**, and **jest-mock-extended** for unit and integration testing.
 
-Run tests in User Service:
+At present, comprehensive test coverage has been implemented in the **User Service**, with testing planned for the remaining services as development progresses.
+
+### Run Tests
 
 ```bash
 cd user-service
 npm test
 ```
 
-Run tests in Post Service:
+### Current Test Coverage
 
-```bash
-cd post-service
-npm test
-```
-
-Test coverage includes examples for:
+The User Service includes tests for:
 
 - Controllers
 - Services
 - Validation schemas
-- Mocked repositories
+- Repository interactions
+- Authentication flows
+- Error handling
 - Event publisher expectations
+- External dependency mocking
 
----
+### Future Work
+
+Additional test suites will be implemented for:
+
+- Post Service
+- Chat Service
+- Social Graph Service
+- Media Service
+- API Gateway
+```
 
 ## Folder Structure
 

@@ -2,10 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
 import {
   ChangePasswordDto,
-  changePasswordSchema,
-  forgotPasswordSchema,
   ForgotPasswordDto,
-  resetPasswordSchema,
   ResetPasswordDto,
   sessionIdParamSchema,
   UserLoginDto,
@@ -21,14 +18,9 @@ export class AuthController {
 
   webLogin = async (req: Request<Record<string, never>, any, UserLoginDto>, res: Response, next: NextFunction) => {
     try {
-      const safeData = userLoginSchema.safeParse(req.body);
+      const loginCredential = req.body;
 
-      if (!safeData.success) {
-        throw new ApiErrorHandler(400, formatZodError(safeData.error));
-      }
-
-      const dto: UserLoginDto = safeData.data;
-      const identifier = (dto.email ?? dto.username)!;
+      const identifier = (loginCredential.email ?? loginCredential.username)!;
 
       const loginContext: TLoginContext = {
         identifier,
@@ -36,7 +28,7 @@ export class AuthController {
         userAgent: req.headers['user-agent'] ?? '',
       };
 
-      const user = await this.authService.userLogin(dto, loginContext);
+      const user = await this.authService.userLogin(loginCredential, loginContext);
 
       const sessionId = await this.authService.createSession({
         userId: user.id,
@@ -149,13 +141,9 @@ export class AuthController {
     next: NextFunction,
   ) => {
     try {
-      const safeData = forgotPasswordSchema.safeParse(req.body);
+      const { email } = req.body;
 
-      if (!safeData.success) {
-        throw new ApiErrorHandler(400, formatZodError(safeData.error));
-      }
-
-      await this.authService.requestPasswordReset(safeData.data);
+      await this.authService.requestPasswordReset({ email });
 
       res.status(200).json({
         success: true,
@@ -172,13 +160,9 @@ export class AuthController {
     next: NextFunction,
   ) => {
     try {
-      const safeData = resetPasswordSchema.safeParse(req.body);
+      const { token, password } = req.body;
 
-      if (!safeData.success) {
-        throw new ApiErrorHandler(400, formatZodError(safeData.error));
-      }
-
-      await this.authService.resetPassword(safeData.data);
+      await this.authService.resetPassword({ token, password });
 
       res.status(200).json({
         success: true,
@@ -195,17 +179,14 @@ export class AuthController {
     next: NextFunction,
   ) => {
     try {
-      const safeData = changePasswordSchema.safeParse(req.body);
+      const { currentPassword, newPassword } = req.body;
+      const { userId } = req;
 
-      if (!safeData.success) {
-        throw new ApiErrorHandler(400, formatZodError(safeData.error));
-      }
-
-      if (!req.userId) {
+      if (!userId) {
         throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
-      await this.authService.changePassword(String(req.userId), safeData.data);
+      await this.authService.changePassword(String(req.userId), { currentPassword, newPassword });
 
       res.status(200).json({
         success: true,

@@ -59,7 +59,7 @@ export class AuthService {
 
     //  Verify password
     const isMatch = await bcrypt.compare(dto.password, user.password);
-    
+
     if (!isMatch) {
       authLoginAttemptsTotal.inc({ result: 'failed', reason: 'invalid_password' });
       await recordFailedLoginAttempt(context);

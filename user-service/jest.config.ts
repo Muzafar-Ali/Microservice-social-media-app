@@ -11,7 +11,7 @@ const jestConfig: JestConfigWithTsJest = {
       branches: 80,
       functions: 80,
       lines: 80,
-      statements: 80
+      statements: 80,
     },
   },
   coverageProvider: 'v8',

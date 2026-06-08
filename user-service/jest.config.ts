@@ -11,7 +11,7 @@ const jestConfig: JestConfigWithTsJest = {
       branches: 80,
       functions: 80,
       lines: 80,
-      statements: 80
+      statements: 80,
     },
   },
   coverageProvider: 'v8',
@@ -29,11 +29,11 @@ const jestConfig: JestConfigWithTsJest = {
       },
     ],
   },
-  modulePathIgnorePatterns: ['<rootDir>/dist'],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/dist/',
+    '<rootDir>/tests/',
+  ],
 };
 
 export default jestConfig;
-// modulePathIgnorePatterns: ['<rootDir>/dist/'],
-// coveragePathIgnorePatterns: [
-//   "src/utils/rabbitmq.ts"
-// ],

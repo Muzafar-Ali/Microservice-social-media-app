@@ -120,9 +120,7 @@ describe('userLoginSchema', () => {
 
     if (result.success) return;
 
-    expect(result.error.issues[0]?.message).toBe(
-      'Username can only contain letters, numbers, _, .'
-    );
+    expect(result.error.issues[0]?.message).toBe('Username can only contain letters, numbers, _, .');
   });
 
   it('rejects username longer than 30 characters', () => {

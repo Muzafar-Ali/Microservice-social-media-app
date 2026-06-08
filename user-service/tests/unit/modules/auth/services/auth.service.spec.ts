@@ -97,11 +97,9 @@ import {
 } from '../../../../factories/auth.factory.js';
 import { sessionCacheKey } from '../../../../../src/cache/cache.keys.js';
 
-const hashToken = (token: string) =>
-  crypto.createHash('sha256').update(token).digest('hex');
+const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
 
 describe('AuthService', () => {
-  
   const mockAuthRepository = {
     getUserByEmailOrUsername: jest.fn<() => Promise<unknown | null>>(),
     findUserByEmail: jest.fn<() => Promise<unknown | null>>(),
@@ -120,7 +118,7 @@ describe('AuthService', () => {
     jest.clearAllMocks();
 
     authService = new AuthService(mockAuthRepository as never);
-    
+
     mockAuthRepository.getUserByEmailOrUsername.mockResolvedValue(undefined);
     mockAuthRepository.findUserByEmail.mockResolvedValue(undefined);
     mockAuthRepository.findUserById.mockResolvedValue(undefined);
@@ -143,10 +141,7 @@ describe('AuthService', () => {
       jest.mocked(isLoginLocked).mockResolvedValue(true);
 
       // Act
-      const loginPromise = authService.userLogin(
-        createUserLoginDto(),
-        createLoginContext(),
-      );
+      const loginPromise = authService.userLogin(createUserLoginDto(), createLoginContext());
 
       // Assert
       await expect(loginPromise).rejects.toMatchObject({
@@ -178,10 +173,7 @@ describe('AuthService', () => {
         message: 'Invalid credentials',
       });
 
-      expect(mockAuthRepository.getUserByEmailOrUsername).toHaveBeenCalledWith(
-        'user@example.com',
-        undefined,
-      );
+      expect(mockAuthRepository.getUserByEmailOrUsername).toHaveBeenCalledWith('user@example.com', undefined);
       expect(recordFailedLoginAttempt).toHaveBeenCalledWith(context);
       expect(bcrypt.compare).not.toHaveBeenCalled();
       expect(authLoginAttemptsTotal.inc).toHaveBeenCalledWith({
@@ -195,15 +187,10 @@ describe('AuthService', () => {
       async (status) => {
         // Arrange
         jest.mocked(isLoginLocked).mockResolvedValue(false);
-        mockAuthRepository.getUserByEmailOrUsername.mockResolvedValue(
-          createUser({ status }),
-        );
+        mockAuthRepository.getUserByEmailOrUsername.mockResolvedValue(createUser({ status }));
 
         // Act
-        const loginPromise = authService.userLogin(
-          createUserLoginDto(),
-          createLoginContext(),
-        );
+        const loginPromise = authService.userLogin(createUserLoginDto(), createLoginContext());
 
         // Assert
         await expect(loginPromise).rejects.toMatchObject({
@@ -237,10 +224,7 @@ describe('AuthService', () => {
         message: 'Invalid credentials',
       });
 
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'password123',
-        'hashed-password',
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith('password123', 'hashed-password');
       expect(recordFailedLoginAttempt).toHaveBeenCalledWith(context);
       expect(resetFailedLoginAttempts).not.toHaveBeenCalled();
       expect(authLoginAttemptsTotal.inc).toHaveBeenCalledWith({
@@ -265,10 +249,7 @@ describe('AuthService', () => {
 
       // Assert
       expect(result).toBe(activeUser);
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'correct-password',
-        'hashed-password',
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith('correct-password', 'hashed-password');
       expect(recordFailedLoginAttempt).not.toHaveBeenCalled();
       expect(resetFailedLoginAttempts).toHaveBeenCalledWith('user@example.com');
       expect(authLoginAttemptsTotal.inc).toHaveBeenCalledWith({
@@ -280,15 +261,10 @@ describe('AuthService', () => {
     it('throws repository error when user lookup fails', async () => {
       // Arrange
       jest.mocked(isLoginLocked).mockResolvedValue(false);
-      mockAuthRepository.getUserByEmailOrUsername.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.getUserByEmailOrUsername.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
-      const loginPromise = authService.userLogin(
-        createUserLoginDto(),
-        createLoginContext(),
-      );
+      const loginPromise = authService.userLogin(createUserLoginDto(), createLoginContext());
 
       // Assert
       await expect(loginPromise).rejects.toThrow('Database unavailable');
@@ -342,9 +318,7 @@ describe('AuthService', () => {
 
     it('throws error and does not create repository session when Redis set fails', async () => {
       // Arrange
-      jest
-        .mocked(redis.set)
-        .mockRejectedValue(new Error('Redis unavailable') as never);
+      jest.mocked(redis.set).mockRejectedValue(new Error('Redis unavailable') as never);
 
       // Act
       const createSessionPromise = authService.createSession(createSessionInput());
@@ -360,9 +334,7 @@ describe('AuthService', () => {
 
     it('throws error when repository session creation fails', async () => {
       // Arrange
-      mockAuthRepository.createUserSession.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.createUserSession.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
       const createSessionPromise = authService.createSession(createSessionInput());
@@ -387,9 +359,7 @@ describe('AuthService', () => {
       await authService.requestPasswordReset(createForgotPasswordDto());
 
       // Assert
-      expect(mockAuthRepository.findUserByEmail).toHaveBeenCalledWith(
-        'user@example.com',
-      );
+      expect(mockAuthRepository.findUserByEmail).toHaveBeenCalledWith('user@example.com');
       expect(redis.set).not.toHaveBeenCalled();
       expect(passwordResetRequestsTotal.inc).toHaveBeenCalledWith({
         result: 'user_not_found',
@@ -398,9 +368,7 @@ describe('AuthService', () => {
 
     it('does not create reset token when account is deleted', async () => {
       // Arrange
-      mockAuthRepository.findUserByEmail.mockResolvedValue(
-        createUser({ status: 'DELETED' }),
-      );
+      mockAuthRepository.findUserByEmail.mockResolvedValue(createUser({ status: 'DELETED' }));
 
       // Act
       await authService.requestPasswordReset(createForgotPasswordDto());
@@ -422,26 +390,18 @@ describe('AuthService', () => {
 
       // Assert
       expect(redis.set).toHaveBeenCalledTimes(2);
-      expect(redis.set).toHaveBeenCalledWith(
-        expect.any(String),
-        'user-1',
-        {
-          expiration: {
-            type: 'EX',
-            value: 900,
-          },
+      expect(redis.set).toHaveBeenCalledWith(expect.any(String), 'user-1', {
+        expiration: {
+          type: 'EX',
+          value: 900,
         },
-      );
-      expect(redis.set).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        {
-          expiration: {
-            type: 'EX',
-            value: 900,
-          },
+      });
+      expect(redis.set).toHaveBeenCalledWith(expect.any(String), expect.any(String), {
+        expiration: {
+          type: 'EX',
+          value: 900,
         },
-      );
+      });
       expect(passwordResetRequestsTotal.inc).toHaveBeenCalledWith({
         result: 'requested',
       });
@@ -465,14 +425,10 @@ describe('AuthService', () => {
 
     it('throws when repository lookup fails', async () => {
       // Arrange
-      mockAuthRepository.findUserByEmail.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.findUserByEmail.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
-      const resetRequestPromise = authService.requestPasswordReset(
-        createForgotPasswordDto(),
-      );
+      const resetRequestPromise = authService.requestPasswordReset(createForgotPasswordDto());
 
       // Assert
       await expect(resetRequestPromise).rejects.toThrow('Database unavailable');
@@ -489,9 +445,7 @@ describe('AuthService', () => {
       jest.mocked(redis.get).mockResolvedValue(null as never);
 
       // Act
-      const resetPasswordPromise = authService.resetPassword(
-        createResetPasswordDto(),
-      );
+      const resetPasswordPromise = authService.resetPassword(createResetPasswordDto());
 
       // Assert
       await expect(resetPasswordPromise).rejects.toMatchObject({
@@ -510,9 +464,7 @@ describe('AuthService', () => {
       mockAuthRepository.findUserById.mockResolvedValue(null);
 
       // Act
-      const resetPasswordPromise = authService.resetPassword(
-        createResetPasswordDto(),
-      );
+      const resetPasswordPromise = authService.resetPassword(createResetPasswordDto());
 
       // Assert
       await expect(resetPasswordPromise).rejects.toMatchObject({
@@ -528,14 +480,10 @@ describe('AuthService', () => {
     it('throws 400 and deletes token when account is deleted', async () => {
       // Arrange
       jest.mocked(redis.get).mockResolvedValueOnce('user-1' as never);
-      mockAuthRepository.findUserById.mockResolvedValue(
-        createUser({ status: 'DELETED' }),
-      );
+      mockAuthRepository.findUserById.mockResolvedValue(createUser({ status: 'DELETED' }));
 
       // Act
-      const resetPasswordPromise = authService.resetPassword(
-        createResetPasswordDto(),
-      );
+      const resetPasswordPromise = authService.resetPassword(createResetPasswordDto());
 
       // Assert
       await expect(resetPasswordPromise).rejects.toMatchObject({
@@ -555,9 +503,7 @@ describe('AuthService', () => {
       jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
       // Act
-      const resetPasswordPromise = authService.resetPassword(
-        createResetPasswordDto(),
-      );
+      const resetPasswordPromise = authService.resetPassword(createResetPasswordDto());
 
       // Assert
       await expect(resetPasswordPromise).rejects.toMatchObject({
@@ -590,13 +536,8 @@ describe('AuthService', () => {
 
       // Assert
       expect(bcrypt.hash).toHaveBeenCalledWith('NewPassword123!', 10);
-      expect(mockAuthRepository.updatePasswordById).toHaveBeenCalledWith(
-        'user-1',
-        'new-hashed-password',
-      );
-      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith(
-        'user-1',
-      );
+      expect(mockAuthRepository.updatePasswordById).toHaveBeenCalledWith('user-1', 'new-hashed-password');
+      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith('user-1');
       expect(redis.del).toHaveBeenCalledWith(expect.any(Array));
       expect(passwordResetConfirmationsTotal.inc).toHaveBeenCalledWith({
         result: 'success',
@@ -608,14 +549,10 @@ describe('AuthService', () => {
       jest.mocked(redis.get).mockResolvedValueOnce('user-1' as never);
       mockAuthRepository.findUserById.mockResolvedValue(createUser());
       jest.mocked(bcrypt.compare).mockResolvedValue(false as never);
-      mockAuthRepository.updatePasswordById.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.updatePasswordById.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
-      const resetPasswordPromise = authService.resetPassword(
-        createResetPasswordDto(),
-      );
+      const resetPasswordPromise = authService.resetPassword(createResetPasswordDto());
 
       // Assert
       await expect(resetPasswordPromise).rejects.toThrow('Database unavailable');
@@ -632,10 +569,7 @@ describe('AuthService', () => {
       mockAuthRepository.findUserById.mockResolvedValue(null);
 
       // Act
-      const changePasswordPromise = authService.changePassword(
-        'user-1',
-        createChangePasswordDto(),
-      );
+      const changePasswordPromise = authService.changePassword('user-1', createChangePasswordDto());
 
       // Assert
       await expect(changePasswordPromise).rejects.toMatchObject({
@@ -649,15 +583,10 @@ describe('AuthService', () => {
 
     it('throws 410 when account is deleted', async () => {
       // Arrange
-      mockAuthRepository.findUserById.mockResolvedValue(
-        createUser({ status: 'DELETED' }),
-      );
+      mockAuthRepository.findUserById.mockResolvedValue(createUser({ status: 'DELETED' }));
 
       // Act
-      const changePasswordPromise = authService.changePassword(
-        'user-1',
-        createChangePasswordDto(),
-      );
+      const changePasswordPromise = authService.changePassword('user-1', createChangePasswordDto());
 
       // Assert
       await expect(changePasswordPromise).rejects.toMatchObject({
@@ -675,10 +604,7 @@ describe('AuthService', () => {
       jest.mocked(bcrypt.compare).mockResolvedValue(false as never);
 
       // Act
-      const changePasswordPromise = authService.changePassword(
-        'user-1',
-        createChangePasswordDto(),
-      );
+      const changePasswordPromise = authService.changePassword('user-1', createChangePasswordDto());
 
       // Assert
       await expect(changePasswordPromise).rejects.toMatchObject({
@@ -696,27 +622,17 @@ describe('AuthService', () => {
       mockAuthRepository.findUserById.mockResolvedValue(createUser());
       jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
       jest.mocked(redis.get).mockResolvedValue('stored-token-hash' as never);
-      mockAuthRepository.listActiveSessionsByUserId.mockResolvedValue([
-        createSession({ id: 'session-1' }),
-      ]);
+      mockAuthRepository.listActiveSessionsByUserId.mockResolvedValue([createSession({ id: 'session-1' })]);
       mockAuthRepository.revokeAllSessionsByUserId.mockResolvedValue({ count: 1 });
 
       // Act
       await authService.changePassword('user-1', createChangePasswordDto());
 
       // Assert
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'CurrentPassword123!',
-        'hashed-password',
-      );
+      expect(bcrypt.compare).toHaveBeenCalledWith('CurrentPassword123!', 'hashed-password');
       expect(bcrypt.hash).toHaveBeenCalledWith('NewPassword123!', 10);
-      expect(mockAuthRepository.updatePasswordById).toHaveBeenCalledWith(
-        'user-1',
-        'new-hashed-password',
-      );
-      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith(
-        'user-1',
-      );
+      expect(mockAuthRepository.updatePasswordById).toHaveBeenCalledWith('user-1', 'new-hashed-password');
+      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith('user-1');
       expect(passwordChangesTotal.inc).toHaveBeenCalledWith({
         result: 'success',
       });
@@ -726,15 +642,10 @@ describe('AuthService', () => {
       // Arrange
       mockAuthRepository.findUserById.mockResolvedValue(createUser());
       jest.mocked(bcrypt.compare).mockResolvedValue(true as never);
-      mockAuthRepository.updatePasswordById.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.updatePasswordById.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
-      const changePasswordPromise = authService.changePassword(
-        'user-1',
-        createChangePasswordDto(),
-      );
+      const changePasswordPromise = authService.changePassword('user-1', createChangePasswordDto());
 
       // Assert
       await expect(changePasswordPromise).rejects.toThrow('Database unavailable');
@@ -756,9 +667,7 @@ describe('AuthService', () => {
 
       // Assert
       expect(result).toBe(sessions);
-      expect(mockAuthRepository.listActiveSessionsByUserId).toHaveBeenCalledWith(
-        'user-1',
-      );
+      expect(mockAuthRepository.listActiveSessionsByUserId).toHaveBeenCalledWith('user-1');
       expect(authSessionsTotal.inc).toHaveBeenCalledWith({
         operation: 'list',
         result: 'success',
@@ -767,9 +676,7 @@ describe('AuthService', () => {
 
     it('throws when repository list sessions fails', async () => {
       // Arrange
-      mockAuthRepository.listActiveSessionsByUserId.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.listActiveSessionsByUserId.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
       const listSessionsPromise = authService.listUserSessions('user-1');
@@ -792,10 +699,7 @@ describe('AuthService', () => {
       await authService.revokeUserSession('user-1', 'session-123');
 
       // Assert
-      expect(mockAuthRepository.revokeSessionById).toHaveBeenCalledWith(
-        'session-123',
-        'user-1',
-      );
+      expect(mockAuthRepository.revokeSessionById).toHaveBeenCalledWith('session-123', 'user-1');
       expect(redis.del).toHaveBeenCalledWith(expect.stringContaining('session-123'));
       expect(authSessionsTotal.inc).toHaveBeenCalledWith({
         operation: 'revoke_one',
@@ -845,15 +749,10 @@ describe('AuthService', () => {
 
     it('throws when repository revoke fails', async () => {
       // Arrange
-      mockAuthRepository.revokeSessionById.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.revokeSessionById.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
-      const revokePromise = authService.revokeUserSession(
-        'user-1',
-        'session-123',
-      );
+      const revokePromise = authService.revokeUserSession('user-1', 'session-123');
 
       // Assert
       await expect(revokePromise).rejects.toThrow('Database unavailable');
@@ -874,16 +773,9 @@ describe('AuthService', () => {
       await authService.revokeAllUserSessions('user-1');
 
       // Assert
-      expect(mockAuthRepository.listActiveSessionsByUserId).toHaveBeenCalledWith(
-        'user-1',
-      );
-      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith(
-        'user-1',
-      );
-      expect(redis.del).toHaveBeenCalledWith([
-        sessionCacheKey('session-1'),
-        sessionCacheKey('session-2'),
-      ]);
+      expect(mockAuthRepository.listActiveSessionsByUserId).toHaveBeenCalledWith('user-1');
+      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith('user-1');
+      expect(redis.del).toHaveBeenCalledWith([sessionCacheKey('session-1'), sessionCacheKey('session-2')]);
       expect(authSessionsTotal.inc).toHaveBeenCalledWith({
         operation: 'revoke_all',
         result: 'success',
@@ -899,9 +791,7 @@ describe('AuthService', () => {
       await authService.revokeAllUserSessions('user-1');
 
       // Assert
-      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith(
-        'user-1',
-      );
+      expect(mockAuthRepository.revokeAllSessionsByUserId).toHaveBeenCalledWith('user-1');
       expect(redis.del).not.toHaveBeenCalled();
       expect(authSessionsTotal.inc).toHaveBeenCalledWith({
         operation: 'revoke_all',
@@ -911,9 +801,7 @@ describe('AuthService', () => {
 
     it('throws when repository fails while listing sessions', async () => {
       // Arrange
-      mockAuthRepository.listActiveSessionsByUserId.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.listActiveSessionsByUserId.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
       const revokeAllPromise = authService.revokeAllUserSessions('user-1');
@@ -942,9 +830,7 @@ describe('AuthService', () => {
 
     it('throws when repository touch session fails', async () => {
       // Arrange
-      mockAuthRepository.touchSession.mockRejectedValue(
-        new Error('Database unavailable'),
-      );
+      mockAuthRepository.touchSession.mockRejectedValue(new Error('Database unavailable'));
 
       // Act
       const touchPromise = authService.touchSession('session-123');

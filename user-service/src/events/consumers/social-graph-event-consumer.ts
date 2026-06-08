@@ -15,7 +15,7 @@ import {
   kafkaDlqMessagesTotal,
   kafkaMessagesConsumedTotal,
   kafkaOffsetCommitFailuresTotal,
-} from '../../monitoring/metrics.js';
+} from '../../monitoring/kafka.metrics.js';
 
 export class SocialGraphEventConsumer {
   private readonly maxProcessingAttempts = 3;

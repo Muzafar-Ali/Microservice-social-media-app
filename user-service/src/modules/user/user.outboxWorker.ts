@@ -7,7 +7,7 @@ import {
   outboxEventsPublishedTotal,
   outboxPendingEventsGauge,
   outboxPublishFailuresTotal,
-} from '../../monitoring/metrics.js';
+} from '../../monitoring/outbox.metrics.js';
 import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.types.js';
 import logger from '../../utils/logger.js';
 

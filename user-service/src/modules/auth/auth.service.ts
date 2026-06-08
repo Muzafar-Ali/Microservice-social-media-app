@@ -11,7 +11,7 @@ import {
   passwordChangesTotal,
   passwordResetConfirmationsTotal,
   passwordResetRequestsTotal,
-} from '../../monitoring/metrics.js';
+} from '../../monitoring/auth.metrics.js';
 import crypto from 'crypto';
 import config from '../../config/config.js';
 import { redis } from '../../config/redisClient.js';

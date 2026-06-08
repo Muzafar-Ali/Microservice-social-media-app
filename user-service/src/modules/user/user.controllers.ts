@@ -12,7 +12,7 @@ import {
 } from './user.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
-import { userCreatedCounter, userUpdatedCounter } from '../../monitoring/metrics.js';
+import { userCreatedTotal, userUpdatedTotal } from '../../monitoring/user.metrics.js';
 
 export class UserController {
   constructor(private userService: UserService) {}
@@ -22,7 +22,6 @@ export class UserController {
       const safeData = req.body;
 
       const user = await this.userService.createUser(safeData);
-      userCreatedCounter.inc();
 
       res.status(201).json({
         success: true,
@@ -90,7 +89,7 @@ export class UserController {
       const userId = req.userId;
 
       await this.userService.updateUserProfileImage(safeData, String(userId));
-      userUpdatedCounter.inc({ update_type: 'profile_image' });
+      userUpdatedTotal.inc({ update_type: 'profile_image', });
 
       res.status(200).json({
         success: true,
@@ -115,7 +114,7 @@ export class UserController {
       }
 
       const updatedProfile = await this.userService.updateMyProfile(String(userId), safeData);
-      userUpdatedCounter.inc({ update_type: 'profile' });
+      userUpdatedTotal.inc({ update_type: 'profile' });
 
       res.status(200).json({
         success: true,
@@ -140,7 +139,7 @@ export class UserController {
       }
 
       const updatedUser = await this.userService.updateUserStatus(safeParams.data.id, req.body.status);
-      userUpdatedCounter.inc({ update_type: 'status' });
+      userUpdatedTotal.inc({ update_type: 'status' });
 
       res.status(200).json({
         success: true,
@@ -161,7 +160,7 @@ export class UserController {
       }
 
       const updatedUser = await this.userService.deactivateMyAccount(String(userId));
-      userUpdatedCounter.inc({ update_type: 'status' });
+      userUpdatedTotal.inc({ update_type: 'status' });
 
       res.status(200).json({
         success: true,
@@ -182,7 +181,7 @@ export class UserController {
       }
 
       const updatedUser = await this.userService.reactivateMyAccount(String(userId));
-      userUpdatedCounter.inc({ update_type: 'status' });
+      userUpdatedTotal.inc({ update_type: 'status' });
 
       res.status(200).json({
         success: true,
@@ -203,7 +202,7 @@ export class UserController {
       }
 
       await this.userService.deleteMyAccount(String(userId));
-      userUpdatedCounter.inc({ update_type: 'status' });
+      userUpdatedTotal.inc({ update_type: 'status' });
 
       res.status(200).json({
         success: true,

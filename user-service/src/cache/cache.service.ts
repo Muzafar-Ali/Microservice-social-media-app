@@ -1,5 +1,5 @@
 import { redis } from '../config/redisClient.js';
-import { redisCacheOperationsTotal } from '../monitoring/metrics.js';
+import { redisCacheOperationsTotal } from '../monitoring/cache.metrics.js';
 import logger from '../utils/logger.js';
 
 class CacheService {

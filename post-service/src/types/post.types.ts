@@ -4,6 +4,7 @@ export type UserProfileCacheSummary = {
   displayName: string | null;
   avatarUrl: string | null;
   status: string;
+  isPrivate: boolean;
   updatedAt: Date;
 };
 

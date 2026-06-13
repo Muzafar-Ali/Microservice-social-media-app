@@ -368,6 +368,7 @@ export class PostRepository {
         displayName: true,
         avatarUrl: true,
         status: true,
+        isPrivate: true,
         updatedAt: true,
       },
     });
@@ -543,6 +544,7 @@ export class PostRepository {
     displayName: string | null;
     avatarUrl: string | null;
     status: string;
+    isPrivate: boolean;
   }) {
     return this.prisma.userProfileCache.upsert({
       where: { userId: input.userId },
@@ -551,6 +553,7 @@ export class PostRepository {
         displayName: input.displayName,
         avatarUrl: input.avatarUrl,
         status: input.status,
+        isPrivate: input.isPrivate,
       },
       create: {
         userId: input.userId,
@@ -558,6 +561,7 @@ export class PostRepository {
         displayName: input.displayName,
         avatarUrl: input.avatarUrl,
         status: input.status,
+        isPrivate: input.isPrivate,
       },
     });
   }

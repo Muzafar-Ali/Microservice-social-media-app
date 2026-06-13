@@ -201,6 +201,7 @@ export const userCreatedPayloadSchema = z.object({
     })
     .nullable(),
   status: z.string().min(1),
+  isPrivate: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime().optional(),
 });
@@ -226,6 +227,7 @@ export const userUpdatedPayloadSchema = z.object({
     })
     .nullable(),
   status: z.string().min(1, { error: 'status is required' }),
+  isPrivate: z.boolean(),
   updatedAt: z.iso.datetime({ error: 'updatedAt must be a valid ISO datetime' }),
 });
 

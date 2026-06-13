@@ -46,7 +46,7 @@ export type UpsertUserProfileCacheInput = {
   displayName: string | null;
   avatarUrl: string | null;
   status: string;
-  isPrivate?: boolean;
+  isPrivate: boolean;
 };
 
 export type UpsertUserProjectionInput = {
@@ -55,6 +55,7 @@ export type UpsertUserProjectionInput = {
   displayName: string | null;
   avatarUrl: string | null;
   status: string;
+  isPrivate: boolean;
 };
 
 export type FindFollowersInput = {

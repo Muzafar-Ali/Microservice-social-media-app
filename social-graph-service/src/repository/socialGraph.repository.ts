@@ -166,6 +166,7 @@ export class SocialGraphRepository {
         displayName: input.displayName,
         avatarUrl: input.avatarUrl,
         status: input.status,
+        isPrivate: input.isPrivate,
       },
       create: {
         userId: input.userId,
@@ -173,6 +174,7 @@ export class SocialGraphRepository {
         displayName: input.displayName,
         avatarUrl: input.avatarUrl,
         status: input.status,
+        isPrivate: input.isPrivate,
       },
     });
   }

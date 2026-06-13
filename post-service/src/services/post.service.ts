@@ -481,6 +481,7 @@ export class PostService {
     displayName: string | null;
     avatarUrl: string | null;
     status: string;
+    isPrivate: boolean;
   }) {
     return this.postRepository.upsertUserProfileCache(input);
   }

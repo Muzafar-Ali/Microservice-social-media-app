@@ -146,6 +146,7 @@ class UserEventConsumer {
       displayName: data.displayName ?? null,
       avatarUrl: data.profileImage?.secureUrl ?? null,
       status: data.status,
+      isPrivate: data.isPrivate,
     });
   }
 
@@ -168,6 +169,7 @@ class UserEventConsumer {
       displayName: data.displayName,
       avatarUrl: data.profileImage?.secureUrl ?? null,
       status: data.status,
+      isPrivate: data.isPrivate,
     });
   }
 

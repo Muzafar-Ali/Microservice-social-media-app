@@ -19,6 +19,7 @@ export type UserCreatedPayload = {
   displayName: string | null;
   profileImage: UserProfileImagePayload;
   status: string;
+  isPrivate: boolean;
   createdAt: string;
   updatedAt?: string;
 };
@@ -29,6 +30,7 @@ export type UserUpdatedPayload = {
   displayName: string | null;
   profileImage: UserProfileImagePayload;
   status: string;
+  isPrivate: boolean;
   updatedAt: string;
 };
 

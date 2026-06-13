@@ -88,8 +88,12 @@ export class UserController {
       const safeData = req.body;
       const userId = req.userId;
 
+      if (!userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       await this.userService.updateUserProfileImage(safeData, String(userId));
-      userUpdatedTotal.inc({ update_type: 'profile_image', });
+      userUpdatedTotal.inc({ update_type: 'profile_image' });
 
       res.status(200).json({
         success: true,

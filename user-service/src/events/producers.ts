@@ -8,7 +8,7 @@ import {
   UserUpdatedPayload,
 } from '../types/publisher.types.js';
 import config from '../config/config.js';
-import { kafkaMessagesPublishedTotal, kafkaPublishFailuresTotal } from '../monitoring/metrics.js';
+import { kafkaMessagesPublishedTotal, kafkaPublishFailuresTotal } from '../monitoring/kafka.metrics.js';
 
 export class UserEventPublisher {
   private readonly producerServiceName = config.serviceName;

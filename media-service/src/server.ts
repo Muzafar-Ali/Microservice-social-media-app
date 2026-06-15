@@ -11,7 +11,9 @@ async function bootstrap() {
     await initRedis();
     await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
-    const app = await createApp();
+    const { app, postEventConsumer } = await createApp();
+
+    await executeWithRetry('PostEventConsumer start', () => postEventConsumer.start());
 
     app.listen(PORT, () => {
       logger.info(`app is listening at ${PORT}`);

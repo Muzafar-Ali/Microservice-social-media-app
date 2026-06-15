@@ -10,15 +10,19 @@ import MediaService from './services/media.service.js';
 import MediaRespository from './repositories/media.repository.js';
 import MediaServiceEventPublisher from './events/producer.js';
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
+import getPostKafkaConsumer from './utils/kafka/getPostKafkaConsumer.js';
+import PostEventConsumer from './events/consumers/post-event.consumer.js';
 
 export async function createApp() {
   const app = express();
 
   const producer = await getKafkaProducer();
+  const postKafkaConsumer = await getPostKafkaConsumer();
   const mediaServiceEventPublisher = new MediaServiceEventPublisher(producer);
   const mediaRepository = new MediaRespository();
   const mediaService = new MediaService(mediaRepository, mediaServiceEventPublisher);
   const mediaController = new MediaController(mediaService);
+  const postEventConsumer = new PostEventConsumer(postKafkaConsumer, producer, mediaService);
 
   const allowedOrigins = ['http://localhost:3000'];
 
@@ -40,5 +44,8 @@ export async function createApp() {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
 
-  return app;
+  return {
+    app,
+    postEventConsumer,
+  };
 }

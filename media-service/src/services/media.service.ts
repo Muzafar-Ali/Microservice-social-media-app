@@ -4,6 +4,7 @@ import MediaServiceEventPublisher from '../events/producer.js';
 import MediaRespository from '../repositories/media.repository.js';
 import { PostMediaUploadedDto } from '../validations/media.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
+import { PostDeletedMediaItem } from '../types/media-event-consumer.types.js';
 
 class MediaService {
   private readonly postImageFolderPrefix = 'social-media-app/posts/images/';
@@ -57,6 +58,22 @@ class MediaService {
       width: cloudinaryAsset.width,
       height: cloudinaryAsset.height,
     };
+  };
+
+  cleanupPostMediaFromDeletedPost = async (eventId: string, media: PostDeletedMediaItem[]): Promise<void> => {
+    const mediaWithPublicIds = media.filter(
+      (item): item is PostDeletedMediaItem & { publicId: string } =>
+        typeof item.publicId === 'string' && item.publicId.length > 0,
+    );
+
+    await Promise.all(
+      mediaWithPublicIds.map(async (item) => {
+        await cloudinary.uploader.destroy(item.publicId, {
+          resource_type: item.type === 'VIDEO' ? 'video' : 'image',
+          invalidate: true,
+        });
+      }),
+    );
   };
 }
 

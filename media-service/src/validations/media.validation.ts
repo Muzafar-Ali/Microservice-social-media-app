@@ -75,3 +75,26 @@ export type PostMediaUploadedDto = z.infer<typeof postMediaUploadedSchema>;
 export type PostMediaUploadSignatureDto = z.infer<typeof postMediaUploadSignatureSchema>;
 export type ProfileImageUpdateDto = z.infer<typeof profileImageUpdateSchema>;
 // export type PostVideoOrImageUploadDto = z.infer<typeof postVideoOrImageUpladSchema>
+
+export const postDeletedEventSchema = z.object({
+  eventId: z.string().min(1, 'eventId is required'),
+  eventName: z.literal('post.deleted'),
+  eventVersion: z.number().int().positive(),
+  occurredAt: z.string().datetime(),
+  producerService: z.string().min(1),
+  partitionKey: z.string().min(1),
+  data: z.object({
+    postId: z.string().min(1),
+    authorId: z.string().min(1),
+    deletedAt: z.string().datetime(),
+    media: z.array(
+      z.object({
+        id: z.string().min(1),
+        type: z.enum(['IMAGE', 'VIDEO']),
+        publicId: z.string().nullable(),
+      }),
+    ),
+  }),
+});
+
+export type PostDeletedEvent = z.infer<typeof postDeletedEventSchema>;

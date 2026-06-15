@@ -12,6 +12,9 @@ import { FailedMessageContext } from '../../types/post-event-consumer.types..js'
 import formatZodError from '../../utils/formatZodError.js';
 
 class UserEventConsumer {
+  private readonly maxProcessingAttempts = 3;
+  private readonly retryBaseDelayMs = 500;
+
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
@@ -30,16 +33,42 @@ class UserEventConsumer {
         if (!message.value) {
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
+          await this.sendToDlq({
+            topic,
+            partition,
+            offset: message.offset,
+            rawValue: '',
+            reason: 'Empty Kafka message value',
+          });
+
           await this.commitNextOffset(topic, partition, message.offset);
           return;
         }
 
         const rawValue = message.value.toString();
+        let parsedJson: { eventName?: string };
 
         try {
-          const parsedJson = JSON.parse(rawValue);
+          parsedJson = JSON.parse(rawValue) as { eventName?: string };
+        } catch (error) {
+          logger.error(
+            { error, topic, partition, offset: message.offset, rawValue },
+            'Received invalid JSON user event in post-service',
+          );
 
-          switch (parsedJson.eventName) {
+          await this.sendToDlq({
+            topic,
+            partition,
+            offset: message.offset,
+            rawValue,
+            reason: 'Invalid JSON message value',
+          });
+
+          await this.commitNextOffset(topic, partition, message.offset);
+          return;
+        }
+
+        switch (parsedJson.eventName) {
             case USER_EVENT_NAMES.USER_CREATED: {
               const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
 
@@ -58,7 +87,16 @@ class UserEventConsumer {
                 return;
               }
 
-              await this.handleUserCreated(safeEvent.data);
+              await this.processWithRetry(
+                () => this.handleUserCreated(safeEvent.data),
+                {
+                  topic,
+                  partition,
+                  offset: message.offset,
+                  rawValue,
+                  reason: 'Retry exhausted while processing user.created',
+                },
+              );
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
@@ -81,7 +119,16 @@ class UserEventConsumer {
                 return;
               }
 
-              await this.handleUserUpdated(safeEvent.data);
+              await this.processWithRetry(
+                () => this.handleUserUpdated(safeEvent.data),
+                {
+                  topic,
+                  partition,
+                  offset: message.offset,
+                  rawValue,
+                  reason: 'Retry exhausted while processing user.updated',
+                },
+              );
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
@@ -100,28 +147,6 @@ class UserEventConsumer {
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
-          }
-        } catch (error) {
-          logger.error(
-            {
-              error,
-              topic,
-              partition,
-              offset: message.offset,
-              rawValue,
-            },
-            'Failed to process user Kafka message',
-          );
-
-          await this.sendToDlq({
-            topic,
-            partition,
-            offset: message.offset,
-            rawValue,
-            reason: 'Unhandled processing error',
-          });
-
-          await this.commitNextOffset(topic, partition, message.offset);
         }
       },
     });
@@ -140,7 +165,8 @@ class UserEventConsumer {
       'Handling user.created event in post-service',
     );
 
-    await this.postService.upsertUserProfileCache({
+    const wasProcessed = await this.postService.applyUserProfileEvent({
+      eventId: event.eventId,
       userId: data.userId,
       username: data.username,
       displayName: data.displayName ?? null,
@@ -148,6 +174,10 @@ class UserEventConsumer {
       status: data.status,
       isPrivate: data.isPrivate,
     });
+
+    if (!wasProcessed) {
+      logger.info({ eventId: event.eventId }, 'Skipped duplicate user.created event');
+    }
   }
 
   private async handleUserUpdated(event: UserUpdatedEvent): Promise<void> {
@@ -163,7 +193,8 @@ class UserEventConsumer {
       'Handling user.updated event in post-service',
     );
 
-    await this.postService.upsertUserProfileCache({
+    const wasProcessed = await this.postService.applyUserProfileEvent({
+      eventId: event.eventId,
       userId: data.userId,
       username: data.username,
       displayName: data.displayName,
@@ -171,6 +202,39 @@ class UserEventConsumer {
       status: data.status,
       isPrivate: data.isPrivate,
     });
+
+    if (!wasProcessed) {
+      logger.info({ eventId: event.eventId }, 'Skipped duplicate user.updated event');
+    }
+  }
+
+  private async processWithRetry(
+    operation: () => Promise<void>,
+    context: FailedMessageContext,
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= this.maxProcessingAttempts; attempt++) {
+      try {
+        await operation();
+        return;
+      } catch (error) {
+        logger.warn(
+          { error, attempt, maxAttempts: this.maxProcessingAttempts, ...context },
+          'User event processing attempt failed in post-service',
+        );
+
+        if (attempt === this.maxProcessingAttempts) {
+          logger.error(
+            { error, ...context },
+            'User event processing retries exhausted in post-service',
+          );
+
+          await this.sendToDlq(context);
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, this.retryBaseDelayMs * attempt));
+      }
+    }
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {

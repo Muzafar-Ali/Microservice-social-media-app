@@ -610,6 +610,59 @@ export class PostRepository {
     });
   }
 
+  async applyUserProfileEvent(input: {
+    eventId: string;
+    userId: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    status: string;
+    isPrivate: boolean;
+  }): Promise<boolean> {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const insertedRows = await transactionClient.$executeRaw`
+        INSERT INTO "ProcessedEvent" (
+          "id",
+          "eventId",
+          "consumerName",
+          "processedAt"
+        )
+        VALUES (
+          ${crypto.randomUUID()}::uuid,
+          ${input.eventId},
+          'post-service:user-profile-projection',
+          NOW()
+        )
+        ON CONFLICT ("eventId", "consumerName") DO NOTHING
+      `;
+
+      if (insertedRows === 0) {
+        return false;
+      }
+
+      await transactionClient.userProfileCache.upsert({
+        where: { userId: input.userId },
+        update: {
+          username: input.username,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          status: input.status,
+          isPrivate: input.isPrivate,
+        },
+        create: {
+          userId: input.userId,
+          username: input.username,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          status: input.status,
+          isPrivate: input.isPrivate,
+        },
+      });
+
+      return true;
+    });
+  }
+
   async createPostComment(postId: string, authorId: string, content: string) {
     return this.prisma.postComment.create({
       data: {

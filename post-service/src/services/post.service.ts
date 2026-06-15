@@ -460,6 +460,18 @@ export class PostService {
     return this.postRepository.upsertUserProfileCache(input);
   }
 
+  async applyUserProfileEvent(input: {
+    eventId: string;
+    userId: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    status: string;
+    isPrivate: boolean;
+  }): Promise<boolean> {
+    return this.postRepository.applyUserProfileEvent(input);
+  }
+
   async createPostComment(postId: string, currentUserId: string, content: string) {
     const postExists = await this.postRepository.findPostById(postId);
     if (!postExists) {

@@ -12,11 +12,7 @@ const socialGraphRoutes = (socialGraphController: SocialGraphController) => {
     isAuthenticatedRedis,
     socialGraphController.acceptFollowRequest,
   );
-  router.delete(
-    '/follow-requests/:requesterUserId',
-    isAuthenticatedRedis,
-    socialGraphController.rejectFollowRequest,
-  );
+  router.delete('/follow-requests/:requesterUserId', isAuthenticatedRedis, socialGraphController.rejectFollowRequest);
   router.get('/users/:targetUserId/followers', isAuthenticatedRedis, socialGraphController.getFollowers);
   router.get('/users/:targetUserId/counts', isAuthenticatedRedis, socialGraphController.getCounts);
   router.get('/me/following/ids', isAuthenticatedRedis, socialGraphController.getMyFollowingUserIds);

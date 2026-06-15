@@ -14,11 +14,13 @@ async function bootstrap() {
     await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
     // 2. Create app and Kafka consumer
-    const { app, userEventConsumer, mediaEventConsumer, outboxWorker } = await createApp();
+    const { app, userEventConsumer, mediaEventConsumer, socialGraphEventConsumer, outboxWorker } =
+      await createApp();
 
     // 3. Start Kafka consumer
     await executeWithRetry('UserEventConsumer start', () => userEventConsumer.start());
     await executeWithRetry('MediaEventConsumer start', () => mediaEventConsumer.start());
+    await executeWithRetry('SocialGraphEventConsumer start', () => socialGraphEventConsumer.start());
 
     // 4. Start outbox publisher without overlapping worker runs
     let isOutboxWorkerRunning = false;

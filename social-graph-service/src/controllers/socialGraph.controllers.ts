@@ -16,11 +16,7 @@ import { StatusCodes } from 'http-status-codes';
 export class SocialGraphController {
   constructor(private socialGraphService: SocialGraphService) {}
 
-  acceptFollowRequest = async (
-    req: Request<FollowRequestParamsDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  acceptFollowRequest = async (req: Request<FollowRequestParamsDto>, res: Response, next: NextFunction) => {
     try {
       if (!req.userId) {
         throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
@@ -32,10 +28,7 @@ export class SocialGraphController {
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(safeParams.error));
       }
 
-      const result = await this.socialGraphService.acceptFollowRequest(
-        req.userId,
-        safeParams.data.requesterUserId,
-      );
+      const result = await this.socialGraphService.acceptFollowRequest(req.userId, safeParams.data.requesterUserId);
 
       res.status(StatusCodes.OK).json({
         success: true,
@@ -47,11 +40,7 @@ export class SocialGraphController {
     }
   };
 
-  rejectFollowRequest = async (
-    req: Request<FollowRequestParamsDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  rejectFollowRequest = async (req: Request<FollowRequestParamsDto>, res: Response, next: NextFunction) => {
     try {
       if (!req.userId) {
         throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
@@ -63,10 +52,7 @@ export class SocialGraphController {
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(safeParams.error));
       }
 
-      const result = await this.socialGraphService.rejectFollowRequest(
-        req.userId,
-        safeParams.data.requesterUserId,
-      );
+      const result = await this.socialGraphService.rejectFollowRequest(req.userId, safeParams.data.requesterUserId);
 
       res.status(StatusCodes.OK).json({
         success: true,

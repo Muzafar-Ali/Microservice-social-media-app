@@ -5,6 +5,7 @@ import { POST_EVENT_NAMES } from '../events/topics.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
 import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
 import { PostCreatedEventPayload } from '../types/post-event-publisher.types.js';
+import { ApplyActiveFollowEventInput } from '../types/post-event-consumer.types..js';
 import { PostUpdate } from '../types/post.types.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
@@ -658,6 +659,58 @@ export class PostRepository {
           isPrivate: input.isPrivate,
         },
       });
+
+      return true;
+    });
+  }
+
+  async applyActiveFollowEvent(input: ApplyActiveFollowEventInput): Promise<boolean> {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const insertedRows = await transactionClient.$executeRaw`
+        INSERT INTO "ProcessedEvent" (
+          "id",
+          "eventId",
+          "consumerName",
+          "processedAt"
+        )
+        VALUES (
+          ${crypto.randomUUID()}::uuid,
+          ${input.eventId},
+          'post-service:active-follow-projection',
+          NOW()
+        )
+        ON CONFLICT ("eventId", "consumerName") DO NOTHING
+      `;
+
+      if (insertedRows === 0) {
+        return false;
+      }
+
+      if (input.eventName === 'follow.removed') {
+        await transactionClient.activeFollow.deleteMany({
+          where: {
+            followerId: input.followerId,
+            followeeId: input.followeeId,
+          },
+        });
+      } else {
+        await transactionClient.activeFollow.upsert({
+          where: {
+            followerId_followeeId: {
+              followerId: input.followerId,
+              followeeId: input.followeeId,
+            },
+          },
+          update: {
+            followedAt: input.occurredAt,
+          },
+          create: {
+            followerId: input.followerId,
+            followeeId: input.followeeId,
+            followedAt: input.occurredAt,
+          },
+        });
+      }
 
       return true;
     });

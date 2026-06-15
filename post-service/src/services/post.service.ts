@@ -5,6 +5,7 @@ import { postCreatedCounter } from '../monitoring/metrics.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost.js';
 import { UserProfileCacheSummary } from '../types/post.types.js';
+import { ApplyActiveFollowEventInput } from '../types/post-event-consumer.types..js';
 
 export class PostService {
   constructor(private postRepository: PostRepository) {}
@@ -470,6 +471,10 @@ export class PostService {
     isPrivate: boolean;
   }): Promise<boolean> {
     return this.postRepository.applyUserProfileEvent(input);
+  }
+
+  async applyActiveFollowEvent(input: ApplyActiveFollowEventInput): Promise<boolean> {
+    return this.postRepository.applyActiveFollowEvent(input);
   }
 
   async createPostComment(postId: string, currentUserId: string, content: string) {

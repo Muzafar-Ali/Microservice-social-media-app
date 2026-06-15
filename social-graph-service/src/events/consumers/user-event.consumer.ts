@@ -94,7 +94,7 @@ class UserEventConsumer {
               rawValue,
               reason: 'Retry exhausted while processing user.created',
             });
-            
+
             await this.commitNextOffset(topic, partition, message.offset);
             return;
           }

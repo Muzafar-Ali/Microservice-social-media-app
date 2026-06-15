@@ -134,3 +134,15 @@ model ProcessedEvent {
   @@unique([eventId, consumerName])
   @@index([processedAt])
 }
+
+model ActiveFollow {
+  followerId String
+  followeeId String
+  followedAt DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@id([followerId, followeeId])
+  @@index([followerId, followedAt(sort: Desc)])
+  @@index([followeeId])
+}

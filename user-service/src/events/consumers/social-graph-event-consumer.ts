@@ -87,11 +87,12 @@ export class SocialGraphEventConsumer {
         kafkaMessagesConsumedTotal.inc({ topic, event_name: parsedJson.eventName || 'unknown' });
 
         switch (parsedJson.eventName) {
-          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED: {
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED:
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_ACCEPTED: {
             const safeEvent = followCreatedEventSchema.safeParse(parsedJson);
 
             if (!safeEvent.success) {
-              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_created_schema' });
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_follow_activated_schema' });
               logger.error(formatZodError(safeEvent.error));
 
               await this.sendToDlq({
@@ -99,7 +100,7 @@ export class SocialGraphEventConsumer {
                 partition,
                 offset: message.offset,
                 rawValue,
-                reason: 'Invalid follow.created schema',
+                reason: `Invalid ${parsedJson.eventName} schema`,
               });
 
               await this.commitNextOffset(topic, partition, message.offset);
@@ -121,7 +122,7 @@ export class SocialGraphEventConsumer {
                 partition,
                 offset: message.offset,
                 rawValue,
-                reason: 'Retry exhausted while processing follow.created',
+                reason: `Retry exhausted while processing ${safeEvent.data.eventName}`,
               });
             }
 
@@ -202,7 +203,7 @@ export class SocialGraphEventConsumer {
         followerId: data.followerId,
         followeeId: data.followeeId,
       },
-      'Handling follow.created event in user-service',
+      'Handling active follow event in user-service',
     );
 
     await this.userService.followCreated({

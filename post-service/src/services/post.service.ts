@@ -50,6 +50,7 @@ export class PostService {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findHomeFeed({
+      viewerUserId: currentUserId,
       limit,
       cursor: query.cursor,
     });
@@ -92,6 +93,7 @@ export class PostService {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findHomeFeedBefore({
+      viewerUserId: currentUserId,
       cursor: query.cursor,
       limit,
     });
@@ -135,6 +137,7 @@ export class PostService {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findHomeFeedAfter({
+      viewerUserId: currentUserId,
       cursor: query.cursor,
       limit,
     });

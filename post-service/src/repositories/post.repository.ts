@@ -134,24 +134,51 @@ export class PostRepository {
     });
   }
 
-  async findHomeFeed(options: { limit: number; cursor?: string }): Promise<{
+  async findHomeFeed(options: { viewerUserId: string; limit: number; cursor?: string }): Promise<{
     posts: UserFeedPost[];
     nextCursor: string | null;
     hasNextPage: boolean;
   }> {
-    const { limit, cursor } = options;
+    const { viewerUserId, limit, cursor } = options;
 
-    const posts = await this.prisma.post.findMany({
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      ...(cursor
-        ? {
-            cursor: { id: cursor },
-            skip: 1,
-          }
-        : {}),
-      select: userFeedPostSelect,
-    });
+    const cursorPost = cursor ? await this.findVisibleHomeFeedCursor(viewerUserId, cursor) : null;
+
+    if (cursor && !cursorPost) {
+      throw new ApiErrorHandler(404, 'Feed cursor not found');
+    }
+
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`
+        SELECT p.id
+        FROM "Post" p
+        WHERE (
+          p."authorId" = ${viewerUserId}
+          OR EXISTS (
+            SELECT 1
+            FROM "ActiveFollow" af
+            WHERE af."followerId" = ${viewerUserId}
+              AND af."followeeId" = p."authorId"
+          )
+        )
+        ${
+          cursorPost
+            ? Prisma.sql`
+                AND (
+                  p."createdAt" < ${cursorPost.createdAt}
+                  OR (
+                    p."createdAt" = ${cursorPost.createdAt}
+                    AND p.id < ${cursorPost.id}
+                  )
+                )
+              `
+            : Prisma.empty
+        }
+        ORDER BY p."createdAt" DESC, p.id DESC
+        LIMIT ${limit + 1}
+      `,
+    );
+
+    const posts = await this.findFeedPostsByOrderedIds(rows.map((row) => row.id));
 
     const hasNextPage = posts.length > limit;
     const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
@@ -165,38 +192,42 @@ export class PostRepository {
     };
   }
 
-  async findHomeFeedBefore(options: { cursor: string; limit: number }): Promise<{
+  async findHomeFeedBefore(options: { viewerUserId: string; cursor: string; limit: number }): Promise<{
     posts: UserFeedPost[];
     hasNewer: boolean;
   }> {
-    const { cursor, limit } = options;
+    const { viewerUserId, cursor, limit } = options;
 
-    const cursorPost = await this.findPostCursorById(cursor);
+    const cursorPost = await this.findVisibleHomeFeedCursor(viewerUserId, cursor);
 
     if (!cursorPost) {
-      throw new ApiErrorHandler(404, 'Cursor post not found');
+      throw new ApiErrorHandler(404, 'Feed cursor not found');
     }
 
-    const posts = await this.prisma.post.findMany({
-      where: {
-        OR: [
-          {
-            createdAt: {
-              gt: cursorPost.createdAt,
-            },
-          },
-          {
-            createdAt: cursorPost.createdAt,
-            id: {
-              gt: cursorPost.id,
-            },
-          },
-        ],
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      select: userFeedPostSelect,
-    });
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT p.id
+      FROM "Post" p
+      WHERE (
+        p."authorId" = ${viewerUserId}
+        OR EXISTS (
+          SELECT 1
+          FROM "ActiveFollow" af
+          WHERE af."followerId" = ${viewerUserId}
+            AND af."followeeId" = p."authorId"
+        )
+      )
+      AND (
+        p."createdAt" > ${cursorPost.createdAt}
+        OR (
+          p."createdAt" = ${cursorPost.createdAt}
+          AND p.id > ${cursorPost.id}
+        )
+      )
+      ORDER BY p."createdAt" DESC, p.id DESC
+      LIMIT ${limit + 1}
+    `;
+
+    const posts = await this.findFeedPostsByOrderedIds(rows.map((row) => row.id));
 
     const hasNewer = posts.length > limit;
     const slicedPosts = hasNewer ? posts.slice(0, limit) : posts;
@@ -207,60 +238,99 @@ export class PostRepository {
     };
   }
 
-  async findPostCursorById(postId: string) {
-    return this.prisma.post.findUnique({
-      where: { id: postId },
-      select: {
-        id: true,
-        createdAt: true,
-      },
-    });
-  }
-
-  async findHomeFeedAfter(options: { cursor: string; limit: number }): Promise<{
+  async findHomeFeedAfter(options: { viewerUserId: string; cursor: string; limit: number }): Promise<{
     posts: UserFeedPost[];
     nextCursor: string | null;
     hasNextPage: boolean;
   }> {
-    const { cursor, limit } = options;
+    const { viewerUserId, cursor, limit } = options;
 
-    const cursorPost = await this.findPostCursorById(cursor);
+    const cursorPost = await this.findVisibleHomeFeedCursor(viewerUserId, cursor);
 
     if (!cursorPost) {
-      throw new ApiErrorHandler(404, 'Cursor post not found');
+      throw new ApiErrorHandler(404, 'Feed cursor not found');
     }
 
-    const posts = await this.prisma.post.findMany({
-      where: {
-        OR: [
-          {
-            createdAt: {
-              lt: cursorPost.createdAt,
-            },
-          },
-          {
-            createdAt: cursorPost.createdAt,
-            id: {
-              lt: cursorPost.id,
-            },
-          },
-        ],
-      },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: limit + 1,
-      select: userFeedPostSelect,
-    });
+    const rows = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT p.id
+      FROM "Post" p
+      WHERE (
+        p."authorId" = ${viewerUserId}
+        OR EXISTS (
+          SELECT 1
+          FROM "ActiveFollow" af
+          WHERE af."followerId" = ${viewerUserId}
+            AND af."followeeId" = p."authorId"
+        )
+      )
+      AND (
+        p."createdAt" < ${cursorPost.createdAt}
+        OR (
+          p."createdAt" = ${cursorPost.createdAt}
+          AND p.id < ${cursorPost.id}
+        )
+      )
+      ORDER BY p."createdAt" DESC, p.id DESC
+      LIMIT ${limit + 1}
+    `;
+
+    const posts = await this.findFeedPostsByOrderedIds(rows.map((row) => row.id));
 
     const hasNextPage = posts.length > limit;
     const slicedPosts = hasNextPage ? posts.slice(0, limit) : posts;
 
-    const nextCursor = slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
+    const nextCursor = hasNextPage && slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
 
     return {
       posts: slicedPosts,
       nextCursor,
       hasNextPage,
     };
+  }
+
+  private async findVisibleHomeFeedCursor(
+    viewerUserId: string,
+    postId: string,
+  ): Promise<{ id: string; createdAt: Date } | null> {
+    const rows = await this.prisma.$queryRaw<Array<{ id: string; createdAt: Date }>>`
+      SELECT p.id, p."createdAt"
+      FROM "Post" p
+      WHERE p.id = ${postId}
+        AND (
+          p."authorId" = ${viewerUserId}
+          OR EXISTS (
+            SELECT 1
+            FROM "ActiveFollow" af
+            WHERE af."followerId" = ${viewerUserId}
+              AND af."followeeId" = p."authorId"
+          )
+        )
+      LIMIT 1
+    `;
+
+    return rows[0] ?? null;
+  }
+
+  private async findFeedPostsByOrderedIds(postIds: string[]): Promise<UserFeedPost[]> {
+    if (postIds.length === 0) {
+      return [];
+    }
+
+    const posts = await this.prisma.post.findMany({
+      where: {
+        id: {
+          in: postIds,
+        },
+      },
+      select: userFeedPostSelect,
+    });
+
+    const postOrder = new Map(postIds.map((postId, index) => [postId, index]));
+
+    return posts.sort(
+      (leftPost, rightPost) =>
+        (postOrder.get(leftPost.id) ?? 0) - (postOrder.get(rightPost.id) ?? 0),
+    );
   }
 
   async findPostLikes(

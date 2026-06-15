@@ -86,6 +86,10 @@ export class SocialGraphService {
     return this.socialGraphRepository.upsertUserProfileCache(input);
   }
 
+  async applyUserProfileEvent(input: UpsertUserProfileCacheInput & { eventId: string }): Promise<boolean> {
+    return this.socialGraphRepository.applyUserProfileEvent(input);
+  }
+
   getFollowStatus(viewerUserId: string, targetUserId: string) {}
 
   getFollowers = async (

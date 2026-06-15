@@ -1,7 +1,11 @@
 import crypto from 'node:crypto';
 import { SOCIAL_GRAPH_EVENT_NAMES } from '../events/socialGraph-event.topics.js';
 import { Follow, FollowStatus, PrismaClient, UserProfileCache, Prisma } from '../generated/prisma/client.js';
-import { FindFollowersInput, UpsertUserProjectionInput } from '../types/social-graph-common.types.js';
+import {
+  ApplyUserProfileEventInput,
+  FindFollowersInput,
+  UpsertUserProjectionInput,
+} from '../types/social-graph-common.types.js';
 import { FollowCreatedPayload, UnFollowCreatedPayload } from '../types/social-graph-event-publisher.types.js';
 
 export class SocialGraphRepository {
@@ -176,6 +180,53 @@ export class SocialGraphRepository {
         status: input.status,
         isPrivate: input.isPrivate,
       },
+    });
+  }
+
+  async applyUserProfileEvent(input: ApplyUserProfileEventInput): Promise<boolean> {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const insertedRows = await transactionClient.$executeRaw`
+        INSERT INTO "ProcessedEvent" (
+          "id",
+          "eventId",
+          "consumerName",
+          "processedAt"
+        )
+        VALUES (
+          ${crypto.randomUUID()}::uuid,
+          ${input.eventId},
+          'social-graph-service:user-profile-projection',
+          NOW()
+        )
+        ON CONFLICT ("eventId", "consumerName") DO NOTHING
+      `;
+
+      if (insertedRows === 0) {
+        return false;
+      }
+
+      await transactionClient.userProfileCache.upsert({
+        where: {
+          userId: input.userId,
+        },
+        update: {
+          username: input.username,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          status: input.status,
+          isPrivate: input.isPrivate,
+        },
+        create: {
+          userId: input.userId,
+          username: input.username,
+          displayName: input.displayName,
+          avatarUrl: input.avatarUrl,
+          status: input.status,
+          isPrivate: input.isPrivate,
+        },
+      });
+
+      return true;
     });
   }
 

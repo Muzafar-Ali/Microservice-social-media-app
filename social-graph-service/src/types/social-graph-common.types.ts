@@ -49,6 +49,10 @@ export type UpsertUserProfileCacheInput = {
   isPrivate: boolean;
 };
 
+export type ApplyUserProfileEventInput = UpsertUserProfileCacheInput & {
+  eventId: string;
+};
+
 export type UpsertUserProjectionInput = {
   userId: string;
   username: string;

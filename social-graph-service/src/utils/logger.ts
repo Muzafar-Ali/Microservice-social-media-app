@@ -22,7 +22,6 @@ const createProductionLogger = () =>
     ],
   });
 
-
 const createDevelopmentLogger = () =>
   pino({
     level: 'debug',

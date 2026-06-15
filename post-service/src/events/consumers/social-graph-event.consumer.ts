@@ -1,29 +1,29 @@
 import { Consumer, Producer } from 'kafkajs';
-import { SocialGraphService } from '../../services/socialGraph.service.js';
-import { KAFKA_TOPICS, USER_EVENT_NAMES } from '../socialGraph-event.topics.js';
+import { PostService } from '../../services/post.service.js';
+import { FailedMessageContext } from '../../types/post-event-consumer.types..js';
+import formatZodError from '../../utils/formatZodError.js';
 import logger from '../../utils/logger.js';
 import {
-  UserCreatedEvent,
-  userCreatedEventSchema,
-  UserUpdatedEvent,
-  userUpdatedEventSchema,
-} from '../../validations/socialGraph.validation.js';
-import formatZodError from '../../utils/formatZodError.js';
-import { FailedMessageContext } from '../../types/social-graph-common.types.js';
+  ActiveFollowCreatedEvent,
+  activeFollowCreatedEventSchema,
+  ActiveFollowRemovedEvent,
+  activeFollowRemovedEventSchema,
+} from '../../validation/post.validation.js';
+import { KAFKA_TOPICS, SOCIAL_GRAPH_EVENT_NAMES } from '../topics.js';
 
-class UserEventConsumer {
+class SocialGraphEventConsumer {
   private readonly maxProcessingAttempts = 3;
   private readonly retryBaseDelayMs = 500;
 
   constructor(
     private readonly consumer: Consumer,
     private readonly dlqProducer: Producer,
-    private readonly socialGraphService: SocialGraphService,
+    private readonly postService: PostService,
   ) {}
 
   public async start(): Promise<void> {
     await this.consumer.subscribe({
-      topic: KAFKA_TOPICS.USER_EVENTS,
+      topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS,
       fromBeginning: false,
     });
 
@@ -31,8 +31,7 @@ class UserEventConsumer {
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
-          logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
-
+          logger.warn({ topic, partition, offset: message.offset }, 'Received empty social graph message');
           await this.sendToDlq({
             topic,
             partition,
@@ -40,7 +39,6 @@ class UserEventConsumer {
             rawValue: '',
             reason: 'Empty Kafka message value',
           });
-
           await this.commitNextOffset(topic, partition, message.offset);
           return;
         }
@@ -53,9 +51,8 @@ class UserEventConsumer {
         } catch (error) {
           logger.error(
             { error, topic, partition, offset: message.offset, rawValue },
-            'Received invalid JSON Kafka message in social-graph-service',
+            'Received invalid JSON social graph event in post-service',
           );
-
           await this.sendToDlq({
             topic,
             partition,
@@ -63,147 +60,114 @@ class UserEventConsumer {
             rawValue,
             reason: 'Invalid JSON message value',
           });
-
           await this.commitNextOffset(topic, partition, message.offset);
           return;
         }
 
         switch (parsedJson.eventName) {
-          case USER_EVENT_NAMES.USER_CREATED: {
-            const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED:
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_ACCEPTED: {
+            const safeEvent = activeFollowCreatedEventSchema.safeParse(parsedJson);
 
             if (!safeEvent.success) {
               logger.error(formatZodError(safeEvent.error));
-
               await this.sendToDlq({
                 topic,
                 partition,
                 offset: message.offset,
                 rawValue,
-                reason: 'Invalid user.created schema',
+                reason: `Invalid ${parsedJson.eventName} schema`,
               });
-
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
 
-            await this.processEventWithRetry(() => this.handleUserCreated(safeEvent.data), {
+            await this.processWithRetry(() => this.handleFollowActivated(safeEvent.data), {
               topic,
               partition,
               offset: message.offset,
               rawValue,
-              reason: 'Retry exhausted while processing user.created',
+              reason: `Retry exhausted while processing ${safeEvent.data.eventName}`,
             });
-
             await this.commitNextOffset(topic, partition, message.offset);
             return;
           }
 
-          case USER_EVENT_NAMES.USER_UPDATED: {
-            const safeEvent = userUpdatedEventSchema.safeParse(parsedJson);
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED: {
+            const safeEvent = activeFollowRemovedEventSchema.safeParse(parsedJson);
 
             if (!safeEvent.success) {
               logger.error(formatZodError(safeEvent.error));
-
               await this.sendToDlq({
                 topic,
                 partition,
                 offset: message.offset,
                 rawValue,
-                reason: 'Invalid user.updated schema',
+                reason: 'Invalid follow.removed schema',
               });
-
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
 
-            await this.processEventWithRetry(() => this.handleUserUpdated(safeEvent.data), {
+            await this.processWithRetry(() => this.handleFollowRemoved(safeEvent.data), {
               topic,
               partition,
               offset: message.offset,
               rawValue,
-              reason: 'Retry exhausted while processing user.updated',
+              reason: 'Retry exhausted while processing follow.removed',
             });
             await this.commitNextOffset(topic, partition, message.offset);
             return;
           }
 
-          default: {
-            logger.warn(
-              {
-                topic,
-                partition,
-                offset: message.offset,
-                eventName: parsedJson.eventName,
-              },
-              'Ignoring unknown user event in social-graph-service',
+          case SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REQUESTED:
+            logger.debug(
+              { topic, partition, offset: message.offset },
+              'Ignoring pending follow request in active-follow projection',
             );
-
             await this.commitNextOffset(topic, partition, message.offset);
             return;
-          }
+
+          default:
+            logger.warn(
+              { topic, partition, offset: message.offset, eventName: parsedJson.eventName },
+              'Ignoring unknown social graph event in post-service',
+            );
+            await this.commitNextOffset(topic, partition, message.offset);
         }
       },
     });
   }
 
-  private async handleUserCreated(event: UserCreatedEvent): Promise<void> {
-    const data = event.data;
-
-    logger.info(
-      {
-        eventName: event.eventName,
-        eventId: event.eventId,
-        userId: data.userId,
-        username: data.username,
-      },
-      'Handling user.created event in social-graph-service',
-    );
-
-    const wasProcessed = await this.socialGraphService.applyUserProfileEvent({
+  private async handleFollowActivated(event: ActiveFollowCreatedEvent): Promise<void> {
+    const wasProcessed = await this.postService.applyActiveFollowEvent({
       eventId: event.eventId,
-      userId: data.userId,
-      username: data.username,
-      displayName: data.displayName ?? null,
-      avatarUrl: data.profileImage?.secureUrl ?? null,
-      status: data.status,
-      isPrivate: data.isPrivate,
+      eventName: event.eventName,
+      followerId: event.data.followerId,
+      followeeId: event.data.followeeId,
+      occurredAt: new Date(event.occurredAt),
     });
 
     if (!wasProcessed) {
-      logger.info({ eventId: event.eventId }, 'Skipped duplicate user.created event');
+      logger.info({ eventId: event.eventId }, 'Skipped duplicate active follow event');
     }
   }
 
-  private async handleUserUpdated(event: UserUpdatedEvent): Promise<void> {
-    const data = event.data;
-
-    logger.info(
-      {
-        eventName: event.eventName,
-        eventId: event.eventId,
-        userId: data.userId,
-        username: data.username,
-      },
-      'Handling user.updated event in social-graph-service',
-    );
-
-    const wasProcessed = await this.socialGraphService.applyUserProfileEvent({
+  private async handleFollowRemoved(event: ActiveFollowRemovedEvent): Promise<void> {
+    const wasProcessed = await this.postService.applyActiveFollowEvent({
       eventId: event.eventId,
-      userId: data.userId,
-      username: data.username,
-      displayName: data.displayName,
-      avatarUrl: data.profileImage?.secureUrl ?? null,
-      status: data.status,
-      isPrivate: data.isPrivate,
+      eventName: event.eventName,
+      followerId: event.data.followerId,
+      followeeId: event.data.followeeId,
+      occurredAt: new Date(event.occurredAt),
     });
 
     if (!wasProcessed) {
-      logger.info({ eventId: event.eventId }, 'Skipped duplicate user.updated event');
+      logger.info({ eventId: event.eventId }, 'Skipped duplicate follow.removed event');
     }
   }
 
-  private async processEventWithRetry(operation: () => Promise<void>, context: FailedMessageContext): Promise<void> {
+  private async processWithRetry(operation: () => Promise<void>, context: FailedMessageContext): Promise<void> {
     for (let attempt = 1; attempt <= this.maxProcessingAttempts; attempt++) {
       try {
         await operation();
@@ -211,12 +175,11 @@ class UserEventConsumer {
       } catch (error) {
         logger.warn(
           { error, attempt, maxAttempts: this.maxProcessingAttempts, ...context },
-          'User event processing attempt failed in social-graph-service',
+          'Social graph event processing attempt failed in post-service',
         );
 
         if (attempt === this.maxProcessingAttempts) {
-          logger.error({ error, ...context }, 'User event processing retries exhausted in social-graph-service');
-
+          logger.error({ error, ...context }, 'Social graph event retries exhausted in post-service');
           await this.sendToDlq(context);
           return;
         }
@@ -227,29 +190,18 @@ class UserEventConsumer {
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
-    const nextOffset = (BigInt(currentOffset) + 1n).toString();
-
     await this.consumer.commitOffsets([
       {
         topic,
         partition,
-        offset: nextOffset,
+        offset: (BigInt(currentOffset) + 1n).toString(),
       },
     ]);
-
-    logger.info(
-      {
-        topic,
-        partition,
-        committedOffset: nextOffset,
-      },
-      'Committed user Kafka offset in social-graph-service',
-    );
   }
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
     await this.dlqProducer.send({
-      topic: KAFKA_TOPICS.USER_EVENTS_DLQ,
+      topic: KAFKA_TOPICS.POST_SERVICE_SOCIAL_GRAPH_EVENTS_DLQ,
       acks: -1,
       messages: [
         {
@@ -261,15 +213,15 @@ class UserEventConsumer {
             sourceOffset: context.offset,
             rawValue: context.rawValue,
             reason: context.reason,
-            consumerService: 'social-graph-service',
-            consumerGroup: 'social-graph-service-user-events',
+            consumerService: 'post-service',
+            consumerGroup: 'post-service-social-graph-events',
           }),
         },
       ],
     });
 
-    logger.error(context, 'Sent user event to DLQ from social-graph-service');
+    logger.error(context, 'Sent social graph event to post-service DLQ');
   }
 }
 
-export default UserEventConsumer;
+export default SocialGraphEventConsumer;

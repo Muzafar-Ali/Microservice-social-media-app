@@ -23,7 +23,7 @@ jest.mock('../../../../../src/utils/loginAttemptsTracker.js', () => ({
   resetFailedLoginAttempts: jest.fn(),
 }));
 
-jest.mock('../../../../../src/monitoring/metrics.js', () => ({
+jest.mock('../../../../../src/monitoring/auth.metrics.js', () => ({
   authLoginAttemptsTotal: { inc: jest.fn() },
   authSessionsTotal: { inc: jest.fn() },
   passwordChangesTotal: { inc: jest.fn() },
@@ -83,7 +83,7 @@ import {
   passwordChangesTotal,
   passwordResetConfirmationsTotal,
   passwordResetRequestsTotal,
-} from '../../../../../src/monitoring/metrics.js';
+} from '../../../../../src/monitoring/auth.metrics.js';
 import { redis } from '../../../../../src/config/redisClient.js';
 import {
   createChangePasswordDto,

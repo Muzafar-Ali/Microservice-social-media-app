@@ -201,6 +201,7 @@ export const userCreatedPayloadSchema = z.object({
     })
     .nullable(),
   status: z.string().min(1),
+  isPrivate: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime().optional(),
 });
@@ -226,6 +227,7 @@ export const userUpdatedPayloadSchema = z.object({
     })
     .nullable(),
   status: z.string().min(1, { error: 'status is required' }),
+  isPrivate: z.boolean(),
   updatedAt: z.iso.datetime({ error: 'updatedAt must be a valid ISO datetime' }),
 });
 
@@ -237,6 +239,36 @@ export const userUpdatedEventSchema = z.object({
   producerService: z.string().min(1, { error: 'producerService is required' }),
   partitionKey: z.string().min(1, { error: 'partitionKey is required' }),
   data: userUpdatedPayloadSchema,
+});
+
+const activeFollowPayloadSchema = z.object({
+  followerId: z.uuid({ error: 'followerId must be a valid UUID' }),
+  followeeId: z.uuid({ error: 'followeeId must be a valid UUID' }),
+});
+
+export const activeFollowCreatedEventSchema = z.object({
+  eventId: z.string().min(1, { error: 'eventId is required' }),
+  eventName: z.union([z.literal('follow.created'), z.literal('follow.accepted')]),
+  eventVersion: z.number().int().positive(),
+  occurredAt: z.iso.datetime({ error: 'occurredAt must be a valid ISO datetime' }),
+  producerService: z.string().min(1, { error: 'producerService is required' }),
+  partitionKey: z.string().min(1, { error: 'partitionKey is required' }),
+  data: activeFollowPayloadSchema.extend({
+    status: z.literal('ACTIVE'),
+    createdAt: z.iso.datetime({ error: 'createdAt must be a valid ISO datetime' }),
+  }),
+});
+
+export const activeFollowRemovedEventSchema = z.object({
+  eventId: z.string().min(1, { error: 'eventId is required' }),
+  eventName: z.literal('follow.removed'),
+  eventVersion: z.number().int().positive(),
+  occurredAt: z.iso.datetime({ error: 'occurredAt must be a valid ISO datetime' }),
+  producerService: z.string().min(1, { error: 'producerService is required' }),
+  partitionKey: z.string().min(1, { error: 'partitionKey is required' }),
+  data: activeFollowPayloadSchema.extend({
+    removedAt: z.iso.datetime({ error: 'removedAt must be a valid ISO datetime' }),
+  }),
 });
 
 export type CreatePostDto = z.infer<typeof createPostSchema>;
@@ -257,3 +289,5 @@ export type HomeFeedBeforeQueryDto = z.infer<typeof homeFeedBeforeQuerySchema>;
 export type HomeFeedAfterQueryDto = z.infer<typeof homeFeedAfterQuerySchema>;
 export type UserCreatedEvent = z.infer<typeof userCreatedEventSchema>;
 export type UserUpdatedEvent = z.infer<typeof userUpdatedEventSchema>;
+export type ActiveFollowCreatedEvent = z.infer<typeof activeFollowCreatedEventSchema>;
+export type ActiveFollowRemovedEvent = z.infer<typeof activeFollowRemovedEventSchema>;

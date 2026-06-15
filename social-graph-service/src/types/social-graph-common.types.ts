@@ -15,6 +15,14 @@ export type UnfollowUserResponseDto = {
   removedAt: Date | null;
 };
 
+export type FollowRequestDecisionDto = {
+  followerId: string;
+  followeeId: string;
+  status: FollowStatus | null;
+  accepted: boolean;
+  rejected: boolean;
+};
+
 export type FollowerListItemDto = {
   userId: string;
   username: string;
@@ -46,7 +54,11 @@ export type UpsertUserProfileCacheInput = {
   displayName: string | null;
   avatarUrl: string | null;
   status: string;
-  isPrivate?: boolean;
+  isPrivate: boolean;
+};
+
+export type ApplyUserProfileEventInput = UpsertUserProfileCacheInput & {
+  eventId: string;
 };
 
 export type UpsertUserProjectionInput = {
@@ -55,6 +67,7 @@ export type UpsertUserProjectionInput = {
   displayName: string | null;
   avatarUrl: string | null;
   status: string;
+  isPrivate: boolean;
 };
 
 export type FindFollowersInput = {

@@ -48,6 +48,16 @@ model UserProfileCache {
   @@index([status])
 }
 
+model ProcessedEvent {
+  id           String   @id @default(uuid())
+  eventId      String
+  consumerName String
+  processedAt  DateTime @default(now())
+
+  @@unique([eventId, consumerName])
+  @@index([processedAt])
+}
+
 enum OutboxEventStatus {
   PENDING
   PROCESSING

@@ -3,6 +3,7 @@ import { SocialGraphRepository } from '../repository/socialGraph.repository.js';
 import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
 import {
+  FollowRequestDecisionDto,
   FollowUserResultDto,
   GetCountsResponseDto,
   GetFollowersResponseDto,
@@ -82,8 +83,61 @@ export class SocialGraphService {
     };
   };
 
+  acceptFollowRequest = async (
+    authenticatedUserId: string,
+    requesterUserId: string,
+  ): Promise<FollowRequestDecisionDto> => {
+    if (authenticatedUserId === requesterUserId) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot accept your own follow request');
+    }
+
+    const acceptedFollow = await this.socialGraphRepository.acceptFollowRequestAndQueueEvent(
+      requesterUserId,
+      authenticatedUserId,
+    );
+
+    if (!acceptedFollow) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Pending follow request not found');
+    }
+
+    return {
+      followerId: acceptedFollow.followerId,
+      followeeId: acceptedFollow.followeeId,
+      status: acceptedFollow.status,
+      accepted: true,
+      rejected: false,
+    };
+  };
+
+  rejectFollowRequest = async (
+    authenticatedUserId: string,
+    requesterUserId: string,
+  ): Promise<FollowRequestDecisionDto> => {
+    if (authenticatedUserId === requesterUserId) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'You cannot reject your own follow request');
+    }
+
+    const rejected = await this.socialGraphRepository.rejectFollowRequest(requesterUserId, authenticatedUserId);
+
+    if (!rejected) {
+      throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Pending follow request not found');
+    }
+
+    return {
+      followerId: requesterUserId,
+      followeeId: authenticatedUserId,
+      status: null,
+      accepted: false,
+      rejected: true,
+    };
+  };
+
   async upsertUserProfileCache(input: UpsertUserProfileCacheInput) {
     return this.socialGraphRepository.upsertUserProfileCache(input);
+  }
+
+  async applyUserProfileEvent(input: UpsertUserProfileCacheInput & { eventId: string }): Promise<boolean> {
+    return this.socialGraphRepository.applyUserProfileEvent(input);
   }
 
   getFollowStatus(viewerUserId: string, targetUserId: string) {}

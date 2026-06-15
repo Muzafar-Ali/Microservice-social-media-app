@@ -2,8 +2,10 @@ export const KAFKA_TOPICS = {
   POST_EVENTS: 'post-events',
   MEDIA_EVENTS: 'media-events',
   USER_EVENTS: 'user-events',
+  SOCIAL_GRAPH_EVENTS: 'social-graph-events',
   POST_SERVICE_USER_EVENTS_DLQ: 'post-service-user-events-dlq',
   POST_SERVICE_MEDIA_EVENTS_DLQ: 'post-service-media-events-dlq',
+  POST_SERVICE_SOCIAL_GRAPH_EVENTS_DLQ: 'post-service-social-graph-events-dlq',
 } as const;
 
 export const POST_EVENT_NAMES = {

@@ -94,7 +94,7 @@ export const followCreatedPayloadSchema = z.object({
 
 export const followCreatedEventSchema = z.object({
   eventId: z.string().min(1, { error: 'eventId is required' }),
-  eventName: z.literal('follow.created'),
+  eventName: z.union([z.literal('follow.created'), z.literal('follow.accepted')]),
   eventVersion: z.number().int().positive(),
   occurredAt: z.iso.datetime({ error: 'occurredAt must be a valid ISO datetime' }),
   producerService: z.string().min(1, { error: 'producerService is required' }),

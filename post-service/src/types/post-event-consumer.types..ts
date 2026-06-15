@@ -18,3 +18,13 @@ export type MediaDeletedPayload = {
   postId: string;
   mediaId: string;
 };
+
+export type ActiveFollowEventName = 'follow.created' | 'follow.accepted' | 'follow.removed';
+
+export type ApplyActiveFollowEventInput = {
+  eventId: string;
+  eventName: ActiveFollowEventName;
+  followerId: string;
+  followeeId: string;
+  occurredAt: Date;
+};

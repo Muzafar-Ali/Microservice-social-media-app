@@ -17,10 +17,7 @@ const executeWithRetry = async (
       logger.info(`✅ ${taskName} succeeded`);
       return;
     } catch (error) {
-      logger.error(
-        { error, attempt, maxRetries },
-        `❌ ${taskName} failed`,
-      );
+      logger.error({ error, attempt, maxRetries }, `❌ ${taskName} failed`);
 
       if (attempt === maxRetries) {
         throw error;

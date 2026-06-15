@@ -19,3 +19,24 @@ export type PostCreatedEventPayload = {
     order: number;
   }>;
 };
+
+export type PostUpdatedEventPayload = {
+  postId: string;
+  authorId: string;
+  content: string;
+  themeKey: string | null;
+  isEdited: boolean;
+  editedAt: string | null;
+  updatedAt: string;
+};
+
+export type PostDeletedEventPayload = {
+  postId: string;
+  authorId: string;
+  deletedAt: string;
+  media: Array<{
+    id: string;
+    type: 'IMAGE' | 'VIDEO';
+    publicId: string | null;
+  }>;
+};

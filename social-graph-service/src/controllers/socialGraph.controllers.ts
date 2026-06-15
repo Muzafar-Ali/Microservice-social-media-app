@@ -3,6 +3,8 @@ import { SocialGraphService } from '../services/socialGraph.service.js';
 import {
   CursorPaginationQueryDto,
   cursorPaginationQuerySchema,
+  FollowRequestParamsDto,
+  followRequestParamsSchema,
   FollowUserParamsDto,
   followUserParamsSchema,
 } from '../validations/socialGraph.validation.js';
@@ -13,6 +15,54 @@ import { StatusCodes } from 'http-status-codes';
 
 export class SocialGraphController {
   constructor(private socialGraphService: SocialGraphService) {}
+
+  acceptFollowRequest = async (req: Request<FollowRequestParamsDto>, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
+      }
+
+      const safeParams = followRequestParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(safeParams.error));
+      }
+
+      const result = await this.socialGraphService.acceptFollowRequest(req.userId, safeParams.data.requesterUserId);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: 'Follow request accepted',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  rejectFollowRequest = async (req: Request<FollowRequestParamsDto>, res: Response, next: NextFunction) => {
+    try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Unauthorized');
+      }
+
+      const safeParams = followRequestParamsSchema.safeParse(req.params);
+
+      if (!safeParams.success) {
+        throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, formatZodError(safeParams.error));
+      }
+
+      const result = await this.socialGraphService.rejectFollowRequest(req.userId, safeParams.data.requesterUserId);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: 'Follow request rejected',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   followUser = async (req: Request<FollowUserParamsDto>, res: Response, next: NextFunction) => {
     try {

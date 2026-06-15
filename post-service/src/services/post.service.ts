@@ -334,30 +334,11 @@ export class PostService {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    const post = await this.postRepository.update(postId, {
+    return this.postRepository.updatePostAndQueuePostUpdatedEvent(postId, {
       content: input.content,
       editedAt: new Date(),
       isEdited: true,
     });
-
-    // postUpdatedCounter.inc();
-
-    // try {
-    //   await this.producer.send({
-    //     topic: 'post-events',
-    //     messages: [
-    //       {
-    //         key: 'post-updated',
-    //         value: JSON.stringify(post),
-    //       },
-    //     ],
-    //   });
-    //   logger.info('Post updated event sent to Kafka');
-    // } catch (error) {
-    //   logger.error({error},'Failed to send post updated event to Kafka');
-    // }
-
-    return post;
   }
 
   async deletePost(postId: string, userId: string) {
@@ -370,24 +351,11 @@ export class PostService {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    await this.postRepository.delete(postId);
+    const deletedPost = await this.postRepository.deletePostAndQueuePostDeletedEvent(postId);
 
-    // postDeletedCounter.inc();
-
-    // try {
-    //   await this.producer.send({
-    //     topic: 'post-events',
-    //     messages: [
-    //       {
-    //         key: 'post-deleted',
-    //         value: JSON.stringify({ id: postId }),
-    //       },
-    //     ],
-    //   });
-    //   logger.info('Post deleted event sent to Kafka');
-    // } catch (error) {
-    //   logger.error({error},'Failed to send post deleted event to Kafka');
-    // }
+    if (!deletedPost) {
+      throw new ApiErrorHandler(404, 'Post not found');
+    }
   }
 
   async likePost(postId: string, currentUserId: string) {

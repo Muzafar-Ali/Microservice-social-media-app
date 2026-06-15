@@ -1,7 +1,11 @@
 import { OutboxEvent, PrismaClient } from '../generated/prisma/client.js';
 import { PostEventPublisher } from '../events/post-events.producer.js';
 import { POST_EVENT_NAMES } from '../events/topics.js';
-import { PostCreatedEventPayload } from '../types/post-event-publisher.types.js';
+import {
+  PostCreatedEventPayload,
+  PostDeletedEventPayload,
+  PostUpdatedEventPayload,
+} from '../types/post-event-publisher.types.js';
 import logger from '../utils/logger.js';
 
 export class OutboxWorker {
@@ -39,14 +43,31 @@ export class OutboxWorker {
 
     for (const outboxEvent of claimedEvents) {
       try {
-        if (outboxEvent.eventName !== POST_EVENT_NAMES.POST_CREATED) {
-          throw new Error(`Unsupported post outbox event: ${outboxEvent.eventName}`);
-        }
+        switch (outboxEvent.eventName) {
+          case POST_EVENT_NAMES.POST_CREATED:
+            await this.postEventPublisher.publishPostCreated(
+              outboxEvent.payload as PostCreatedEventPayload,
+              outboxEvent.eventId,
+            );
+            break;
 
-        await this.postEventPublisher.publishPostCreated(
-          outboxEvent.payload as PostCreatedEventPayload,
-          outboxEvent.eventId,
-        );
+          case POST_EVENT_NAMES.POST_UPDATED:
+            await this.postEventPublisher.publishPostUpdated(
+              outboxEvent.payload as PostUpdatedEventPayload,
+              outboxEvent.eventId,
+            );
+            break;
+
+          case POST_EVENT_NAMES.POST_DELETED:
+            await this.postEventPublisher.publishPostDeleted(
+              outboxEvent.payload as PostDeletedEventPayload,
+              outboxEvent.eventId,
+            );
+            break;
+
+          default:
+            throw new Error(`Unsupported post outbox event: ${outboxEvent.eventName}`);
+        }
 
         await this.prisma.outboxEvent.update({
           where: { id: outboxEvent.id },

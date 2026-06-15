@@ -4,7 +4,11 @@ import config from '../config/config.js';
 import { POST_EVENT_NAMES } from '../events/topics.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
 import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
-import { PostCreatedEventPayload } from '../types/post-event-publisher.types.js';
+import {
+  PostCreatedEventPayload,
+  PostDeletedEventPayload,
+  PostUpdatedEventPayload,
+} from '../types/post-event-publisher.types.js';
 import { ApplyActiveFollowEventInput } from '../types/post-event-consumer.types..js';
 import { PostUpdate } from '../types/post.types.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
@@ -671,16 +675,91 @@ export class PostRepository {
     };
   }
 
-  async update(postId: string, data: PostUpdate) {
-    return this.prisma.post.update({
-      where: { id: postId },
-      data,
+  async updatePostAndQueuePostUpdatedEvent(postId: string, data: PostUpdate) {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const post = await transactionClient.post.update({
+        where: { id: postId },
+        data,
+      });
+
+      const payload: PostUpdatedEventPayload = {
+        postId: post.id,
+        authorId: post.authorId,
+        content: post.content,
+        themeKey: post.themeKey,
+        isEdited: post.isEdited,
+        editedAt: post.editedAt?.toISOString() ?? null,
+        updatedAt: post.updatedAt.toISOString(),
+      };
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventId: crypto.randomUUID(),
+          eventName: POST_EVENT_NAMES.POST_UPDATED,
+          eventVersion: 1,
+          aggregateId: post.id,
+          partitionKey: post.id,
+          payload,
+          producerService: config.serviceName,
+          occurredAt: new Date(),
+          status: 'PENDING',
+        },
+      });
+
+      return post;
     });
   }
 
-  async delete(id: string) {
-    return this.prisma.post.delete({
-      where: { id },
+  async deletePostAndQueuePostDeletedEvent(postId: string) {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const post = await transactionClient.post.findUnique({
+        where: { id: postId },
+        include: {
+          media: {
+            select: {
+              id: true,
+              type: true,
+              publicId: true,
+            },
+          },
+        },
+      });
+
+      if (!post) {
+        return null;
+      }
+
+      const deletedAt = new Date();
+      const payload: PostDeletedEventPayload = {
+        postId: post.id,
+        authorId: post.authorId,
+        deletedAt: deletedAt.toISOString(),
+        media: post.media.map((mediaItem) => ({
+          id: mediaItem.id,
+          type: mediaItem.type,
+          publicId: mediaItem.publicId,
+        })),
+      };
+
+      await transactionClient.post.delete({
+        where: { id: post.id },
+      });
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventId: crypto.randomUUID(),
+          eventName: POST_EVENT_NAMES.POST_DELETED,
+          eventVersion: 1,
+          aggregateId: post.id,
+          partitionKey: post.id,
+          payload,
+          producerService: config.serviceName,
+          occurredAt: deletedAt,
+          status: 'PENDING',
+        },
+      });
+
+      return post;
     });
   }
 

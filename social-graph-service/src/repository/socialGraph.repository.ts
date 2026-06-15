@@ -125,6 +125,73 @@ export class SocialGraphRepository {
     });
   };
 
+  acceptFollowRequestAndQueueEvent = async (
+    requesterUserId: string,
+    authenticatedUserId: string,
+  ): Promise<Follow | null> => {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const pendingRequest = await transactionClient.follow.findUnique({
+        where: {
+          followerId_followeeId: {
+            followerId: requesterUserId,
+            followeeId: authenticatedUserId,
+          },
+        },
+      });
+
+      if (!pendingRequest || pendingRequest.status !== FollowStatus.PENDING) {
+        return null;
+      }
+
+      const acceptedFollow = await transactionClient.follow.update({
+        where: {
+          followerId_followeeId: {
+            followerId: requesterUserId,
+            followeeId: authenticatedUserId,
+          },
+        },
+        data: {
+          status: FollowStatus.ACTIVE,
+        },
+      });
+
+      const payload: FollowCreatedPayload = {
+        followerId: acceptedFollow.followerId,
+        followeeId: acceptedFollow.followeeId,
+        status: acceptedFollow.status,
+        createdAt: acceptedFollow.createdAt.toISOString(),
+      };
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventId: crypto.randomUUID(),
+          eventName: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_ACCEPTED,
+          eventVersion: 1,
+          aggregateId: acceptedFollow.id,
+          partitionKey: acceptedFollow.followerId,
+          payload,
+          producerService: 'social-graph-service',
+          occurredAt: new Date(),
+          status: 'PENDING',
+        },
+      });
+
+      return acceptedFollow;
+    });
+  };
+
+  rejectFollowRequest = async (requesterUserId: string, authenticatedUserId: string): Promise<boolean> => {
+    const result = await this.prisma.follow.deleteMany({
+      where: {
+        followerId: requesterUserId,
+        followeeId: authenticatedUserId,
+        status: FollowStatus.PENDING,
+      },
+    });
+
+    return result.count > 0;
+  };
+
   findFollowers = async ({ userId, cursor, limit }: FindFollowersInput): Promise<Follow[]> => {
     return this.prisma.follow.findMany({
       where: {

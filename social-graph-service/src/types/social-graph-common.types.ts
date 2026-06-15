@@ -15,6 +15,14 @@ export type UnfollowUserResponseDto = {
   removedAt: Date | null;
 };
 
+export type FollowRequestDecisionDto = {
+  followerId: string;
+  followeeId: string;
+  status: FollowStatus | null;
+  accepted: boolean;
+  rejected: boolean;
+};
+
 export type FollowerListItemDto = {
   userId: string;
   username: string;

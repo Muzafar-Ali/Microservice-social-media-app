@@ -32,6 +32,20 @@ export class SocialGraphEventPublisher {
     await this.publishEvent(event);
   }
 
+  public async publishFollowAccepted(payload: FollowCreatedPayload, eventId: string): Promise<void> {
+    const event: FollowCreatedEvent = {
+      eventId,
+      eventName: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_ACCEPTED,
+      eventVersion: 1,
+      occurredAt: new Date().toISOString(),
+      producerService: this.producerServiceName,
+      partitionKey: payload.followerId,
+      data: payload,
+    };
+
+    await this.publishEvent(event);
+  }
+
   public async publishFollowRemoved(payload: UnFollowCreatedPayload, eventId: string): Promise<void> {
     const event: UnFollowCreatedEvent = {
       eventId,

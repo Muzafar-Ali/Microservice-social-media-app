@@ -7,6 +7,16 @@ const socialGraphRoutes = (socialGraphController: SocialGraphController) => {
 
   router.post('/follow/:targetUserId', isAuthenticatedRedis, socialGraphController.followUser);
   router.delete('/follow/:targetUserId', isAuthenticatedRedis, socialGraphController.unfollowUser);
+  router.patch(
+    '/follow-requests/:requesterUserId/accept',
+    isAuthenticatedRedis,
+    socialGraphController.acceptFollowRequest,
+  );
+  router.delete(
+    '/follow-requests/:requesterUserId',
+    isAuthenticatedRedis,
+    socialGraphController.rejectFollowRequest,
+  );
   router.get('/users/:targetUserId/followers', isAuthenticatedRedis, socialGraphController.getFollowers);
   router.get('/users/:targetUserId/counts', isAuthenticatedRedis, socialGraphController.getCounts);
   router.get('/me/following/ids', isAuthenticatedRedis, socialGraphController.getMyFollowingUserIds);

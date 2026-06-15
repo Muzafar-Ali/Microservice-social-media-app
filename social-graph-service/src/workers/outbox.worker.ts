@@ -43,6 +43,13 @@ export class OutboxWorker {
           );
         }
 
+        if (outboxEvent.eventName === SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_ACCEPTED) {
+          await this.socialGraphEventPublisher.publishFollowAccepted(
+            outboxEvent.payload as FollowCreatedPayload,
+            outboxEvent.eventId,
+          );
+        }
+
         if (outboxEvent.eventName === SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED) {
           await this.socialGraphEventPublisher.publishFollowRemoved(
             outboxEvent.payload as UnFollowCreatedPayload,

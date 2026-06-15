@@ -4,6 +4,10 @@ export const followUserParamsSchema = z.object({
   targetUserId: z.uuid('targetUserId must be a valid uuid'),
 });
 
+export const followRequestParamsSchema = z.object({
+  requesterUserId: z.uuid('requesterUserId must be a valid uuid'),
+});
+
 export const userCreatedPayloadSchema = z.object({
   userId: z.uuid({ error: 'userId must be a valid UUID' }),
   username: z.string().min(1, { error: 'username is required' }),
@@ -66,6 +70,7 @@ export const userUpdatedEventSchema = z.object({
 });
 
 export type FollowUserParamsDto = z.infer<typeof followUserParamsSchema>;
+export type FollowRequestParamsDto = z.infer<typeof followRequestParamsSchema>;
 export type UserCreatedEvent = z.infer<typeof userCreatedEventSchema>;
 export type CursorPaginationQueryDto = z.infer<typeof cursorPaginationQuerySchema>;
 export type UserUpdatedEvent = z.infer<typeof userUpdatedEventSchema>;

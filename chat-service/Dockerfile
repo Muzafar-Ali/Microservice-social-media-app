@@ -2,8 +2,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
+# Dummy build-time DB URL for Prisma generate only.
+# Real DATABASE_URL must be injected at runtime via env/secrets.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 
 COPY package*.json ./
 RUN npm ci
@@ -21,11 +22,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/prisma ./prisma
 
 EXPOSE 4001
+
+# Run as non-root user for production container security.
+USER node
 
 CMD ["node", "dist/server.js"]

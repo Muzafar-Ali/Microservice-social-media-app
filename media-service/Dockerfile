@@ -17,10 +17,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/dist ./dist
+COPY --from=builder --chown=node:node /app/dist ./dist
 
 EXPOSE 4002
+
+# Run as non-root user for production container security.
+USER node
 
 CMD ["node", "dist/server.js"]

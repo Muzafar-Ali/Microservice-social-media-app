@@ -82,16 +82,13 @@ class SocialGraphEventConsumer {
               return;
             }
 
-            await this.processWithRetry(
-              () => this.handleFollowActivated(safeEvent.data),
-              {
-                topic,
-                partition,
-                offset: message.offset,
-                rawValue,
-                reason: `Retry exhausted while processing ${safeEvent.data.eventName}`,
-              },
-            );
+            await this.processWithRetry(() => this.handleFollowActivated(safeEvent.data), {
+              topic,
+              partition,
+              offset: message.offset,
+              rawValue,
+              reason: `Retry exhausted while processing ${safeEvent.data.eventName}`,
+            });
             await this.commitNextOffset(topic, partition, message.offset);
             return;
           }
@@ -112,16 +109,13 @@ class SocialGraphEventConsumer {
               return;
             }
 
-            await this.processWithRetry(
-              () => this.handleFollowRemoved(safeEvent.data),
-              {
-                topic,
-                partition,
-                offset: message.offset,
-                rawValue,
-                reason: 'Retry exhausted while processing follow.removed',
-              },
-            );
+            await this.processWithRetry(() => this.handleFollowRemoved(safeEvent.data), {
+              topic,
+              partition,
+              offset: message.offset,
+              rawValue,
+              reason: 'Retry exhausted while processing follow.removed',
+            });
             await this.commitNextOffset(topic, partition, message.offset);
             return;
           }
@@ -173,10 +167,7 @@ class SocialGraphEventConsumer {
     }
   }
 
-  private async processWithRetry(
-    operation: () => Promise<void>,
-    context: FailedMessageContext,
-  ): Promise<void> {
+  private async processWithRetry(operation: () => Promise<void>, context: FailedMessageContext): Promise<void> {
     for (let attempt = 1; attempt <= this.maxProcessingAttempts; attempt++) {
       try {
         await operation();

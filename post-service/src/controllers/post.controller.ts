@@ -69,16 +69,17 @@ export class PostController {
    */
   getPostByIdHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
         throw new ApiErrorHandler(400, erroMessages);
       }
 
-      const post = await this.postService.getPostById(safeParams.data.postId);
-      if (!post) {
-        throw new ApiErrorHandler(404, 'Post not found');
-      }
+      const post = await this.postService.getPostById(safeParams.data.postId, req.userId);
 
       res.status(200).json({
         success: true,
@@ -249,6 +250,10 @@ export class PostController {
    */
   getPostsByUserIdHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
 
       if (!safeParams.success) {
@@ -256,7 +261,7 @@ export class PostController {
         throw new ApiErrorHandler(400, erroMessages);
       }
 
-      const posts = await this.postService.getPostsByUserId(safeParams.data.profileUserId);
+      const posts = await this.postService.getPostsByUserId(safeParams.data.profileUserId, req.userId);
 
       res.status(200).json({
         success: true,
@@ -298,12 +303,12 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/grid?limit=50&cursor=<postId>
    * @access  Public
    */
-  getUserGridPostsCursorHandler = async (
-    req: Request<ProfileUserParamsIdDto, any, never, QueryCursorPaginationDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  getUserGridPostsCursorHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
@@ -316,7 +321,7 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getUserGridPostsCursor(safeParams.data.profileUserId, {
+      const result = await this.postService.getUserGridPostsCursor(safeParams.data.profileUserId, req.userId, {
         limit: safeQuery.data.limit,
         cursor: safeQuery.data.cursor,
       });
@@ -336,12 +341,12 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
    * @access  Public
    */
-  getUserGridPostsOffsetHandler = async (
-    req: Request<ProfileUserParamsIdDto, any, never, QueryPaginationDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  getUserGridPostsOffsetHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const erroMessages = formatZodError(safeParams.error);
@@ -354,7 +359,7 @@ export class PostController {
         throw new ApiErrorHandler(400, erroMessages);
       }
 
-      const result = await this.postService.getUserGridPostsOffset(safeParams.data.profileUserId, {
+      const result = await this.postService.getUserGridPostsOffset(safeParams.data.profileUserId, req.userId, {
         page: safeQuery.data.page,
         limit: safeQuery.data.limit,
       });
@@ -374,12 +379,12 @@ export class PostController {
    * @route   GET /api/posts/users/:profileUserId/feed/window?postId=<postId>&limit=10
    * @access  Public
    */
-  getUserFeedWindowHandler = async (
-    req: Request<ProfileUserParamsIdDto, any, never, FeedWindowQueryDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  getUserFeedWindowHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
@@ -392,7 +397,7 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getUserFeedWindow(safeParams.data.profileUserId, {
+      const result = await this.postService.getUserFeedWindow(safeParams.data.profileUserId, req.userId, {
         postId: safeQuery.data.postId,
         limit: safeQuery.data.limit,
       });
@@ -412,12 +417,12 @@ export class PostController {
    * @route   GET /api/posts/user/:profileUserId/feed/after?cursor=<postId>&limit=10
    * @access  Public
    */
-  async getUserFeedAfterHandler(
-    req: Request<ProfileUserParamsIdDto, any, never, FeedAfterQueryDto>,
-    res: Response,
-    next: NextFunction,
-  ) {
+  async getUserFeedAfterHandler(req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = profileUserIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
@@ -430,7 +435,7 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getUserFeedAfter(safeParams.data.profileUserId, {
+      const result = await this.postService.getUserFeedAfter(safeParams.data.profileUserId, req.userId, {
         cursor: safeQuery.data.cursor,
         limit: safeQuery.data.limit,
       });
@@ -573,12 +578,12 @@ export class PostController {
    * @route   GET /api/posts/:postId/likes?cursor=<userId>&limit=20
    * @access  Public
    */
-  getPostLikesHandler = async (
-    req: Request<PostIdParamsDto, any, never, LikesCursorPaginationDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  getPostLikesHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
@@ -591,7 +596,7 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getPostLikes(safeParams.data.postId, {
+      const result = await this.postService.getPostLikes(safeParams.data.postId, req.userId, {
         cursor: safeQuery.data.cursor,
         limit: safeQuery.data.limit,
       });
@@ -617,6 +622,10 @@ export class PostController {
     next: NextFunction,
   ) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const { content } = req.body;
 
       const safeParams = postIdParamsSchema.safeParse(req.params);
@@ -647,12 +656,12 @@ export class PostController {
    * @route   GET /api/posts/:postId/comments?cursor=<commentId>&limit=20
    * @access  Public
    */
-  getPostCommentsHandler = async (
-    req: Request<PostIdParamsDto, any, never, CommentsCursorPaginationDto>,
-    res: Response,
-    next: NextFunction,
-  ) => {
+  getPostCommentsHandler = async (req: Request<PostIdParamsDto>, res: Response, next: NextFunction) => {
     try {
+      if (!req.userId) {
+        throw new ApiErrorHandler(401, 'Unauthorized');
+      }
+
       const safeParams = postIdParamsSchema.safeParse(req.params);
       if (!safeParams.success) {
         const errorMessages = formatZodError(safeParams.error);
@@ -665,7 +674,7 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const result = await this.postService.getPostComments(safeParams.data.postId, {
+      const result = await this.postService.getPostComments(safeParams.data.postId, req.userId, {
         cursor: safeQuery.data.cursor,
         limit: safeQuery.data.limit,
       });

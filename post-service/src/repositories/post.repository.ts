@@ -327,10 +327,7 @@ export class PostRepository {
 
     const postOrder = new Map(postIds.map((postId, index) => [postId, index]));
 
-    return posts.sort(
-      (leftPost, rightPost) =>
-        (postOrder.get(leftPost.id) ?? 0) - (postOrder.get(rightPost.id) ?? 0),
-    );
+    return posts.sort((leftPost, rightPost) => (postOrder.get(leftPost.id) ?? 0) - (postOrder.get(rightPost.id) ?? 0));
   }
 
   async findPostLikes(
@@ -487,6 +484,40 @@ export class PostRepository {
         updatedAt: true,
       },
     });
+  }
+
+  async canViewerAccessProfile(viewerUserId: string, profileUserId: string): Promise<boolean> {
+    const profile = await this.prisma.userProfileCache.findUnique({
+      where: {
+        userId: profileUserId,
+      },
+      select: {
+        status: true,
+        isPrivate: true,
+      },
+    });
+
+    if (!profile || profile.status.toUpperCase() !== 'ACTIVE') {
+      return false;
+    }
+
+    if (viewerUserId === profileUserId || !profile.isPrivate) {
+      return true;
+    }
+
+    const activeFollow = await this.prisma.activeFollow.findUnique({
+      where: {
+        followerId_followeeId: {
+          followerId: viewerUserId,
+          followeeId: profileUserId,
+        },
+      },
+      select: {
+        followerId: true,
+      },
+    });
+
+    return activeFollow !== null;
   }
 
   async findUserFeedWindow(

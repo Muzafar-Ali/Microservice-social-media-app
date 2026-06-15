@@ -45,7 +45,7 @@ const createKafkaTopic = async (): Promise<void> => {
             },
           ],
         },
-         //  SOCIAL GRAPH EVENTS DLQ (dead letter queue)
+        //  SOCIAL GRAPH EVENTS DLQ (dead letter queue)
         {
           topic: KAFKA_TOPICS.POST_SERVICE_SOCIAL_GRAPH_EVENTS_DLQ,
           numPartitions: 2,

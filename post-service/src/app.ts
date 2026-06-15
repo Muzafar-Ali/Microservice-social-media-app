@@ -33,11 +33,7 @@ export async function createApp() {
   const postController = new PostController(postService);
   const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, postService);
   const mediaEventConsumer = new MediaEventConsumer(mediaKafkaConsumer, producer, postService);
-  const socialGraphEventConsumer = new SocialGraphEventConsumer(
-    socialGraphKafkaConsumer,
-    producer,
-    postService,
-  );
+  const socialGraphEventConsumer = new SocialGraphEventConsumer(socialGraphKafkaConsumer, producer, postService);
   const outboxWorker = new OutboxWorker(prisma, postEventPublisher);
 
   const app = express();

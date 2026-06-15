@@ -69,84 +69,78 @@ class UserEventConsumer {
         }
 
         switch (parsedJson.eventName) {
-            case USER_EVENT_NAMES.USER_CREATED: {
-              const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
+          case USER_EVENT_NAMES.USER_CREATED: {
+            const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
 
-              if (!safeEvent.success) {
-                logger.error(formatZodError(safeEvent.error));
+            if (!safeEvent.success) {
+              logger.error(formatZodError(safeEvent.error));
 
-                await this.sendToDlq({
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  rawValue,
-                  reason: 'Invalid user.created schema',
-                });
-
-                await this.commitNextOffset(topic, partition, message.offset);
-                return;
-              }
-
-              await this.processWithRetry(
-                () => this.handleUserCreated(safeEvent.data),
-                {
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  rawValue,
-                  reason: 'Retry exhausted while processing user.created',
-                },
-              );
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-
-            case USER_EVENT_NAMES.USER_UPDATED: {
-              const safeEvent = userUpdatedEventSchema.safeParse(parsedJson);
-
-              if (!safeEvent.success) {
-                logger.error(formatZodError(safeEvent.error));
-
-                await this.sendToDlq({
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  rawValue,
-                  reason: 'Invalid user.updated schema',
-                });
-
-                await this.commitNextOffset(topic, partition, message.offset);
-                return;
-              }
-
-              await this.processWithRetry(
-                () => this.handleUserUpdated(safeEvent.data),
-                {
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  rawValue,
-                  reason: 'Retry exhausted while processing user.updated',
-                },
-              );
-              await this.commitNextOffset(topic, partition, message.offset);
-              return;
-            }
-
-            default: {
-              logger.warn(
-                {
-                  topic,
-                  partition,
-                  offset: message.offset,
-                  eventName: parsedJson.eventName,
-                },
-                'Ignoring unknown user event',
-              );
+              await this.sendToDlq({
+                topic,
+                partition,
+                offset: message.offset,
+                rawValue,
+                reason: 'Invalid user.created schema',
+              });
 
               await this.commitNextOffset(topic, partition, message.offset);
               return;
             }
+
+            await this.processWithRetry(() => this.handleUserCreated(safeEvent.data), {
+              topic,
+              partition,
+              offset: message.offset,
+              rawValue,
+              reason: 'Retry exhausted while processing user.created',
+            });
+            await this.commitNextOffset(topic, partition, message.offset);
+            return;
+          }
+
+          case USER_EVENT_NAMES.USER_UPDATED: {
+            const safeEvent = userUpdatedEventSchema.safeParse(parsedJson);
+
+            if (!safeEvent.success) {
+              logger.error(formatZodError(safeEvent.error));
+
+              await this.sendToDlq({
+                topic,
+                partition,
+                offset: message.offset,
+                rawValue,
+                reason: 'Invalid user.updated schema',
+              });
+
+              await this.commitNextOffset(topic, partition, message.offset);
+              return;
+            }
+
+            await this.processWithRetry(() => this.handleUserUpdated(safeEvent.data), {
+              topic,
+              partition,
+              offset: message.offset,
+              rawValue,
+              reason: 'Retry exhausted while processing user.updated',
+            });
+            await this.commitNextOffset(topic, partition, message.offset);
+            return;
+          }
+
+          default: {
+            logger.warn(
+              {
+                topic,
+                partition,
+                offset: message.offset,
+                eventName: parsedJson.eventName,
+              },
+              'Ignoring unknown user event',
+            );
+
+            await this.commitNextOffset(topic, partition, message.offset);
+            return;
+          }
         }
       },
     });
@@ -208,10 +202,7 @@ class UserEventConsumer {
     }
   }
 
-  private async processWithRetry(
-    operation: () => Promise<void>,
-    context: FailedMessageContext,
-  ): Promise<void> {
+  private async processWithRetry(operation: () => Promise<void>, context: FailedMessageContext): Promise<void> {
     for (let attempt = 1; attempt <= this.maxProcessingAttempts; attempt++) {
       try {
         await operation();
@@ -223,10 +214,7 @@ class UserEventConsumer {
         );
 
         if (attempt === this.maxProcessingAttempts) {
-          logger.error(
-            { error, ...context },
-            'User event processing retries exhausted in post-service',
-          );
+          logger.error({ error, ...context }, 'User event processing retries exhausted in post-service');
 
           await this.sendToDlq(context);
           return;

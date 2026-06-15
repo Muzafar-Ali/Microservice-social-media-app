@@ -18,11 +18,12 @@ export class PostService {
     return post;
   }
 
-  async getPostById(postId: string) {
-    return this.postRepository.findPostById(postId);
+  async getPostById(postId: string, viewerUserId: string) {
+    return this.requireVisiblePost(postId, viewerUserId);
   }
 
-  async getPostsByUserId(profileUserId: string) {
+  async getPostsByUserId(profileUserId: string, viewerUserId: string) {
+    await this.requireProfileAccess(viewerUserId, profileUserId);
     return this.postRepository.findPostsByUserId(profileUserId);
   }
 
@@ -177,7 +178,13 @@ export class PostService {
     };
   }
 
-  async getUserGridPostsCursor(profileUserId: string, query: { limit?: number; cursor?: string }) {
+  async getUserGridPostsCursor(
+    profileUserId: string,
+    viewerUserId: string,
+    query: { limit?: number; cursor?: string },
+  ) {
+    await this.requireProfileAccess(viewerUserId, profileUserId);
+
     const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
 
     const result = await this.postRepository.findUserGridPostsCursor(profileUserId, {
@@ -232,7 +239,9 @@ export class PostService {
     };
   }
 
-  async getUserGridPostsOffset(profileUserId: string, query: { page?: number; limit?: number }) {
+  async getUserGridPostsOffset(profileUserId: string, viewerUserId: string, query: { page?: number; limit?: number }) {
+    await this.requireProfileAccess(viewerUserId, profileUserId);
+
     const page = !query.page || query.page < 1 ? 1 : query.page;
     const limit = !query.limit || query.limit < 1 ? 50 : Math.min(query.limit, 50);
 
@@ -276,7 +285,9 @@ export class PostService {
     };
   }
 
-  async getUserFeedWindow(profileUserId: string, query: { postId: string; limit?: number }) {
+  async getUserFeedWindow(profileUserId: string, viewerUserId: string, query: { postId: string; limit?: number }) {
+    await this.requireProfileAccess(viewerUserId, profileUserId);
+
     const limit = !query.limit || query.limit < 1 ? 10 : Math.min(query.limit, 20);
 
     const result = await this.postRepository.findUserFeedWindow(profileUserId, {
@@ -294,7 +305,9 @@ export class PostService {
     };
   }
 
-  async getUserFeedAfter(profileUserId: string, query: { cursor: string; limit?: number }) {
+  async getUserFeedAfter(profileUserId: string, viewerUserId: string, query: { cursor: string; limit?: number }) {
+    await this.requireProfileAccess(viewerUserId, profileUserId);
+
     const limit = !query.limit || query.limit < 1 ? 10 : Math.min(query.limit, 20);
 
     const result = await this.postRepository.findUserFeedAfter(profileUserId, {
@@ -378,10 +391,7 @@ export class PostService {
   }
 
   async likePost(postId: string, currentUserId: string) {
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
-      throw new ApiErrorHandler(404, 'Post not found');
-    }
+    await this.requireVisiblePost(postId, currentUserId);
 
     await this.postRepository.createPostLike(postId, currentUserId);
 
@@ -395,10 +405,7 @@ export class PostService {
   }
 
   async unlikePost(postId: string, currentUserId: string) {
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
-      throw new ApiErrorHandler(404, 'Post not found');
-    }
+    await this.requireVisiblePost(postId, currentUserId);
 
     await this.postRepository.deletePostLike(postId, currentUserId);
 
@@ -411,13 +418,10 @@ export class PostService {
     };
   }
 
-  async getPostLikes(postId: string, query: { cursor?: string; limit?: number }) {
+  async getPostLikes(postId: string, viewerUserId: string, query: { cursor?: string; limit?: number }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
-      throw new ApiErrorHandler(404, 'Post not found');
-    }
+    await this.requireVisiblePost(postId, viewerUserId);
 
     const result = await this.postRepository.findPostLikes(postId, {
       cursor: query.cursor,
@@ -481,10 +485,7 @@ export class PostService {
   }
 
   async createPostComment(postId: string, currentUserId: string, content: string) {
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
-      throw new ApiErrorHandler(404, 'Post not found');
-    }
+    await this.requireVisiblePost(postId, currentUserId);
 
     const createdComment = await this.postRepository.createPostComment(postId, currentUserId, content.trim());
 
@@ -508,13 +509,10 @@ export class PostService {
     };
   }
 
-  async getPostComments(postId: string, query: { cursor?: string; limit?: number }) {
+  async getPostComments(postId: string, viewerUserId: string, query: { cursor?: string; limit?: number }) {
     const limit = !query.limit || query.limit < 1 ? 20 : Math.min(query.limit, 50);
 
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
-      throw new ApiErrorHandler(404, 'Post not found');
-    }
+    await this.requireVisiblePost(postId, viewerUserId);
 
     const result = await this.postRepository.findPostComments(postId, {
       cursor: query.cursor,
@@ -582,5 +580,29 @@ export class PostService {
       commentId,
       deleted: true,
     };
+  }
+
+  private async requireProfileAccess(viewerUserId: string, profileUserId: string): Promise<void> {
+    const canAccess = await this.postRepository.canViewerAccessProfile(viewerUserId, profileUserId);
+
+    if (!canAccess) {
+      throw new ApiErrorHandler(404, 'Profile posts not found');
+    }
+  }
+
+  private async requireVisiblePost(postId: string, viewerUserId: string) {
+    const post = await this.postRepository.findPostById(postId);
+
+    if (!post) {
+      throw new ApiErrorHandler(404, 'Post not found');
+    }
+
+    const canAccess = await this.postRepository.canViewerAccessProfile(viewerUserId, post.authorId);
+
+    if (!canAccess) {
+      throw new ApiErrorHandler(404, 'Post not found');
+    }
+
+    return post;
   }
 }

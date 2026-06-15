@@ -14,8 +14,7 @@ async function bootstrap() {
     await executeWithRetry('Kafka topic creation', createKafkaTopic);
 
     // 2. Create app and Kafka consumer
-    const { app, userEventConsumer, mediaEventConsumer, socialGraphEventConsumer, outboxWorker } =
-      await createApp();
+    const { app, userEventConsumer, mediaEventConsumer, socialGraphEventConsumer, outboxWorker } = await createApp();
 
     // 3. Start Kafka consumer
     await executeWithRetry('UserEventConsumer start', () => userEventConsumer.start());

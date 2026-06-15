@@ -1,6 +1,10 @@
-import { MediaType, PrismaClient } from '../generated/prisma/client.js';
+import crypto from 'node:crypto';
+import { MediaType, Prisma, PrismaClient } from '../generated/prisma/client.js';
+import config from '../config/config.js';
+import { POST_EVENT_NAMES } from '../events/topics.js';
 import { UserFeedPost, userFeedPostSelect } from '../prisma/selects/userFeedPostSelect.js';
 import { UserGridPost, userGridPostSelect } from '../prisma/selects/userGridPostSelect.js';
+import { PostCreatedEventPayload } from '../types/post-event-publisher.types.js';
 import { PostUpdate } from '../types/post.types.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { CreatePostDto } from '../validation/post.validation.js';
@@ -8,30 +12,70 @@ import { CreatePostDto } from '../validation/post.validation.js';
 export class PostRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async create(input: CreatePostDto, authorId: string) {
-    return this.prisma.post.create({
-      data: {
-        authorId,
-        content: input.content ?? '',
-        themeKey: input.themeKey ?? null,
-        media: input?.media?.length
-          ? {
-              create: input.media.map((item, index) => ({
-                type: item.type === 'image' ? MediaType.IMAGE : MediaType.VIDEO,
-                url: item.url,
-                publicId: item.publicId ?? null,
-                thumbnailUrl: item.thumbnailUrl ?? null,
-                duration: item.duration ?? null,
-                width: item.width ?? null,
-                height: item.height ?? null,
-                order: index,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        media: true,
-      },
+  async createPostAndQueuePostCreatedEvent(input: CreatePostDto, authorId: string) {
+    return this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
+      const post = await transactionClient.post.create({
+        data: {
+          authorId,
+          content: input.content ?? '',
+          themeKey: input.themeKey ?? null,
+          media: input.media?.length
+            ? {
+                create: input.media.map((item, index) => ({
+                  type: item.type === 'image' ? MediaType.IMAGE : MediaType.VIDEO,
+                  url: item.url,
+                  publicId: item.publicId ?? null,
+                  thumbnailUrl: item.thumbnailUrl ?? null,
+                  duration: item.duration ?? null,
+                  width: item.width ?? null,
+                  height: item.height ?? null,
+                  order: index,
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          media: true,
+        },
+      });
+
+      const payload: PostCreatedEventPayload = {
+        postId: post.id,
+        authorId: post.authorId,
+        content: post.content,
+        themeKey: post.themeKey,
+        isEdited: post.isEdited,
+        editedAt: post.editedAt?.toISOString() ?? null,
+        createdAt: post.createdAt.toISOString(),
+        updatedAt: post.updatedAt.toISOString(),
+        media: post.media.map((mediaItem) => ({
+          id: mediaItem.id,
+          type: mediaItem.type,
+          url: mediaItem.url,
+          publicId: mediaItem.publicId,
+          thumbnailUrl: mediaItem.thumbnailUrl,
+          duration: mediaItem.duration,
+          width: mediaItem.width,
+          height: mediaItem.height,
+          order: mediaItem.order,
+        })),
+      };
+
+      await transactionClient.outboxEvent.create({
+        data: {
+          eventId: crypto.randomUUID(),
+          eventName: POST_EVENT_NAMES.POST_CREATED,
+          eventVersion: 1,
+          aggregateId: post.id,
+          partitionKey: post.id,
+          payload,
+          producerService: config.serviceName,
+          occurredAt: new Date(),
+          status: 'PENDING',
+        },
+      });
+
+      return post;
     });
   }
 

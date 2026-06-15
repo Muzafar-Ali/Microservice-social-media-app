@@ -2,43 +2,17 @@ import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { postCreatedCounter } from '../monitoring/metrics.js';
-import { PostEventPublisher } from '../events/post-events.producer.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost.js';
 import { UserProfileCacheSummary } from '../types/post.types.js';
 
 export class PostService {
-  constructor(
-    private postRepository: PostRepository,
-    private postEventPublisher: PostEventPublisher,
-  ) {}
+  constructor(private postRepository: PostRepository) {}
 
   async createPost(input: CreatePostDto, userId: string) {
-    const post = await this.postRepository.create(input, userId);
+    const post = await this.postRepository.createPostAndQueuePostCreatedEvent(input, userId);
 
     postCreatedCounter.inc();
-
-    await this.postEventPublisher.publishPostCreated({
-      postId: post.id,
-      authorId: post.authorId,
-      content: post.content,
-      themeKey: post.themeKey,
-      isEdited: post.isEdited,
-      editedAt: post.editedAt ? post.editedAt.toISOString() : null,
-      createdAt: post.createdAt.toISOString(),
-      updatedAt: post.updatedAt.toISOString(),
-      media: post.media.map((mediaItem: any) => ({
-        id: mediaItem.id,
-        type: mediaItem.type,
-        url: mediaItem.url,
-        publicId: mediaItem.publicId,
-        thumbnailUrl: mediaItem.thumbnailUrl,
-        duration: mediaItem.duration,
-        width: mediaItem.width,
-        height: mediaItem.height,
-        order: mediaItem.order,
-      })),
-    });
 
     return post;
   }

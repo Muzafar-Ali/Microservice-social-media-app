@@ -13,10 +13,8 @@ import prisma from './config/prismaClient.js';
 import { PostEventPublisher } from './events/post-events.producer.js';
 
 import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';
-import getMediaKafkaConsumer from './utils/kafka/getMediaKafkaConsumer.js';
 import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
 import UserEventConsumer from './events/consumers/user-event.consumer.js';
-import MediaEventConsumer from './events/consumers/media-event.consumer.js';
 import { OutboxWorker } from './workers/outbox.worker.js';
 import getSocialGraphKafkaConsumer from './utils/kafka/getSocialGraphKafkaConsumer.js';
 import SocialGraphEventConsumer from './events/consumers/social-graph-event.consumer.js';
@@ -24,7 +22,6 @@ import SocialGraphEventConsumer from './events/consumers/social-graph-event.cons
 export async function createApp() {
   const producer = await getKafkaProducer();
   const userKafkaConsumer = await getUserKafkaConsumer();
-  const mediaKafkaConsumer = await getMediaKafkaConsumer();
   const socialGraphKafkaConsumer = await getSocialGraphKafkaConsumer();
 
   const postRepository = new PostRepository(prisma);
@@ -32,7 +29,6 @@ export async function createApp() {
   const postService = new PostService(postRepository);
   const postController = new PostController(postService);
   const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, postService);
-  const mediaEventConsumer = new MediaEventConsumer(mediaKafkaConsumer, producer, postService);
   const socialGraphEventConsumer = new SocialGraphEventConsumer(socialGraphKafkaConsumer, producer, postService);
   const outboxWorker = new OutboxWorker(prisma, postEventPublisher);
 
@@ -68,7 +64,6 @@ export async function createApp() {
   return {
     app,
     userEventConsumer,
-    mediaEventConsumer,
     socialGraphEventConsumer,
     outboxWorker,
   };

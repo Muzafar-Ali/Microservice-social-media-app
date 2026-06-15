@@ -11,7 +11,11 @@ import isAuthenticatedRedis from '../middlewares/isAuthenticatedRedis.middleware
 const mediaRoutes = (mediaController: MediaController) => {
   const router = Router();
 
-  router.post('/upload/profile-image/signature', mediaController.profileUploadSignatureHanlder);
+  router.post(
+    '/upload/profile-image/signature',
+    isAuthenticatedRedis,
+    mediaController.profileUploadSignatureHanlder,
+  );
   router.post(
     '/upload/profile-image/update',
     isAuthenticatedRedis,

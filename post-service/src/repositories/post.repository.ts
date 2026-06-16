@@ -90,6 +90,13 @@ export class PostRepository {
     });
   }
 
+  async findFeedPostById(postId: string) {
+    return this.prisma.post.findUnique({
+      where: { id: postId },
+      select: userFeedPostSelect,
+    });
+  }
+
   async createPostLike(postId: string, userId: string) {
     try {
       return await this.prisma.postLike.create({

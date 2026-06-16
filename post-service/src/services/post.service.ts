@@ -19,7 +19,14 @@ export class PostService {
   }
 
   async getPostById(postId: string, viewerUserId: string) {
-    return this.requireVisiblePost(postId, viewerUserId);
+    const visiblePost = await this.requireVisiblePost(postId, viewerUserId);
+    const post = await this.postRepository.findFeedPostById(visiblePost.id);
+
+    if (!post) {
+      throw new ApiErrorHandler(404, 'Post not found');
+    }
+
+    return mapUserFeedPost(post);
   }
 
   async getPostsByUserId(profileUserId: string, viewerUserId: string, query: { limit?: number; cursor?: string }) {

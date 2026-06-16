@@ -373,8 +373,18 @@ export class ChatService {
 
     const conversation = await this.chatRepository.findConversationById(deletedMessage.conversationId);
 
+    let conversationUpdate: DeleteMessageResponseDto['conversationUpdate'] = null;
+
     if (conversation?.lastMessageId === deletedMessage.id) {
-      await this.chatRepository.updateConversationLastMessageFromLatest(deletedMessage.conversationId);
+      const updatedConversation = await this.chatRepository.updateConversationLastMessageFromLatest(
+        deletedMessage.conversationId,
+      );
+
+      conversationUpdate = {
+        conversationId: updatedConversation.id,
+        lastMessageId: updatedConversation.lastMessageId ?? null,
+        lastMessageAt: updatedConversation.lastMessageAt ? updatedConversation.lastMessageAt.toISOString() : null,
+      };
     }
 
     return {
@@ -383,6 +393,7 @@ export class ChatService {
       deletedBy: params.userId,
       deletedAt: deletedMessage.deletedAt!.toISOString(),
       forEveryone: true,
+      conversationUpdate,
     };
   }
 

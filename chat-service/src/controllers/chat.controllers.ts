@@ -267,6 +267,13 @@ export class ChatController {
       const io = getSocketServer();
       io.to(`conversation:${deletedMessage.conversationId}`).emit('chat:message:deleted', deletedMessage);
 
+      if (deletedMessage.conversationUpdate) {
+        io.to(`conversation:${deletedMessage.conversationId}`).emit(
+          'conversation:update',
+          deletedMessage.conversationUpdate,
+        );
+      }
+
       res.status(StatusCodes.OK).json({
         success: true,
         message: 'Message deleted successfully',

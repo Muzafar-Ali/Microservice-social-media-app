@@ -136,6 +136,11 @@ export type DeleteMessageResponseDto = {
   deletedBy: string;
   deletedAt: string;
   forEveryone: boolean;
+  conversationUpdate: null | {
+    conversationId: string;
+    lastMessageId: string | null;
+    lastMessageAt: string | null;
+  };
 };
 
 export type MessageReactionDto = {

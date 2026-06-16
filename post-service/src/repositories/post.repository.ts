@@ -99,7 +99,11 @@ export class PostRepository {
         },
       });
     } catch (error) {
-      return null;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return null;
+      }
+
+      throw error;
     }
   }
 
@@ -114,7 +118,11 @@ export class PostRepository {
         },
       });
     } catch (error) {
-      return null;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
+
+      throw error;
     }
   }
 

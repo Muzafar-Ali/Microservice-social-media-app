@@ -27,7 +27,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=builder --chown=node:node /app/dist ./dist
 COPY --from=builder --chown=node:node /app/prisma ./prisma
 
-EXPOSE 4001
+EXPOSE 4004
 
 # Run as non-root user for production container security.
 USER node

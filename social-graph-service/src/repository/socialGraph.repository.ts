@@ -35,41 +35,45 @@ export class SocialGraphRepository {
     status: FollowStatus,
   ): Promise<Follow> => {
     const eventName =
-      status === FollowStatus.PENDING ? SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REQUESTED : SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED;
+      status === FollowStatus.PENDING
+        ? SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REQUESTED
+        : SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_CREATED;
 
     try {
-      const createdFollowRelation = await this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
-        const createdFollowRelation = await transactionClient.follow.create({
-          data: {
-            followerId,
-            followeeId,
-            status,
-          },
-        });
+      const createdFollowRelation = await this.prisma.$transaction(
+        async (transactionClient: Prisma.TransactionClient) => {
+          const createdFollowRelation = await transactionClient.follow.create({
+            data: {
+              followerId,
+              followeeId,
+              status,
+            },
+          });
 
-        const payload: FollowCreatedPayload = {
-          followerId: createdFollowRelation.followerId,
-          followeeId: createdFollowRelation.followeeId,
-          status: createdFollowRelation.status,
-          createdAt: createdFollowRelation.createdAt.toISOString(),
-        };
+          const payload: FollowCreatedPayload = {
+            followerId: createdFollowRelation.followerId,
+            followeeId: createdFollowRelation.followeeId,
+            status: createdFollowRelation.status,
+            createdAt: createdFollowRelation.createdAt.toISOString(),
+          };
 
-        await transactionClient.outboxEvent.create({
-          data: {
-            eventId: crypto.randomUUID(),
-            eventName,
-            eventVersion: 1,
-            aggregateId: createdFollowRelation.id,
-            partitionKey: createdFollowRelation.followerId,
-            payload,
-            producerService: 'social-graph-service',
-            occurredAt: new Date(),
-            status: 'PENDING',
-          },
-        });
+          await transactionClient.outboxEvent.create({
+            data: {
+              eventId: crypto.randomUUID(),
+              eventName,
+              eventVersion: 1,
+              aggregateId: createdFollowRelation.id,
+              partitionKey: createdFollowRelation.followerId,
+              payload,
+              producerService: 'social-graph-service',
+              occurredAt: new Date(),
+              status: 'PENDING',
+            },
+          });
 
-        return createdFollowRelation;
-      });
+          return createdFollowRelation;
+        },
+      );
 
       outboxEventsCreatedTotal.inc({ event_name: eventName, result: 'success' });
 
@@ -85,53 +89,55 @@ export class SocialGraphRepository {
     followeeId: string,
   ): Promise<Follow | null> => {
     try {
-      const deletedFollowRelation = await this.prisma.$transaction(async (transactionClient: Prisma.TransactionClient) => {
-        const existingFollowRelation = await transactionClient.follow.findUnique({
-          where: {
-            followerId_followeeId: {
-              followerId,
-              followeeId,
-            },
-          },
-        });
-
-        if (!existingFollowRelation) {
-          return null;
-        }
-
-        const deletedFollowRelation = await transactionClient.follow.delete({
-          where: {
-            followerId_followeeId: {
-              followerId,
-              followeeId,
-            },
-          },
-        });
-
-        if (deletedFollowRelation.status === FollowStatus.ACTIVE) {
-          const payload: UnFollowCreatedPayload = {
-            followerId: deletedFollowRelation.followerId,
-            followeeId: deletedFollowRelation.followeeId,
-            removedAt: new Date().toISOString(),
-          };
-
-          await transactionClient.outboxEvent.create({
-            data: {
-              eventId: crypto.randomUUID(),
-              eventName: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED,
-              eventVersion: 1,
-              aggregateId: deletedFollowRelation.id,
-              partitionKey: deletedFollowRelation.followerId,
-              payload,
-              producerService: 'social-graph-service',
-              occurredAt: new Date(),
-              status: 'PENDING',
+      const deletedFollowRelation = await this.prisma.$transaction(
+        async (transactionClient: Prisma.TransactionClient) => {
+          const existingFollowRelation = await transactionClient.follow.findUnique({
+            where: {
+              followerId_followeeId: {
+                followerId,
+                followeeId,
+              },
             },
           });
-        }
 
-        return deletedFollowRelation;
-      });
+          if (!existingFollowRelation) {
+            return null;
+          }
+
+          const deletedFollowRelation = await transactionClient.follow.delete({
+            where: {
+              followerId_followeeId: {
+                followerId,
+                followeeId,
+              },
+            },
+          });
+
+          if (deletedFollowRelation.status === FollowStatus.ACTIVE) {
+            const payload: UnFollowCreatedPayload = {
+              followerId: deletedFollowRelation.followerId,
+              followeeId: deletedFollowRelation.followeeId,
+              removedAt: new Date().toISOString(),
+            };
+
+            await transactionClient.outboxEvent.create({
+              data: {
+                eventId: crypto.randomUUID(),
+                eventName: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED,
+                eventVersion: 1,
+                aggregateId: deletedFollowRelation.id,
+                partitionKey: deletedFollowRelation.followerId,
+                payload,
+                producerService: 'social-graph-service',
+                occurredAt: new Date(),
+                status: 'PENDING',
+              },
+            });
+          }
+
+          return deletedFollowRelation;
+        },
+      );
 
       if (deletedFollowRelation?.status === FollowStatus.ACTIVE) {
         outboxEventsCreatedTotal.inc({ event_name: SOCIAL_GRAPH_EVENT_NAMES.FOLLOW_REMOVED, result: 'success' });

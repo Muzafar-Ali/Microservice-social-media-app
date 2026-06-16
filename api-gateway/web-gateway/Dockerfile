@@ -8,7 +8,6 @@ RUN npm ci
 
 COPY . .
 
-RUN npx prisma generate
 RUN npm run build
 
 
@@ -28,4 +27,4 @@ EXPOSE 8088
 # Run as non-root user for production container security.
 USER node
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/app.js"]

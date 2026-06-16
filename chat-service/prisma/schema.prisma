@@ -74,7 +74,9 @@ model Participant {
 
   @@unique([conversationId, userId])  // user can join a conversation only once
   @@index([userId])
+  @@index([userId, deletedAt])
   @@index([conversationId])
+  @@index([conversationId, deletedAt, joinedAt])
   @@index([lastReadMessageId])
 }
 
@@ -106,6 +108,8 @@ model Message {
   participantReadRefs   Participant[]       @relation("ParticipantLastReadMessage")
 
   @@index([conversationId, createdAt])
+  @@index([conversationId, deletedAt, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([conversationId, deletedAt, senderId, createdAt])
   @@index([senderId])
   @@index([replyToMessageId])
   @@index([clientMessageId])

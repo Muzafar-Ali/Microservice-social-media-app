@@ -225,9 +225,11 @@ export class ChatService {
       cursorMessageId: params.cursorMessageId,
     });
 
-    const items = messages.map((message: any) => this.mapMessage(message));
+    const hasNextPage = messages.length > params.limit;
+    const paginatedMessages = hasNextPage ? messages.slice(0, params.limit) : messages;
+    const items = paginatedMessages.map((message: any) => this.mapMessage(message));
 
-    const nextCursor = items.length === params.limit ? items[items.length - 1].id : null;
+    const nextCursor = hasNextPage && items.length > 0 ? items[items.length - 1].id : null;
 
     return {
       items,

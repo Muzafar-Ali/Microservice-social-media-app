@@ -245,7 +245,7 @@ export class ChatRepository {
         },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: params.limit,
+      take: params.limit + 1,
       ...(params.cursorMessageId
         ? {
             cursor: {

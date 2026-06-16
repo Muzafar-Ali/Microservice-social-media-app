@@ -230,7 +230,7 @@ export class ChatController {
 
       const io = getSocketServer();
       io.to(`conversation:${safeParams.data.conversationId}`).emit('chat:message:read:update', readState);
-      io.emit('chat:message:read:ack', readState);
+      io.to(`user:${userId}`).emit('chat:message:read:ack', readState);
 
       res.status(StatusCodes.OK).json({
         success: true,

@@ -24,6 +24,7 @@ resources:
   - databases/kafka.yaml
   - deployments/web-gateway.yaml
   - deployments/user-service.yaml
+  - deployments/user-service-worker.yaml
   - deployments/media-service.yaml
   - deployments/post-service.yaml
   - deployments/post-service-worker.yaml

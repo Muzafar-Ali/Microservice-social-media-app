@@ -10,30 +10,19 @@ import { UserController } from './modules/user/user.controllers.js';
 import userRoutes from './modules/user/user.routes.js';
 import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
 import prisma from './config/prismaClient.js';
-import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
-import { UserEventPublisher } from './events/producers.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import { AuthRepository } from './modules/auth/auth.repository.js';
 import { AuthService } from './modules/auth/auth.service.js';
 import { AuthController } from './modules/auth/auth.controllers.js';
-import getSocialGraphKafkaConsumer from './utils/kafka/getSocialGraphKafkaConsumer.js';
-import { SocialGraphEventConsumer } from './events/consumers/social-graph-event-consumer.js';
-import { OutboxWorker } from './modules/user/user.outboxWorker.js';
 import { redis } from './config/redisClient.js';
 
 export async function createApp() {
-  const producer = await getKafkaProducer();
-  const socialGraphKafkaConsumer = await getSocialGraphKafkaConsumer();
-
-  const userEventPublisher = new UserEventPublisher(producer);
   const userRepository = new UserRepository(prisma);
   const authRepository = new AuthRepository(prisma);
   const userService = new UserService(userRepository);
   const authService = new AuthService(authRepository);
   const userController = new UserController(userService);
   const authControllers = new AuthController(authService);
-  const socialGraphEventConsumer = new SocialGraphEventConsumer(socialGraphKafkaConsumer, producer, userService);
-  const outboxWorker = new OutboxWorker(prisma, userEventPublisher);
 
   const app = express();
 
@@ -101,9 +90,5 @@ export async function createApp() {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
 
-  return {
-    app,
-    socialGraphEventConsumer,
-    outboxWorker,
-  };
+  return app;
 }

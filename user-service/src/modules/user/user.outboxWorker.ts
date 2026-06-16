@@ -3,7 +3,9 @@ import { USER_EVENT_NAMES } from '../../events/topics.js';
 import { OutboxEvent, PrismaClient } from '../../generated/prisma/client.js';
 import {
   outboxCleanupDeletedTotal,
+  outboxDeadLetteredEventsGauge,
   outboxEventsClaimedTotal,
+  outboxEventsDeadLetteredTotal,
   outboxEventsPublishedTotal,
   outboxPendingEventsGauge,
   outboxPublishFailuresTotal,
@@ -95,6 +97,10 @@ export class OutboxWorker {
           WHERE id = ${outboxEvent.id};
         `;
 
+        if (isExhausted) {
+          outboxEventsDeadLetteredTotal.inc({ event_name: outboxEvent.eventName });
+        }
+
         logger.error(
           {
             error,
@@ -109,7 +115,7 @@ export class OutboxWorker {
       }
     }
 
-    await this.updateOutboxPendingEventsGauge();
+    await this.updateOutboxGauges();
   }
 
   private async recoverStaleProcessingEvents(): Promise<void> {
@@ -162,7 +168,7 @@ export class OutboxWorker {
     );
   }
 
-  private async updateOutboxPendingEventsGauge(): Promise<void> {
+  private async updateOutboxGauges(): Promise<void> {
     const pendingEventsCount = await this.prisma.outboxEvent.count({
       where: {
         status: {
@@ -174,6 +180,13 @@ export class OutboxWorker {
       },
     });
 
+    const deadLetteredEventsCount = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "OutboxEvent"
+      WHERE status = 'DEAD_LETTERED'::"OutboxEventStatus";
+    `;
+
     outboxPendingEventsGauge.set(pendingEventsCount);
+    outboxDeadLetteredEventsGauge.set(Number(deadLetteredEventsCount[0]?.count ?? 0));
   }
 }

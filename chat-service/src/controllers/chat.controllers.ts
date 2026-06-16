@@ -264,6 +264,9 @@ export class ChatController {
         forEveryone,
       });
 
+      const io = getSocketServer();
+      io.to(`conversation:${deletedMessage.conversationId}`).emit('chat:message:deleted', deletedMessage);
+
       res.status(StatusCodes.OK).json({
         success: true,
         message: 'Message deleted successfully',

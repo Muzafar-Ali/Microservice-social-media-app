@@ -139,7 +139,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         return;
       }
 
-      const createdMessage = await chatService.sendMessage({
+      const sendMessageResult = await chatService.sendMessage({
         senderId: currentUserId,
         conversationId: parsedPayload.data.conversationId,
         type: parsedPayload.data.type,
@@ -150,17 +150,19 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         attachments: parsedPayload.data.attachments ?? [],
       });
 
-      io.to(`conversation:${parsedPayload.data.conversationId}`).emit('chat:message:new', createdMessage);
+      if (sendMessageResult.created) {
+        io.to(`conversation:${parsedPayload.data.conversationId}`).emit('chat:message:new', sendMessageResult.message);
 
-      io.to(`conversation:${parsedPayload.data.conversationId}`).emit('conversation:update', {
-        conversationId: parsedPayload.data.conversationId,
-        lastMessageId: createdMessage.id,
-        lastMessageAt: createdMessage.createdAt,
-      });
+        io.to(`conversation:${parsedPayload.data.conversationId}`).emit('conversation:update', {
+          conversationId: parsedPayload.data.conversationId,
+          lastMessageId: sendMessageResult.message.id,
+          lastMessageAt: sendMessageResult.message.createdAt,
+        });
+      }
 
       acknowledgement?.({
         success: true,
-        data: createdMessage,
+        data: sendMessageResult.message,
       });
       chatSocketEventsTotal.inc({ event_name: 'chat:message:send', result: 'success' });
     } catch (error: any) {

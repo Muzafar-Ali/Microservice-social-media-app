@@ -104,6 +104,11 @@ export type MessageResponseDto = {
   deletedAt: string | null;
 };
 
+export type SendMessageResultDto = {
+  message: MessageResponseDto;
+  created: boolean;
+};
+
 export type BaseConversationDto = {
   id: string;
   type: 'DIRECT' | 'GROUP';

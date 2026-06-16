@@ -15,6 +15,7 @@ import {
   PaginatedMessagesResponseDto,
   RemoveParticipantResponseDto,
   RemoveReactionResponseDto,
+  SendMessageResultDto,
 } from '../types/chat.types.js';
 import mapConversation from '../utils/mapConversion.js';
 
@@ -187,7 +188,7 @@ export class ChatService {
       durationSec?: number | null;
       sortOrder?: number;
     }>;
-  }): Promise<MessageResponseDto> {
+  }): Promise<SendMessageResultDto> {
     const isParticipant = await this.chatRepository.isUserParticipant(params.conversationId, params.senderId);
 
     if (!isParticipant) {
@@ -204,7 +205,10 @@ export class ChatService {
     });
 
     if (existingMessage) {
-      return this.mapMessage(existingMessage);
+      return {
+        message: this.mapMessage(existingMessage),
+        created: false,
+      };
     }
 
     if (params.replyToMessageId) {
@@ -232,7 +236,10 @@ export class ChatService {
       attachments: params.attachments ?? [],
     });
 
-    return this.mapMessage(createdMessage);
+    return {
+      message: this.mapMessage(createdMessage),
+      created: true,
+    };
   }
 
   async getConversationMessages(params: {

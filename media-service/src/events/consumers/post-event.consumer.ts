@@ -5,6 +5,13 @@ import { postDeletedEventSchema, PostDeletedEvent } from '../../validations/medi
 import formatZodError from '../../utils/formatZodError.js';
 import logger from '../../utils/logger.js';
 import { KAFKA_TOPICS, POST_EVENT_NAMES } from '../topics.js';
+import {
+  kafkaConsumerFailuresTotal,
+  kafkaDlqMessagesTotal,
+  kafkaMessagesConsumedTotal,
+  kafkaOffsetCommitFailuresTotal,
+} from '../../monitoring/kafka.metrics.js';
+import { mediaCleanupEventsProcessedTotal } from '../../monitoring/media.metrics.js';
 
 class PostEventConsumer {
   private readonly maxProcessingAttempts = 3;
@@ -26,6 +33,7 @@ class PostEventConsumer {
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'empty_message' });
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty post event');
 
           await this.sendToDlq({
@@ -45,6 +53,7 @@ class PostEventConsumer {
         try {
           parsedJson = JSON.parse(rawValue) as { eventName?: string };
         } catch (error) {
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_json' });
           logger.error(
             { error, topic, partition, offset: message.offset, rawValue },
             'Received invalid JSON post event in media-service',
@@ -63,9 +72,11 @@ class PostEventConsumer {
 
         switch (parsedJson.eventName) {
           case POST_EVENT_NAMES.POST_DELETED: {
+            kafkaMessagesConsumedTotal.inc({ topic, event_name: POST_EVENT_NAMES.POST_DELETED });
             const safeEvent = postDeletedEventSchema.safeParse(parsedJson);
 
             if (!safeEvent.success) {
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_post_deleted_schema' });
               logger.error(formatZodError(safeEvent.error));
 
               await this.sendToDlq({
@@ -91,6 +102,7 @@ class PostEventConsumer {
           }
 
           default:
+            kafkaMessagesConsumedTotal.inc({ topic, event_name: parsedJson.eventName ?? 'unknown' });
             logger.debug(
               { topic, partition, offset: message.offset, eventName: parsedJson.eventName },
               'Ignoring post event in media-service',
@@ -102,7 +114,13 @@ class PostEventConsumer {
   }
 
   private async handlePostDeleted(event: PostDeletedEvent): Promise<void> {
-    await this.mediaService.cleanupPostMediaFromDeletedPost(event.eventId, event.data.media);
+    try {
+      await this.mediaService.cleanupPostMediaFromDeletedPost(event.eventId, event.data.media);
+      mediaCleanupEventsProcessedTotal.inc({ result: 'success' });
+    } catch (error) {
+      mediaCleanupEventsProcessedTotal.inc({ result: 'failure' });
+      throw error;
+    }
 
     logger.info(
       {
@@ -120,6 +138,7 @@ class PostEventConsumer {
         await operation();
         return;
       } catch (error) {
+        kafkaConsumerFailuresTotal.inc({ topic: context.topic, reason: context.reason });
         logger.warn(
           { error, attempt, maxAttempts: this.maxProcessingAttempts, ...context },
           'Post event processing attempt failed in media-service',
@@ -137,13 +156,21 @@ class PostEventConsumer {
   }
 
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
-    await this.consumer.commitOffsets([
-      {
-        topic,
-        partition,
-        offset: (BigInt(currentOffset) + BigInt(1)).toString(),
-      },
-    ]);
+    const nextOffset = (BigInt(currentOffset) + BigInt(1)).toString();
+
+    try {
+      await this.consumer.commitOffsets([
+        {
+          topic,
+          partition,
+          offset: nextOffset,
+        },
+      ]);
+    } catch (error) {
+      kafkaOffsetCommitFailuresTotal.inc({ topic });
+      logger.error({ error, topic, partition, nextOffset }, 'Failed to commit post Kafka offset in media-service');
+      throw error;
+    }
   }
 
   private async sendToDlq(context: FailedMessageContext): Promise<void> {
@@ -165,6 +192,12 @@ class PostEventConsumer {
           }),
         },
       ],
+    });
+
+    kafkaDlqMessagesTotal.inc({
+      source_topic: context.topic,
+      dlq_topic: KAFKA_TOPICS.MEDIA_SERVICE_POST_EVENTS_DLQ,
+      reason: context.reason,
     });
 
     logger.error(context, 'Sent post event to media-service DLQ');

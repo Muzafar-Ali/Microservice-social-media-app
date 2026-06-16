@@ -1,3 +1,5 @@
+import './observability/instrumentation.js';
+
 import { createApp } from './app.js';
 import { initRedis } from './config/redisClient.js';
 import PostEventConsumer from './events/consumers/post-event.consumer.js';

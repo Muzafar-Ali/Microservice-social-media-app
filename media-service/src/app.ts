@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import mediaRouter from './routes/media.routes.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.middleware.js';
 import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
+import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
 import MediaController from './controllers/media.controller.js';
 import MediaService from './services/media.service.js';
 import MediaRespository from './repositories/media.repository.js';
@@ -30,6 +31,9 @@ export async function createApp() {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   app.use(cookieParser());
+  app.use(metricsMiddleware);
+
+  app.get('/metrics', metricsHandler);
 
   app.use('/api/media', mediaRouter(mediaController));
 

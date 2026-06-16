@@ -4,6 +4,7 @@ import MediaRespository from '../repositories/media.repository.js';
 import { PostMediaUploadedDto } from '../validations/media.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
 import { PostDeletedMediaItem } from '../types/media-event-consumer.types.js';
+import { mediaAssetsDeletedTotal, mediaAssetsVerifiedTotal } from '../monitoring/media.metrics.js';
 
 class MediaService {
   private readonly postImageFolderPrefix = 'social-media-app/posts/images/';
@@ -32,9 +33,16 @@ class MediaService {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Uploaded media folder is not allowed');
     }
 
-    const cloudinaryAsset = await cloudinary.api.resource(publicId, {
-      resource_type: resourceType,
-    });
+    let cloudinaryAsset;
+
+    try {
+      cloudinaryAsset = await cloudinary.api.resource(publicId, {
+        resource_type: resourceType,
+      });
+    } catch (error) {
+      mediaAssetsVerifiedTotal.inc({ resource_type: resourceType, result: 'failure' });
+      throw error;
+    }
 
     if (!cloudinaryAsset?.secure_url || cloudinaryAsset.secure_url !== uploadedMedia.secureUrl) {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Uploaded media could not be verified');
@@ -43,6 +51,8 @@ class MediaService {
     if (cloudinaryAsset.resource_type !== resourceType) {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Uploaded media type mismatch');
     }
+
+    mediaAssetsVerifiedTotal.inc({ resource_type: resourceType, result: 'success' });
 
     return {
       type: resourceType,
@@ -63,10 +73,19 @@ class MediaService {
 
     await Promise.all(
       mediaWithPublicIds.map(async (item) => {
-        await cloudinary.uploader.destroy(item.publicId, {
-          resource_type: item.type === 'VIDEO' ? 'video' : 'image',
-          invalidate: true,
-        });
+        const resourceType = item.type === 'VIDEO' ? 'video' : 'image';
+
+        try {
+          await cloudinary.uploader.destroy(item.publicId, {
+            resource_type: resourceType,
+            invalidate: true,
+          });
+
+          mediaAssetsDeletedTotal.inc({ resource_type: resourceType, result: 'success' });
+        } catch (error) {
+          mediaAssetsDeletedTotal.inc({ resource_type: resourceType, result: 'failure' });
+          throw error;
+        }
       }),
     );
   };

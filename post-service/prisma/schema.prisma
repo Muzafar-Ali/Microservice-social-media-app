@@ -64,6 +64,7 @@ model PostLike {
 
   @@id([postId, userId])  // ensures 1 like per user per post
   @@index([userId])       // helps "all likes by a user"
+  @@index([postId, createdAt(sort: Desc), userId(sort: Desc)])
 }
 
 model PostComment {
@@ -78,6 +79,7 @@ model PostComment {
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@index([postId, createdAt])
+  @@index([postId, createdAt(sort: Desc), id(sort: Desc)])
   @@index([authorId])
 }
 

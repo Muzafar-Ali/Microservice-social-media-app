@@ -1,8 +1,14 @@
+import './observability/instrumentation.js';
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import config from './config/config.js';
+import logger from './utils/logger.js';
+import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
+import { gatewayProxyRequestsTotal } from './monitoring/gateway.metrics.js';
 
 const app = express();
+
+app.use(metricsMiddleware);
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -11,66 +17,65 @@ app.get('/health', (_req, res) => {
   });
 });
 
-// Route: /api/user/* -> user-service/*
-app.use(
-  '/api/user',
-  createProxyMiddleware({
-    target: config.userServiceUrl,
-    changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/user${path}`, // ✅ adds prefix back
-  }),
-);
+app.get('/metrics', metricsHandler);
 
-// Route: /api/users/* -> user-service/*
-app.use(
-  '/api/users',
+const createObservedProxy = (routePrefix: string, target: string, targetService: string) =>
   createProxyMiddleware({
-    target: config.userServiceUrl,
+    target,
     changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/users${path}`, // ✅ adds prefix back
-  }),
-);
-
-// Route: /api/auth/* -> user-service/*
-app.use(
-  '/api/auth',
-  createProxyMiddleware({
-    target: config.userServiceUrl,
-    changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/auth${path}`, // ✅ adds prefix back
-  }),
-);
-
-// Route: /api/media/* -> media-service/*
-app.use(
-  '/api/media',
-  createProxyMiddleware({
-    target: config.mediaServiceUrl,
-    changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/media${path}`, // ✅ adds prefix back
-  }),
-);
-
-// Route: /api/posts/* -> post-service/*
-app.use(
-  '/api/posts',
-  createProxyMiddleware({
-    target: config.postServiceLUrl,
-    changeOrigin: true,
-    pathRewrite: (path) => `/api/posts${path}`,
+    pathRewrite: (path, _req) => `${routePrefix}${path}`,
     on: {
       proxyReq: (proxyReq, req: any) => {
-        console.log(
-          `[web-gateway] proxy req ${req.method} ${req.originalUrl} -> ${config.postServiceLUrl}${proxyReq.path}`,
+        logger.info(
+          {
+            method: req.method,
+            originalUrl: req.originalUrl,
+            targetService,
+            target,
+            upstreamPath: proxyReq.path,
+          },
+          'gateway proxy request',
+        );
+      },
+      proxyRes: (proxyRes, req: any) => {
+        gatewayProxyRequestsTotal.inc({
+          target_service: targetService,
+          route: routePrefix,
+          result: 'success',
+          status_code: String(proxyRes.statusCode ?? 0),
+        });
+
+        logger.info(
+          {
+            method: req.method,
+            originalUrl: req.originalUrl,
+            targetService,
+            statusCode: proxyRes.statusCode,
+          },
+          'gateway proxy response',
         );
       },
       error: (err, req, res: any) => {
-        console.error(`[web-gateway] proxy error for ${req.method} ${req.originalUrl}`, {
-          message: err.message,
-          code: (err as NodeJS.ErrnoException).code,
-          stack: err.stack,
-          target: config.postServiceLUrl,
+        const request = req as any;
+
+        gatewayProxyRequestsTotal.inc({
+          target_service: targetService,
+          route: routePrefix,
+          result: 'failure',
+          status_code: '502',
         });
+
+        logger.error(
+          {
+            method: request.method,
+            originalUrl: request.originalUrl,
+            targetService,
+            target,
+            error: err.message,
+            code: (err as NodeJS.ErrnoException).code,
+          },
+          'gateway proxy error',
+        );
 
         if (!res.headersSent) {
           res.writeHead(502, { 'Content-Type': 'application/json' });
@@ -79,66 +84,58 @@ app.use(
         res.end(
           JSON.stringify({
             success: false,
-            message: 'post-service proxy failed',
+            message: `${targetService} proxy failed`,
             error: err.message,
             code: (err as NodeJS.ErrnoException).code ?? 'UNKNOWN',
           }),
         );
       },
     },
-  }),
-);
+  });
+
+// Route: /api/user/* -> user-service/*
+app.use('/api/user', createObservedProxy('/api/user', config.userServiceUrl, 'user-service'));
+
+// Route: /api/users/* -> user-service/*
+app.use('/api/users', createObservedProxy('/api/users', config.userServiceUrl, 'user-service'));
+
+// Route: /api/auth/* -> user-service/*
+app.use('/api/auth', createObservedProxy('/api/auth', config.userServiceUrl, 'user-service'));
+
+// Route: /api/media/* -> media-service/*
+app.use('/api/media', createObservedProxy('/api/media', config.mediaServiceUrl, 'media-service'));
+
+// Route: /api/posts/* -> post-service/*
+app.use('/api/posts', createObservedProxy('/api/posts', config.postServiceLUrl, 'post-service'));
 
 // Route: /api/chat/* -> chat-service/*
-app.use(
-  '/api/chat',
-  createProxyMiddleware({
-    target: config.chatServiceUrl,
-    changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/chat${path}`, // ✅ adds prefix back
-  }),
-);
+app.use('/api/chat', createObservedProxy('/api/chat', config.chatServiceUrl, 'chat-service'));
 
 // Route: /api/social-graph/* -> social graph service/*
 app.use(
   '/api/social-graph',
-  createProxyMiddleware({
-    target: config.socialGraphServiceUrl,
-    changeOrigin: true,
-    pathRewrite: (path, _req) => `/api/social-graph${path}`, // ✅ adds prefix back
-  }),
+  createObservedProxy('/api/social-graph', config.socialGraphServiceUrl, 'social-graph-service'),
 );
 
 const port = Number(process.env.PORT ?? 8088);
 
 const server = app.listen(port, () => {
-  console.log(`[web-gateway] listening on http://localhost:${port}`);
-  console.log(`  /api/auth  -> ${config.userServiceUrl}`);
-  console.log(`  /api/user  -> ${config.userServiceUrl}`);
-  console.log(`  /api/users -> ${config.userServiceUrl}`);
-  console.log(`  /api/media -> ${config.mediaServiceUrl}`);
-  console.log(`  /api/posts -> ${config.postServiceLUrl}`);
-  console.log(`  /api/chat  -> ${config.chatServiceUrl}`);
-  console.log(`  /api/social-graph  -> ${config.socialGraphServiceUrl}`);
+  logger.info({ port }, `[web-gateway] listening on http://localhost:${port}`);
 });
 
-// Graceful shutdown
 function gracefulShutdown(signal: string) {
-  console.log(`[web-gateway] ${signal} received. Shutting down gracefully...`);
+  logger.info({ signal }, '[web-gateway] shutting down gracefully');
 
-  // Stop accepting new connections, finish in-flight requests
   server.close(() => {
-    console.log('[web-gateway] All connections closed. Exiting.');
+    logger.info('[web-gateway] all connections closed');
     process.exit(0);
   });
 
-  // Force exit if something is stuck
   setTimeout(() => {
-    console.error('[web-gateway] Force shutdown after timeout');
+    logger.error('[web-gateway] force shutdown after timeout');
     process.exit(1);
   }, 10_000).unref();
 }
 
-// Handle Kubernetes + local shutdown signals
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // Kubernetes / docker stop
-process.on('SIGINT', () => gracefulShutdown('SIGINT')); // Ctrl+C
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

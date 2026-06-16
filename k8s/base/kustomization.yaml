@@ -32,6 +32,7 @@ resources:
   - deployments/chat-service.yaml
   - deployments/social-graph-service.yaml
   - deployments/social-graph-service-worker.yaml
+  - autoscaling/web-gateway-hpa.yaml
   - services/web-gateway.yaml
   - services/user-service.yaml
   - services/media-service.yaml

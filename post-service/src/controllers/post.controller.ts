@@ -261,11 +261,20 @@ export class PostController {
         throw new ApiErrorHandler(400, erroMessages);
       }
 
-      const posts = await this.postService.getPostsByUserId(safeParams.data.profileUserId, req.userId);
+      const safeQuery = gridCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getPostsByUserId(safeParams.data.profileUserId, req.userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
 
       res.status(200).json({
         success: true,
-        data: posts,
+        data: result,
       });
     } catch (error) {
       logger.error(error, 'Error in getPostByUserIdHandler');
@@ -286,11 +295,20 @@ export class PostController {
         throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
-      const posts = await this.postService.getMyPosts(userId);
+      const safeQuery = gridCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getMyPosts(userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
 
       res.status(200).json({
         success: true,
-        data: posts,
+        data: result,
       });
     } catch (error) {
       logger.error(error, 'Error in getMyPostsHandler');

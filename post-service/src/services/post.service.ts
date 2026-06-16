@@ -22,10 +22,22 @@ export class PostService {
     return this.requireVisiblePost(postId, viewerUserId);
   }
 
-  async getPostsByUserId(profileUserId: string, viewerUserId: string) {
+  async getPostsByUserId(profileUserId: string, viewerUserId: string, query: { limit?: number; cursor?: string }) {
     await this.requireProfileAccess(viewerUserId, profileUserId);
-    const posts = await this.postRepository.findPostsByUserId(profileUserId);
-    return posts.map((post) => mapUserFeedPost(post));
+    const limit = !query.limit || query.limit < 1 ? 30 : Math.min(query.limit, 50);
+    const result = await this.postRepository.findPostsByUserId(profileUserId, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    return {
+      items: result.posts.map((post) => mapUserFeedPost(post)),
+      pagination: {
+        limit,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
   }
 
   async getAllPosts(page: number, limit: number, skip: number) {
@@ -44,9 +56,21 @@ export class PostService {
     };
   }
 
-  async getMyPosts(userId: string) {
-    const posts = await this.postRepository.findPostsByUserId(userId);
-    return posts.map((post) => mapUserFeedPost(post));
+  async getMyPosts(userId: string, query: { limit?: number; cursor?: string }) {
+    const limit = !query.limit || query.limit < 1 ? 30 : Math.min(query.limit, 50);
+    const result = await this.postRepository.findPostsByUserId(userId, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    return {
+      items: result.posts.map((post) => mapUserFeedPost(post)),
+      pagination: {
+        limit,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
   }
 
   async getHomeFeed(currentUserId: string, query: { limit?: number; cursor?: string }) {

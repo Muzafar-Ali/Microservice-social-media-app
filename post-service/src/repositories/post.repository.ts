@@ -132,12 +132,29 @@ export class PostRepository {
     });
   }
 
-  async findPostsByUserId(profileUserId: string) {
-    return this.prisma.post.findMany({
+  async findPostsByUserId(profileUserId: string, options: { limit: number; cursor?: string }) {
+    const posts = await this.prisma.post.findMany({
       where: { authorId: profileUserId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: options.limit + 1,
+      ...(options.cursor
+        ? {
+            cursor: { id: options.cursor },
+            skip: 1,
+          }
+        : {}),
       select: userFeedPostSelect,
     });
+
+    const hasNextPage = posts.length > options.limit;
+    const slicedPosts = hasNextPage ? posts.slice(0, options.limit) : posts;
+    const nextCursor = hasNextPage && slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
+
+    return {
+      posts: slicedPosts,
+      nextCursor,
+      hasNextPage,
+    };
   }
 
   async findHomeFeed(options: { viewerUserId: string; limit: number; cursor?: string }): Promise<{

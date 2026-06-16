@@ -1,3 +1,4 @@
+import './observability/instrumentation.js';
 import { createApp } from './app.js';
 import { initRedis } from './config/redisClient.js';
 import http from 'http';

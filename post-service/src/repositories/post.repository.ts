@@ -97,6 +97,26 @@ export class PostRepository {
     });
   }
 
+  async findViewerLikedPostIds(viewerUserId: string, postIds: string[]) {
+    if (postIds.length === 0) {
+      return new Set<string>();
+    }
+
+    const likes = await this.prisma.postLike.findMany({
+      where: {
+        userId: viewerUserId,
+        postId: {
+          in: postIds,
+        },
+      },
+      select: {
+        postId: true,
+      },
+    });
+
+    return new Set(likes.map((like) => like.postId));
+  }
+
   async createPostLike(postId: string, userId: string) {
     try {
       return await this.prisma.postLike.create({

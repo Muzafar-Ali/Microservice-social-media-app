@@ -26,7 +26,9 @@ export class PostService {
       throw new ApiErrorHandler(404, 'Post not found');
     }
 
-    return mapUserFeedPost(post);
+    const [postWithViewerState] = await this.mapFeedPostsWithViewerState([post], viewerUserId);
+
+    return postWithViewerState;
   }
 
   async getPostsByUserId(profileUserId: string, viewerUserId: string, query: { limit?: number; cursor?: string }) {
@@ -38,7 +40,7 @@ export class PostService {
     });
 
     return {
-      items: result.posts.map((post) => mapUserFeedPost(post)),
+      items: await this.mapFeedPostsWithViewerState(result.posts, viewerUserId),
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -71,7 +73,7 @@ export class PostService {
     });
 
     return {
-      items: result.posts.map((post) => mapUserFeedPost(post)),
+      items: await this.mapFeedPostsWithViewerState(result.posts, userId),
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -95,6 +97,10 @@ export class PostService {
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
       cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
+    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
+      currentUserId,
+      result.posts.map((post) => post.id),
+    );
 
     return {
       items: result.posts.map((post) => {
@@ -112,6 +118,7 @@ export class PostService {
           },
           viewer: {
             userId: currentUserId,
+            likedByMe: likedPostIds.has(post.id),
           },
         };
       }),
@@ -138,6 +145,10 @@ export class PostService {
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
       cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
+    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
+      currentUserId,
+      result.posts.map((post) => post.id),
+    );
 
     return {
       items: result.posts.map((post) => {
@@ -155,6 +166,7 @@ export class PostService {
           },
           viewer: {
             userId: currentUserId,
+            likedByMe: likedPostIds.has(post.id),
           },
         };
       }),
@@ -182,6 +194,10 @@ export class PostService {
     const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
       cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
+    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
+      currentUserId,
+      result.posts.map((post) => post.id),
+    );
 
     return {
       items: result.posts.map((post) => {
@@ -199,6 +215,7 @@ export class PostService {
           },
           viewer: {
             userId: currentUserId,
+            likedByMe: likedPostIds.has(post.id),
           },
         };
       }),
@@ -329,7 +346,7 @@ export class PostService {
     });
 
     return {
-      items: result.posts.map((post: any) => mapUserFeedPost(post)),
+      items: await this.mapFeedPostsWithViewerState(result.posts, viewerUserId),
       pagination: {
         anchorPostId: result.anchorPostId,
         nextCursor: result.nextCursor,
@@ -349,7 +366,7 @@ export class PostService {
     });
 
     return {
-      items: result.posts.map((post) => mapUserFeedPost(post)),
+      items: await this.mapFeedPostsWithViewerState(result.posts, viewerUserId),
       pagination: {
         nextCursor: result.nextCursor,
         hasNextPage: result.hasNextPage,
@@ -592,6 +609,21 @@ export class PostService {
     if (!canAccess) {
       throw new ApiErrorHandler(404, 'Profile posts not found');
     }
+  }
+
+  private async mapFeedPostsWithViewerState(posts: any[], viewerUserId: string) {
+    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
+      viewerUserId,
+      posts.map((post) => post.id),
+    );
+
+    return posts.map((post) => ({
+      ...mapUserFeedPost(post),
+      viewer: {
+        userId: viewerUserId,
+        likedByMe: likedPostIds.has(post.id),
+      },
+    }));
   }
 
   private async requireVisiblePost(postId: string, viewerUserId: string) {

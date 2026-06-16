@@ -1,6 +1,5 @@
 import { StatusCodes } from 'http-status-codes';
 import { cloudinary } from '../config/cloudinaryClient.js';
-import MediaServiceEventPublisher from '../events/producer.js';
 import MediaRespository from '../repositories/media.repository.js';
 import { PostMediaUploadedDto } from '../validations/media.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
@@ -10,10 +9,7 @@ class MediaService {
   private readonly postImageFolderPrefix = 'social-media-app/posts/images/';
   private readonly postVideoFolderPrefix = 'social-media-app/posts/videos/';
 
-  constructor(
-    private mediaRepository: MediaRespository,
-    private mediaServiceEventPublisher: MediaServiceEventPublisher,
-  ) {}
+  constructor(private mediaRepository: MediaRespository) {}
 
   profileImageUploaded = async (userId: string, secureUrl: string, publicId: string) => {
     // await this.mediaServiceEventPublisher.publishProfileImageUpdatedEvent(

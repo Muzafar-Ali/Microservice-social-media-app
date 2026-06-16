@@ -26,6 +26,7 @@ resources:
   - deployments/user-service.yaml
   - deployments/user-service-worker.yaml
   - deployments/media-service.yaml
+  - deployments/media-service-worker.yaml
   - deployments/post-service.yaml
   - deployments/post-service-worker.yaml
   - deployments/chat-service.yaml

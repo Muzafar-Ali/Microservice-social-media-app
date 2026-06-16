@@ -571,31 +571,60 @@ export class ChatRepository {
       },
       select: {
         userId: true,
+        deletedAt: true,
       },
     });
 
     const existingUserIds = new Set(existingParticipants.map((participant: any) => participant.userId));
+    const softDeletedUserIds = existingParticipants
+      .filter((participant: any) => participant.deletedAt !== null)
+      .map((participant: any) => participant.userId);
 
     const newUserIds = params.participantUserIds.filter((userId) => !existingUserIds.has(userId));
+    const affectedUserIds = [...new Set([...newUserIds, ...softDeletedUserIds])];
 
-    if (newUserIds.length === 0) {
+    if (affectedUserIds.length === 0) {
       return [];
     }
 
-    await this.prisma.participant.createMany({
-      data: newUserIds.map((userId) => ({
-        conversationId: params.conversationId,
-        userId,
-        role: ParticipantRole.MEMBER,
-      })),
-      skipDuplicates: true,
+    await this.prisma.$transaction(async (transactionClient) => {
+      if (softDeletedUserIds.length > 0) {
+        await transactionClient.participant.updateMany({
+          where: {
+            conversationId: params.conversationId,
+            userId: {
+              in: softDeletedUserIds,
+            },
+          },
+          data: {
+            role: ParticipantRole.MEMBER,
+            joinedAt: new Date(),
+            lastReadAt: null,
+            lastReadMessageId: null,
+            mutedUntil: null,
+            archivedAt: null,
+            deletedAt: null,
+          },
+        });
+      }
+
+      if (newUserIds.length > 0) {
+        await transactionClient.participant.createMany({
+          data: newUserIds.map((userId) => ({
+            conversationId: params.conversationId,
+            userId,
+            role: ParticipantRole.MEMBER,
+          })),
+          skipDuplicates: true,
+        });
+      }
     });
 
     return this.prisma.participant.findMany({
       where: {
         conversationId: params.conversationId,
         userId: {
-          in: newUserIds,
+          in: affectedUserIds,
         },
         deletedAt: null,
       },

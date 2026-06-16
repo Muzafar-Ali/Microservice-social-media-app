@@ -545,6 +545,10 @@ export class ChatService {
       ),
     );
 
+    if (uniqueParticipantUserIds.length === 0) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'participantUserIds must include at least one user to add');
+    }
+
     const activeParticipantUserIds = new Set(
       conversation.participants
         .filter((participant: any) => participant.deletedAt === null)

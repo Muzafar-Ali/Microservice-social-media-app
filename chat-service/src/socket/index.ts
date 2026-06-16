@@ -35,7 +35,7 @@ export function getSocketServer() {
 export async function initSocketServer(httpServer: HttpServer, chatService: ChatService) {
   const io = new Server(httpServer, {
     cors: {
-      origin: ['http://localhost:3000'],
+      origin: config.corsAllowedOrigins,
       credentials: true,
     },
   });

@@ -9,6 +9,10 @@ const config = {
   jwtSecret: process.env.JWT_SECRET,
   dataBaseUrl: process.env.DATABASE_URL,
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  corsAllowedOrigins: (process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 };
 
 export default config;

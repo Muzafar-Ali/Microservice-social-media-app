@@ -1,5 +1,6 @@
 import './observability/instrumentation.js';
 import express from 'express';
+import cors from 'cors';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import config from './config/config.js';
 import logger from './utils/logger.js';
@@ -7,6 +8,13 @@ import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
 import { gatewayProxyRequestsTotal } from './monitoring/gateway.metrics.js';
 
 const app = express();
+
+app.use(
+  cors({
+    origin: config.corsAllowedOrigins,
+    credentials: true,
+  }),
+);
 
 app.use(metricsMiddleware);
 

@@ -193,7 +193,7 @@ export const editMessageSchema = z.object({
 });
 
 export const deleteMessageSchema = z.object({
-  forEveryone: z.boolean().default(false),
+  forEveryone: z.literal(true, { error: 'Only forEveryone delete is supported right now' }),
 });
 
 export const addReactionSchema = z.object({

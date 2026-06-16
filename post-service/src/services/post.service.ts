@@ -24,7 +24,8 @@ export class PostService {
 
   async getPostsByUserId(profileUserId: string, viewerUserId: string) {
     await this.requireProfileAccess(viewerUserId, profileUserId);
-    return this.postRepository.findPostsByUserId(profileUserId);
+    const posts = await this.postRepository.findPostsByUserId(profileUserId);
+    return posts.map((post) => mapUserFeedPost(post));
   }
 
   async getAllPosts(page: number, limit: number, skip: number) {
@@ -44,7 +45,8 @@ export class PostService {
   }
 
   async getMyPosts(userId: string) {
-    return this.postRepository.findPostsByUserId(userId);
+    const posts = await this.postRepository.findPostsByUserId(userId);
+    return posts.map((post) => mapUserFeedPost(post));
   }
 
   async getHomeFeed(currentUserId: string, query: { limit?: number; cursor?: string }) {

@@ -136,13 +136,7 @@ export class PostRepository {
     return this.prisma.post.findMany({
       where: { authorId: profileUserId },
       orderBy: { createdAt: 'desc' },
-      include: {
-        media: {
-          orderBy: { order: 'asc' },
-        },
-        likes: true,
-        comments: true,
-      },
+      select: userFeedPostSelect,
     });
   }
 

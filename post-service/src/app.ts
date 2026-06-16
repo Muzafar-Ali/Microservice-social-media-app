@@ -10,27 +10,11 @@ import { PostRepository } from './repositories/post.repository.js';
 import { PostService } from './services/post.service.js';
 import { PostController } from './controllers/post.controller.js';
 import prisma from './config/prismaClient.js';
-import { PostEventPublisher } from './events/post-events.producer.js';
-
-import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';
-import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
-import UserEventConsumer from './events/consumers/user-event.consumer.js';
-import { OutboxWorker } from './workers/outbox.worker.js';
-import getSocialGraphKafkaConsumer from './utils/kafka/getSocialGraphKafkaConsumer.js';
-import SocialGraphEventConsumer from './events/consumers/social-graph-event.consumer.js';
 
 export async function createApp() {
-  const producer = await getKafkaProducer();
-  const userKafkaConsumer = await getUserKafkaConsumer();
-  const socialGraphKafkaConsumer = await getSocialGraphKafkaConsumer();
-
   const postRepository = new PostRepository(prisma);
-  const postEventPublisher = new PostEventPublisher(producer);
   const postService = new PostService(postRepository);
   const postController = new PostController(postService);
-  const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, postService);
-  const socialGraphEventConsumer = new SocialGraphEventConsumer(socialGraphKafkaConsumer, producer, postService);
-  const outboxWorker = new OutboxWorker(prisma, postEventPublisher);
 
   const app = express();
 
@@ -61,10 +45,5 @@ export async function createApp() {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
 
-  return {
-    app,
-    userEventConsumer,
-    socialGraphEventConsumer,
-    outboxWorker,
-  };
+  return app;
 }

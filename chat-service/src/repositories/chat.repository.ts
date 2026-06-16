@@ -197,6 +197,10 @@ export class ChatRepository {
     });
   }
 
+  isMessageClientIdUniqueConflict(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
+
   async createMessage(params: CreateMessageInput) {
     return this.prisma.$transaction(async (transactionClient: any) => {
       const createdMessage = await transactionClient.message.create({

@@ -225,16 +225,38 @@ export class ChatService {
 
     const normalizedBody = typeof params.body === 'string' && params.body.trim().length > 0 ? params.body.trim() : null;
 
-    const createdMessage = await this.chatRepository.createMessage({
-      conversationId: params.conversationId,
-      senderId: params.senderId,
-      type: params.type,
-      body: normalizedBody,
-      metadata: params.metadata ?? null,
-      clientMessageId: params.clientMessageId,
-      replyToMessageId: params.replyToMessageId ?? null,
-      attachments: params.attachments ?? [],
-    });
+    let createdMessage;
+
+    try {
+      createdMessage = await this.chatRepository.createMessage({
+        conversationId: params.conversationId,
+        senderId: params.senderId,
+        type: params.type,
+        body: normalizedBody,
+        metadata: params.metadata ?? null,
+        clientMessageId: params.clientMessageId,
+        replyToMessageId: params.replyToMessageId ?? null,
+        attachments: params.attachments ?? [],
+      });
+    } catch (error) {
+      if (!this.chatRepository.isMessageClientIdUniqueConflict(error)) {
+        throw error;
+      }
+
+      const racedMessage = await this.chatRepository.findMessageByClientMessageId({
+        conversationId: params.conversationId,
+        clientMessageId: params.clientMessageId,
+      });
+
+      if (!racedMessage) {
+        throw error;
+      }
+
+      return {
+        message: this.mapMessage(racedMessage),
+        created: false,
+      };
+    }
 
     return {
       message: this.mapMessage(createdMessage),

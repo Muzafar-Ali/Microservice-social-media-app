@@ -17,6 +17,19 @@ const PORT = config.port;
 
 type RuntimeRole = 'api' | 'worker' | 'all';
 
+const shouldCreateKafkaTopicsOnStartup = () => {
+  return (process.env.KAFKA_CREATE_TOPICS_ON_STARTUP ?? 'true').toLowerCase() !== 'false';
+};
+
+const createKafkaTopicsIfEnabled = async () => {
+  if (!shouldCreateKafkaTopicsOnStartup()) {
+    logger.info('[Kafka] Topic creation skipped by KAFKA_CREATE_TOPICS_ON_STARTUP');
+    return;
+  }
+
+  await executeWithRetry('Kafka topic creation', createKafkaTopic);
+};
+
 // Allows the same Docker image to run as API-only, worker-only,
 // or both for local/dev and backward-compatible deployments
 const getRuntimeRole = (): RuntimeRole => {
@@ -45,7 +58,7 @@ const startHttpServer = async () => {
 const startBackgroundWorkers = async () => {
   // Worker runtime owns Kafka consumers and outbox publishing.
   // Keeping it separate from API pods allows independent scaling.
-  await executeWithRetry('Kafka topic creation', createKafkaTopic);
+  await createKafkaTopicsIfEnabled();
 
   const producer = await getKafkaProducer();
   const userKafkaConsumer = await getUserKafkaConsumer();

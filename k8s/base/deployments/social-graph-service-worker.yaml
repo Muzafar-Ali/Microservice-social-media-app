@@ -67,6 +67,8 @@ spec:
           env:
             - name: SERVICE_RUNTIME_ROLE
               value: "worker"
+            - name: KAFKA_CREATE_TOPICS_ON_STARTUP
+              value: "false"
             - name: SERVICE_NAME
               value: "social-graph-service-worker"
             - name: DATABASE_URL

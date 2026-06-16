@@ -97,7 +97,6 @@ export const createPostSchema = z
 
 export const updatePostSchema = z
   .object({
-    postId: z.string().min(1, 'postId is required'),
     content: z.string().trim().max(2200).optional(), // IG caption limit is ~2200 chars
   })
   .refine((data) => data.content !== undefined, {
@@ -226,7 +225,7 @@ export const userCreatedPayloadSchema = z.object({
   displayName: z.string().nullable(),
   profileImage: z
     .object({
-      secureUrl: z.string().url(),
+      secureUrl: z.url(),
       publicId: z.string().min(1),
     })
     .nullable(),

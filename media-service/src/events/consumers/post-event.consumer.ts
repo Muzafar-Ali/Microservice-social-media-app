@@ -79,16 +79,13 @@ class PostEventConsumer {
               return;
             }
 
-            await this.processWithRetry(
-              () => this.handlePostDeleted(safeEvent.data),
-              {
-                topic,
-                partition,
-                offset: message.offset,
-                rawValue,
-                reason: 'Retry exhausted while processing post.deleted',
-              },
-            );
+            await this.processWithRetry(() => this.handlePostDeleted(safeEvent.data), {
+              topic,
+              partition,
+              offset: message.offset,
+              rawValue,
+              reason: 'Retry exhausted while processing post.deleted',
+            });
             await this.commitNextOffset(topic, partition, message.offset);
             return;
           }

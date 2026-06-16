@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: social-graph-service
+  name: social-graph-service-worker
   namespace: social-media
   labels:
-    app.kubernetes.io/name: social-graph-service
-    app.kubernetes.io/component: application
+    app.kubernetes.io/name: social-graph-service-worker
+    app.kubernetes.io/component: worker
   annotations:
     app.kubernetes.io/source-path: "social-graph-service"
 spec:
-  replicas: 2
+  replicas: 1
   revisionHistoryLimit: 3
   selector:
     matchLabels:
-      app.kubernetes.io/name: social-graph-service
-      app.kubernetes.io/component: application
+      app.kubernetes.io/name: social-graph-service-worker
+      app.kubernetes.io/component: worker
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -23,8 +23,8 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: social-graph-service
-        app.kubernetes.io/component: application
+        app.kubernetes.io/name: social-graph-service-worker
+        app.kubernetes.io/component: worker
     spec:
       terminationGracePeriodSeconds: 30
       securityContext:
@@ -56,12 +56,9 @@ spec:
               drop:
                 - ALL
       containers:
-        - name: social-graph-service
+        - name: social-graph-service-worker
           image: social-media/social-graph-service:latest
           imagePullPolicy: IfNotPresent
-          ports:
-            - name: http
-              containerPort: 4005
           envFrom:
             - configMapRef:
                 name: social-graph-service-config
@@ -69,38 +66,14 @@ spec:
                 name: social-graph-service-secret
           env:
             - name: SERVICE_RUNTIME_ROLE
-              value: "api"
-            - name: PORT
-              valueFrom:
-                configMapKeyRef:
-                  name: social-graph-service-config
-                  key: PORT
+              value: "worker"
             - name: SERVICE_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: social-graph-service-config
-                  key: SERVICE_NAME
+              value: "social-graph-service-worker"
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
                   name: social-graph-service-secret
                   key: DATABASE_URL
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 15
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 6
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: http
-            initialDelaySeconds: 45
-            periodSeconds: 20
-            timeoutSeconds: 5
-            failureThreshold: 6
           resources:
             requests:
               cpu: 100m

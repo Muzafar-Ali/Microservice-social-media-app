@@ -30,8 +30,7 @@ class MediaService {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Only image and video uploads are allowed');
     }
 
-    const expectedFolderPrefix =
-      resourceType === 'image' ? this.postImageFolderPrefix : this.postVideoFolderPrefix;
+    const expectedFolderPrefix = resourceType === 'image' ? this.postImageFolderPrefix : this.postVideoFolderPrefix;
 
     if (!publicId.startsWith(expectedFolderPrefix)) {
       throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Uploaded media folder is not allowed');

@@ -11,21 +11,10 @@ import { SocialGraphService } from './services/socialGraph.service.js';
 import { SocialGraphController } from './controllers/socialGraph.controllers.js';
 import prisma from './config/prismaClient.js';
 
-import getKafkaProducer from './utils/kafka/getKafkaProducer.js';
-import getUserKafkaConsumer from './utils/kafka/getUserKafkaConsumer.js';
-import UserEventConsumer from './events/consumers/user-event.consumer.js';
-import { OutboxWorker } from './workers/outbox.worker.js';
-
 export const createApp = async () => {
-  const producer = await getKafkaProducer();
-  const userKafkaConsumer = await getUserKafkaConsumer();
-
   const socialGraphRepository = new SocialGraphRepository(prisma);
-  const socialGraphEventPublisher = new SocialGraphEventPublisher(producer);
   const socialGraphService = new SocialGraphService(socialGraphRepository);
   const socialGraphController = new SocialGraphController(socialGraphService);
-  const userEventConsumer = new UserEventConsumer(userKafkaConsumer, producer, socialGraphService);
-  const outboxWorker = new OutboxWorker(prisma, socialGraphEventPublisher);
 
   const app = express();
 
@@ -54,9 +43,5 @@ export const createApp = async () => {
   app.use(notFoundHandler);
   app.use(globalErrorHandler);
 
-  return {
-    app,
-    userEventConsumer,
-    outboxWorker,
-  };
+  return app;
 };

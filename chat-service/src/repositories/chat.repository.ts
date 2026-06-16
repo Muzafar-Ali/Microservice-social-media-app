@@ -69,7 +69,6 @@ export class ChatRepository {
   }
 
   async createGroupConversation(params: { creatorUserId: string; title?: string; participantUserIds: string[] }) {
-    
     const uniqueParticipantUserIds = Array.from(new Set([params.creatorUserId, ...params.participantUserIds]));
 
     return this.prisma.conversation.create({

@@ -19,7 +19,7 @@ async function bootstrap() {
       logger.info(`app is listening at ${PORT}`);
     });
   } catch (err) {
-    logger.error({err}, '❌ Failed to start app');
+    logger.error({ err }, '❌ Failed to start app');
     process.exit(1);
   }
 }

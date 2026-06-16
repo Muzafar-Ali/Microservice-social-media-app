@@ -65,28 +65,54 @@ export const markConversationReadSchema = z.object({
 /**
  * Message attachment schemas
  */
-export const messageAttachmentInputSchema = z.object({
-  type: attachmentTypeSchema,
-  url: z.url('attachment url must be a valid URL'),
-  thumbnailUrl: z.url('thumbnailUrl must be a valid URL').nullable().optional(),
-  mimeType: z.string().trim().max(255, 'mimeType cannot exceed 255 characters').nullable().optional(),
-  fileName: z.string().trim().max(255, 'fileName cannot exceed 255 characters').nullable().optional(),
-  sizeBytes: z
-    .number()
-    .int('sizeBytes must be an integer')
-    .positive('sizeBytes must be positive')
-    .nullable()
-    .optional(),
-  width: z.number().int('width must be an integer').positive('width must be positive').nullable().optional(),
-  height: z.number().int('height must be an integer').positive('height must be positive').nullable().optional(),
-  durationSec: z
-    .number()
-    .int('durationSec must be an integer')
-    .positive('durationSec must be positive')
-    .nullable()
-    .optional(),
-  sortOrder: z.number().int('sortOrder must be an integer').min(0, 'sortOrder cannot be negative').default(0),
-});
+export const messageAttachmentInputSchema = z
+  .object({
+    type: attachmentTypeSchema,
+    url: z.url('attachment url must be a valid URL'),
+    thumbnailUrl: z.url('thumbnailUrl must be a valid URL').nullable().optional(),
+    mimeType: z.string().trim().max(255, 'mimeType cannot exceed 255 characters').nullable().optional(),
+    fileName: z.string().trim().max(255, 'fileName cannot exceed 255 characters').nullable().optional(),
+    sizeBytes: z
+      .number()
+      .int('sizeBytes must be an integer')
+      .positive('sizeBytes must be positive')
+      .nullable()
+      .optional(),
+    width: z.number().int('width must be an integer').positive('width must be positive').nullable().optional(),
+    height: z.number().int('height must be an integer').positive('height must be positive').nullable().optional(),
+    durationSec: z
+      .number()
+      .int('durationSec must be an integer')
+      .positive('durationSec must be positive')
+      .nullable()
+      .optional(),
+    sortOrder: z.number().int('sortOrder must be an integer').min(0, 'sortOrder cannot be negative').default(0),
+  })
+  .superRefine((attachment, context) => {
+    if (!attachment.url.startsWith('https://')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['url'],
+        message: 'attachment url must use HTTPS',
+      });
+    }
+
+    if (attachment.thumbnailUrl && !attachment.thumbnailUrl.startsWith('https://')) {
+      context.addIssue({
+        code: 'custom',
+        path: ['thumbnailUrl'],
+        message: 'thumbnailUrl must use HTTPS',
+      });
+    }
+
+    if (attachment.type === 'VIDEO' && !attachment.thumbnailUrl) {
+      context.addIssue({
+        code: 'custom',
+        path: ['thumbnailUrl'],
+        message: 'video attachments require thumbnailUrl',
+      });
+    }
+  });
 
 /**
  * Message schemas
@@ -130,6 +156,18 @@ export const sendMessageSchema = z
         code: 'custom',
         path: ['attachments'],
         message: `${value.type} messages must include at least one attachment`,
+      });
+    }
+
+    if (['IMAGE', 'VIDEO', 'AUDIO', 'FILE'].includes(value.type)) {
+      value.attachments.forEach((attachment, index) => {
+        if (attachment.type !== value.type) {
+          context.addIssue({
+            code: 'custom',
+            path: ['attachments', index, 'type'],
+            message: `attachment type must match ${value.type} message type`,
+          });
+        }
       });
     }
 

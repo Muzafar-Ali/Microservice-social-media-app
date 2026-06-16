@@ -17,10 +17,17 @@ valid_direct_conversations AS (
     "userIds"[1] || ':' || "userIds"[2] AS "directKey"
   FROM direct_participants
   WHERE "participantCount" = 2
+),
+unique_direct_keys AS (
+  SELECT "directKey"
+  FROM valid_direct_conversations
+  GROUP BY "directKey"
+  HAVING COUNT(*) = 1
 )
 UPDATE "Conversation" c
 SET "directKey" = vdc."directKey"
 FROM valid_direct_conversations vdc
+JOIN unique_direct_keys udk ON udk."directKey" = vdc."directKey"
 WHERE c.id = vdc."conversationId";
 
 CREATE UNIQUE INDEX "Conversation_directKey_key" ON "Conversation"("directKey");

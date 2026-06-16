@@ -11,6 +11,10 @@ import { CreateMessageInput } from '../types/chat.types.js';
 export class ChatRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  private buildDirectConversationKey(userA: string, userB: string) {
+    return [userA, userB].sort().join(':');
+  }
+
   async findConversationById(conversationId: string) {
     return this.prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -26,13 +30,20 @@ export class ChatRepository {
   }
 
   async findExistingDirectConversation(userA: string, userB: string) {
+    const directKey = this.buildDirectConversationKey(userA, userB);
+
     return this.prisma.conversation.findFirst({
       where: {
         type: ConversationType.DIRECT,
-        AND: [
-          { participants: { some: { userId: userA } } },
-          { participants: { some: { userId: userB } } },
-          { participants: { none: { userId: { notIn: [userA, userB] } } } },
+        OR: [
+          { directKey },
+          {
+            AND: [
+              { participants: { some: { userId: userA } } },
+              { participants: { some: { userId: userB } } },
+              { participants: { none: { userId: { notIn: [userA, userB] } } } },
+            ],
+          },
         ],
       },
       include: {
@@ -43,9 +54,12 @@ export class ChatRepository {
   }
 
   async createDirectConversation(creatorUserId: string, otherUserId: string) {
+    const directKey = this.buildDirectConversationKey(creatorUserId, otherUserId);
+
     return this.prisma.conversation.create({
       data: {
         type: ConversationType.DIRECT,
+        directKey,
         participants: {
           createMany: {
             data: [
@@ -66,6 +80,10 @@ export class ChatRepository {
         lastMessage: true,
       },
     });
+  }
+
+  isDirectConversationUniqueConflict(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
 
   async createGroupConversation(params: { creatorUserId: string; title?: string; participantUserIds: string[] }) {

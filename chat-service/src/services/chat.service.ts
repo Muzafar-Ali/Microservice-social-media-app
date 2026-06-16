@@ -77,10 +77,26 @@ export class ChatService {
       return mapConversation(existingConversation);
     }
 
-    const createdConversation = await this.chatRepository.createDirectConversation(
-      params.creatorUserId,
-      params.participantUserId,
-    );
+    let createdConversation;
+
+    try {
+      createdConversation = await this.chatRepository.createDirectConversation(
+        params.creatorUserId,
+        params.participantUserId,
+      );
+    } catch (error) {
+      if (!this.chatRepository.isDirectConversationUniqueConflict(error)) {
+        throw error;
+      }
+
+      const racedConversation = await this.chatRepository.findExistingDirectConversation(
+        params.creatorUserId,
+        params.participantUserId,
+      );
+
+      if (racedConversation) return mapConversation(racedConversation);
+      throw error;
+    }
 
     return mapConversation(createdConversation);
   }

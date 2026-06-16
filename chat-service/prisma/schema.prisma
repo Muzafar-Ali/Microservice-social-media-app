@@ -37,6 +37,7 @@ enum AttachmentType {
 model Conversation {
   id             String            @id @default(uuid())
   type           ConversationType
+  directKey      String?           @unique
   title          String?
   createdBy      String?
   createdAt      DateTime          @default(now())

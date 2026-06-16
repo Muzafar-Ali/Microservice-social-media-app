@@ -314,6 +314,40 @@ export class ChatRepository {
     });
   }
 
+  async countUnreadMessagesForConversations(params: {
+    userId: string;
+    readStates: Array<{ conversationId: string; lastReadAt?: Date | null }>;
+  }) {
+    if (params.readStates.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const unreadRows = await this.prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        deletedAt: null,
+        senderId: {
+          not: params.userId,
+        },
+        OR: params.readStates.map((readState) => ({
+          conversationId: readState.conversationId,
+          ...(readState.lastReadAt
+            ? {
+                createdAt: {
+                  gt: readState.lastReadAt,
+                },
+              }
+            : {}),
+        })),
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    return new Map(unreadRows.map((row) => [row.conversationId, row._count._all]));
+  }
+
   async getLastMessage(conversationId: string) {
     return this.prisma.message.findFirst({
       where: {

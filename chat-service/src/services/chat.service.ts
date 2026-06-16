@@ -125,32 +125,34 @@ export class ChatService {
   async listMyConversations(userId: string): Promise<ConversationListItemDto[]> {
     const conversations = await this.chatRepository.listUserConversations(userId);
 
-    const conversationListItems = await Promise.all(
-      conversations.map(async (conversation: any) => {
-        const currentParticipant = await this.chatRepository.findParticipant(conversation.id, userId);
+    const readStates = conversations.map((conversation: any) => {
+      const currentParticipant = conversation.participants.find((participant: any) => participant.userId === userId);
 
-        const unreadCount = await this.chatRepository.countUnreadMessages({
-          conversationId: conversation.id,
-          userId,
-          lastReadAt: currentParticipant?.lastReadAt ?? null,
-        });
+      return {
+        conversationId: conversation.id,
+        lastReadAt: currentParticipant?.lastReadAt ?? null,
+      };
+    });
 
-        return {
-          ...mapConversation(conversation),
-          lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
-          unreadCount,
-          lastMessage: conversation.lastMessage
-            ? {
-                id: conversation.lastMessage.id,
-                senderId: conversation.lastMessage.senderId,
-                type: conversation.lastMessage.type,
-                body: conversation.lastMessage.body ?? null,
-                createdAt: conversation.lastMessage.createdAt.toISOString(),
-              }
-            : null,
-        };
-      }),
-    );
+    const unreadCountsByConversationId = await this.chatRepository.countUnreadMessagesForConversations({
+      userId,
+      readStates,
+    });
+
+    const conversationListItems = conversations.map((conversation: any) => ({
+      ...mapConversation(conversation),
+      lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
+      unreadCount: unreadCountsByConversationId.get(conversation.id) ?? 0,
+      lastMessage: conversation.lastMessage
+        ? {
+            id: conversation.lastMessage.id,
+            senderId: conversation.lastMessage.senderId,
+            type: conversation.lastMessage.type,
+            body: conversation.lastMessage.body ?? null,
+            createdAt: conversation.lastMessage.createdAt.toISOString(),
+          }
+        : null,
+    }));
 
     return conversationListItems;
   }

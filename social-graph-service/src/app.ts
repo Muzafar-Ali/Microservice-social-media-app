@@ -5,8 +5,8 @@ import cookieParser from 'cookie-parser';
 import socialGraphRoutes from './routes/socialGraph.routes.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.middleware.js';
 import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
+import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
 import { SocialGraphRepository } from './repository/socialGraph.repository.js';
-import { SocialGraphEventPublisher } from './events/socialGraph-producer.js';
 import { SocialGraphService } from './services/socialGraph.service.js';
 import { SocialGraphController } from './controllers/socialGraph.controllers.js';
 import prisma from './config/prismaClient.js';
@@ -32,11 +32,13 @@ export const createApp = async () => {
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
 
-  // app.use(metricsMiddleware);
+  app.use(metricsMiddleware);
 
   app.get('/health', (_req, res) => {
-    res.send('social graps service Health is ok');
+    res.send('social graph service Health is ok');
   });
+
+  app.get('/metrics', metricsHandler);
 
   app.use('/api/social-graph', socialGraphRoutes(socialGraphController));
 

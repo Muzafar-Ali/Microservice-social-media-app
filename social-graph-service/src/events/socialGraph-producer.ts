@@ -9,6 +9,7 @@ import {
 } from '../types/social-graph-event-publisher.types.js';
 import { FollowStatus } from '../generated/prisma/enums.js';
 import config from '../config/config.js';
+import { kafkaMessagesPublishedTotal, kafkaPublishFailuresTotal } from '../monitoring/kafka.metrics.js';
 
 export class SocialGraphEventPublisher {
   private readonly producerServiceName = config.serviceName;
@@ -89,7 +90,17 @@ export class SocialGraphEventPublisher {
         },
         'Published social graph event',
       );
+
+      kafkaMessagesPublishedTotal.inc({
+        topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS,
+        event_name: event.eventName,
+      });
     } catch (error) {
+      kafkaPublishFailuresTotal.inc({
+        topic: KAFKA_TOPICS.SOCIAL_GRAPH_EVENTS,
+        event_name: event.eventName,
+      });
+
       logger.error(
         {
           error,

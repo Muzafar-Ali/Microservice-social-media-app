@@ -6,6 +6,11 @@ import logger from '../utils/logger.js';
 import config from '../config/config.js';
 import { ChatService } from '../services/chat.service.js';
 import { registerChatSocketHandlers } from './chat.socket.js';
+import {
+  chatSocketActiveConnections,
+  chatSocketConnectionsTotal,
+  chatSocketDisconnectionsTotal,
+} from '../monitoring/chat.metrics.js';
 
 let ioInstance: Server | null = null;
 
@@ -44,6 +49,9 @@ export function initSocketServer(httpServer: HttpServer, chatService: ChatServic
 
     logger.info({ userId, socketId: socket.id }, '✅ socket connected');
 
+    chatSocketConnectionsTotal.inc();
+    chatSocketActiveConnections.inc();
+
     const presenceOnline = await presenceService.markOnline(userId, socket.id);
 
     io.emit('presence:update', presenceOnline);
@@ -69,6 +77,9 @@ export function initSocketServer(httpServer: HttpServer, chatService: ChatServic
 
     socket.on('disconnect', async () => {
       logger.info({ userId, socketId: socket.id }, '❌ socket disconnected');
+
+      chatSocketDisconnectionsTotal.inc();
+      chatSocketActiveConnections.dec();
 
       const presenceOffline = await presenceService.markOfflineIfLastSocket(userId, socket.id);
 

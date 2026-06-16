@@ -68,6 +68,8 @@ spec:
             - secretRef:
                 name: user-service-secret
           env:
+            - name: SERVICE_RUNTIME_ROLE
+              value: "api"
             - name: PORT
               valueFrom:
                 configMapKeyRef:

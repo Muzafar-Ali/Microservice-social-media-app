@@ -10,6 +10,7 @@ import {
 } from '../validations/chat.validation.js';
 import formatZodError from '../utils/formatZodError.js';
 import logger from '../utils/logger.js';
+import { chatSocketEventsTotal } from '../monitoring/chat.metrics.js';
 
 type AuthenticatedSocket = Socket & {
   data: {
@@ -62,6 +63,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
       const errorMessages = formatZodError(parsedPayload.error);
 
       emitSocketError(socket, 'chat:room:join', errorMessages ?? 'Invalid payload');
+      chatSocketEventsTotal.inc({ event_name: 'chat:room:join', result: 'failure' });
 
       return;
     }
@@ -70,6 +72,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
 
     if (!isParticipant) {
       emitSocketError(socket, 'chat:room:join', 'You are not a participant of this conversation');
+      chatSocketEventsTotal.inc({ event_name: 'chat:room:join', result: 'failure' });
       return;
     }
 
@@ -85,6 +88,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
     );
 
     socket.emit('chat:room:joined', { conversationId: parsedPayload.data.conversationId });
+    chatSocketEventsTotal.inc({ event_name: 'chat:room:join', result: 'success' });
   });
 
   // ---- Leave a conversation room after payload validation ----
@@ -95,6 +99,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
       const errorMessages = formatZodError(parsedPayload.error);
 
       emitSocketError(socket, 'chat:room:leave', errorMessages ?? 'Invalid payload');
+      chatSocketEventsTotal.inc({ event_name: 'chat:room:leave', result: 'failure' });
 
       return;
     }
@@ -111,6 +116,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
     );
 
     socket.emit('chat:room:left', { conversationId: parsedPayload.data.conversationId });
+    chatSocketEventsTotal.inc({ event_name: 'chat:room:leave', result: 'success' });
   });
 
   // ---- Send message (validate payload + persist message + broadcast updates) ----
@@ -123,6 +129,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         const errorMessage = errorMessages ?? 'Invalid payload';
 
         emitSocketError(socket, 'chat:message:send', errorMessage);
+        chatSocketEventsTotal.inc({ event_name: 'chat:message:send', result: 'failure' });
 
         acknowledgement?.({
           success: false,
@@ -155,10 +162,12 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         success: true,
         data: createdMessage,
       });
+      chatSocketEventsTotal.inc({ event_name: 'chat:message:send', result: 'success' });
     } catch (error: any) {
       const errorMessage = error?.message ?? 'Unexpected error while sending message';
 
       emitSocketError(socket, 'chat:message:send', errorMessage);
+      chatSocketEventsTotal.inc({ event_name: 'chat:message:send', result: 'failure' });
 
       acknowledgement?.({
         success: false,
@@ -176,6 +185,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
       const errorMessage = errorMessages ?? 'Invalid payload';
 
       emitSocketError(socket, 'chat:typing:start', errorMessage);
+      chatSocketEventsTotal.inc({ event_name: 'chat:typing:start', result: 'failure' });
       return;
     }
 
@@ -183,6 +193,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
 
     if (!isParticipant) {
       emitSocketError(socket, 'chat:typing:start', 'You are not a participant of this conversation');
+      chatSocketEventsTotal.inc({ event_name: 'chat:typing:start', result: 'failure' });
       return;
     }
 
@@ -191,6 +202,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
       userId: currentUserId,
       isTyping: true,
     });
+    chatSocketEventsTotal.inc({ event_name: 'chat:typing:start', result: 'success' });
   });
 
   // ---- Typing stop indicator (validate + membership check + notify room) ----
@@ -201,6 +213,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
       const errorMessages = formatZodError(parsedPayload.error);
 
       emitSocketError(socket, 'chat:typing:stop', errorMessages ?? 'Invalid payload');
+      chatSocketEventsTotal.inc({ event_name: 'chat:typing:stop', result: 'failure' });
       return;
     }
 
@@ -208,6 +221,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
 
     if (!isParticipant) {
       emitSocketError(socket, 'chat:typing:stop', 'You are not a participant of this conversation');
+      chatSocketEventsTotal.inc({ event_name: 'chat:typing:stop', result: 'failure' });
       return;
     }
 
@@ -216,6 +230,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
       userId: currentUserId,
       isTyping: false,
     });
+    chatSocketEventsTotal.inc({ event_name: 'chat:typing:stop', result: 'success' });
   });
 
   // ---- Mark conversation as read (validate + update read state + notify others) ----
@@ -227,6 +242,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         const errorMessages = formatZodError(parsedPayload.error);
 
         emitSocketError(socket, 'chat:message:read', errorMessages ?? 'Invalid payload');
+        chatSocketEventsTotal.inc({ event_name: 'chat:message:read', result: 'failure' });
 
         acknowledgement?.({
           success: false,
@@ -250,10 +266,12 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         success: true,
         data: readState,
       });
+      chatSocketEventsTotal.inc({ event_name: 'chat:message:read', result: 'success' });
     } catch (error: any) {
       const errorMessage = error?.message ?? 'Unexpected error while marking conversation read';
 
       emitSocketError(socket, 'chat:message:read', errorMessage);
+      chatSocketEventsTotal.inc({ event_name: 'chat:message:read', result: 'failure' });
 
       acknowledgement?.({
         success: false,
@@ -272,6 +290,7 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         const errorMessage = errorMessages ?? 'Invalid payload';
 
         emitSocketError(socket, 'chat:message:delivered', errorMessage);
+        chatSocketEventsTotal.inc({ event_name: 'chat:message:delivered', result: 'failure' });
 
         acknowledgement?.({
           success: false,
@@ -297,10 +316,12 @@ export function registerChatSocketHandlers(io: Server, socket: AuthenticatedSock
         success: true,
         data: deliveryState,
       });
+      chatSocketEventsTotal.inc({ event_name: 'chat:message:delivered', result: 'success' });
     } catch (error: any) {
       const errorMessage = error?.message ?? 'Unexpected error while marking message delivered';
 
       emitSocketError(socket, 'chat:message:delivered', errorMessage);
+      chatSocketEventsTotal.inc({ event_name: 'chat:message:delivered', result: 'failure' });
 
       acknowledgement?.({
         success: false,

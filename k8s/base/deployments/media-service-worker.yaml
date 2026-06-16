@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-service-worker
+  namespace: social-media
+  labels:
+    app.kubernetes.io/name: media-service-worker
+    app.kubernetes.io/component: worker
+  annotations:
+    app.kubernetes.io/source-path: "media-service"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: media-service-worker
+      app.kubernetes.io/component: worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: media-service-worker
+        app.kubernetes.io/component: worker
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: media-service-worker
+          image: social-media/media-service:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: media-service-config
+            - secretRef:
+                name: media-service-secret
+          env:
+            - name: SERVICE_RUNTIME_ROLE
+              value: "worker"
+            - name: KAFKA_CREATE_TOPICS_ON_STARTUP
+              value: "false"
+            - name: SERVICE_NAME
+              value: "media-service-worker"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL

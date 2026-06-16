@@ -85,6 +85,7 @@ enum OutboxEventStatus {
   PROCESSING
   PUBLISHED
   FAILED
+  DEAD_LETTERED
 }
 
 model OutboxEvent {

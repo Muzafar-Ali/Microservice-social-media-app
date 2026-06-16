@@ -65,6 +65,8 @@ spec:
             - secretRef:
                 name: post-service-secret
           env:
+            - name: SERVICE_RUNTIME_ROLE
+              value: "api"
             - name: PORT
               valueFrom:
                 configMapKeyRef:

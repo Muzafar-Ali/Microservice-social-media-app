@@ -7,6 +7,15 @@ import {
   PostUpdatedEventPayload,
 } from '../types/post-event-publisher.types.js';
 import logger from '../utils/logger.js';
+import {
+  outboxCleanupDeletedTotal,
+  outboxDeadLetteredEventsGauge,
+  outboxEventsClaimedTotal,
+  outboxEventsDeadLetteredTotal,
+  outboxEventsPublishedTotal,
+  outboxPendingEventsGauge,
+  outboxPublishFailuresTotal,
+} from '../monitoring/outbox.metrics.js';
 
 export class OutboxWorker {
   private readonly maxRetries = 5;
@@ -42,6 +51,8 @@ export class OutboxWorker {
     });
 
     for (const outboxEvent of claimedEvents) {
+      outboxEventsClaimedTotal.inc({ event_name: outboxEvent.eventName });
+
       try {
         switch (outboxEvent.eventName) {
           case POST_EVENT_NAMES.POST_CREATED:
@@ -78,7 +89,10 @@ export class OutboxWorker {
             error: null,
           },
         });
+
+        outboxEventsPublishedTotal.inc({ event_name: outboxEvent.eventName });
       } catch (error) {
+        outboxPublishFailuresTotal.inc({ event_name: outboxEvent.eventName });
         const nextRetryCount = outboxEvent.retryCount + 1;
         const isExhausted = nextRetryCount >= this.maxRetries;
 
@@ -93,6 +107,10 @@ export class OutboxWorker {
           },
         });
 
+        if (isExhausted) {
+          outboxEventsDeadLetteredTotal.inc({ event_name: outboxEvent.eventName });
+        }
+
         logger.error(
           {
             error,
@@ -106,6 +124,8 @@ export class OutboxWorker {
         );
       }
     }
+
+    await this.updateOutboxGauges();
   }
 
   private async recoverStaleProcessingEvents(): Promise<void> {
@@ -148,6 +168,30 @@ export class OutboxWorker {
       },
     });
 
+    outboxCleanupDeletedTotal.inc(result.count);
+
     logger.info({ deletedCount: result.count }, 'Published post outbox events cleaned up');
+  }
+
+  private async updateOutboxGauges(): Promise<void> {
+    const pendingEventsCount = await this.prisma.outboxEvent.count({
+      where: {
+        status: {
+          in: ['PENDING', 'FAILED'],
+        },
+        retryCount: {
+          lt: this.maxRetries,
+        },
+      },
+    });
+
+    const deadLetteredEventsCount = await this.prisma.outboxEvent.count({
+      where: {
+        status: 'DEAD_LETTERED',
+      },
+    });
+
+    outboxPendingEventsGauge.set(pendingEventsCount);
+    outboxDeadLetteredEventsGauge.set(deadLetteredEventsCount);
   }
 }

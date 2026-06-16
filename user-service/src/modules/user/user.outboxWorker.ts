@@ -3,7 +3,9 @@ import { USER_EVENT_NAMES } from '../../events/topics.js';
 import { OutboxEvent, PrismaClient } from '../../generated/prisma/client.js';
 import {
   outboxCleanupDeletedTotal,
+  outboxDeadLetteredEventsGauge,
   outboxEventsClaimedTotal,
+  outboxEventsDeadLetteredTotal,
   outboxEventsPublishedTotal,
   outboxPendingEventsGauge,
   outboxPublishFailuresTotal,
@@ -12,6 +14,7 @@ import { UserCreatedPayload, UserUpdatedPayload } from '../../types/publisher.ty
 import logger from '../../utils/logger.js';
 
 export class OutboxWorker {
+  private readonly maxRetries = 5;
   private readonly processingTimeoutMs = 5 * 60 * 1000;
 
   constructor(
@@ -34,7 +37,7 @@ export class OutboxWorker {
           SELECT id
           FROM "OutboxEvent"
           WHERE status IN ('PENDING', 'FAILED')
-            AND "retryCount" < 5
+            AND "retryCount" < ${this.maxRetries}
           ORDER BY "createdAt" ASC
           FOR UPDATE SKIP LOCKED
           LIMIT 50
@@ -46,18 +49,23 @@ export class OutboxWorker {
     for (const outboxEvent of claimedEvents) {
       outboxEventsClaimedTotal.inc({ event_name: outboxEvent.eventName });
       try {
-        if (outboxEvent.eventName === USER_EVENT_NAMES.USER_CREATED) {
-          await this.userEventPublisher.publishUserCreated(
-            outboxEvent.payload as UserCreatedPayload,
-            outboxEvent.eventId,
-          );
-        }
+        switch (outboxEvent.eventName) {
+          case USER_EVENT_NAMES.USER_CREATED:
+            await this.userEventPublisher.publishUserCreated(
+              outboxEvent.payload as UserCreatedPayload,
+              outboxEvent.eventId,
+            );
+            break;
 
-        if (outboxEvent.eventName === USER_EVENT_NAMES.USER_UPDATED) {
-          await this.userEventPublisher.publishUserUpdated(
-            outboxEvent.payload as UserUpdatedPayload,
-            outboxEvent.eventId,
-          );
+          case USER_EVENT_NAMES.USER_UPDATED:
+            await this.userEventPublisher.publishUserUpdated(
+              outboxEvent.payload as UserUpdatedPayload,
+              outboxEvent.eventId,
+            );
+            break;
+
+          default:
+            throw new Error(`Unsupported user outbox event: ${outboxEvent.eventName}`);
         }
 
         await this.prisma.outboxEvent.update({
@@ -65,6 +73,7 @@ export class OutboxWorker {
           data: {
             status: 'PUBLISHED',
             publishedAt: new Date(),
+            processingStartedAt: null,
             error: null,
           },
         });
@@ -72,17 +81,25 @@ export class OutboxWorker {
         outboxEventsPublishedTotal.inc({ event_name: outboxEvent.eventName });
       } catch (error) {
         outboxPublishFailuresTotal.inc({ event_name: outboxEvent.eventName });
+        const nextRetryCount = outboxEvent.retryCount + 1;
+        const isExhausted = nextRetryCount >= this.maxRetries;
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
-        await this.prisma.outboxEvent.update({
-          where: { id: outboxEvent.id },
-          data: {
-            status: 'FAILED',
-            retryCount: {
-              increment: 1,
-            },
-            error: error instanceof Error ? error.message : String(error),
-          },
-        });
+        await this.prisma.$executeRaw`
+          UPDATE "OutboxEvent"
+          SET
+            status = ${isExhausted ? 'DEAD_LETTERED' : 'FAILED'}::"OutboxEventStatus",
+            "retryCount" = ${nextRetryCount},
+            error = ${errorMessage},
+            "processingStartedAt" = NULL,
+            "deadLetteredAt" = ${isExhausted ? new Date() : null},
+            "updatedAt" = NOW()
+          WHERE id = ${outboxEvent.id};
+        `;
+
+        if (isExhausted) {
+          outboxEventsDeadLetteredTotal.inc({ event_name: outboxEvent.eventName });
+        }
 
         logger.error(
           {
@@ -90,13 +107,15 @@ export class OutboxWorker {
             outboxEventId: outboxEvent.id,
             eventId: outboxEvent.eventId,
             eventName: outboxEvent.eventName,
+            retryCount: nextRetryCount,
+            deadLettered: isExhausted,
           },
-          'Outbox event publishing failed',
+          isExhausted ? 'Outbox event moved to dead-letter state' : 'Outbox event publishing failed',
         );
       }
     }
 
-    await this.updateOutboxPendingEventsGauge();
+    await this.updateOutboxGauges();
   }
 
   private async recoverStaleProcessingEvents(): Promise<void> {
@@ -112,7 +131,7 @@ export class OutboxWorker {
       WHERE status = 'PROCESSING'
         AND "processingStartedAt" IS NOT NULL
         AND "processingStartedAt" < ${staleBefore}
-        AND "retryCount" < 5
+        AND "retryCount" < ${this.maxRetries}
       RETURNING id, "eventName";
     `;
 
@@ -149,18 +168,25 @@ export class OutboxWorker {
     );
   }
 
-  private async updateOutboxPendingEventsGauge(): Promise<void> {
+  private async updateOutboxGauges(): Promise<void> {
     const pendingEventsCount = await this.prisma.outboxEvent.count({
       where: {
         status: {
           in: ['PENDING', 'FAILED'],
         },
         retryCount: {
-          lt: 5,
+          lt: this.maxRetries,
         },
       },
     });
 
+    const deadLetteredEventsCount = await this.prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(*)::bigint AS count
+      FROM "OutboxEvent"
+      WHERE status = 'DEAD_LETTERED'::"OutboxEventStatus";
+    `;
+
     outboxPendingEventsGauge.set(pendingEventsCount);
+    outboxDeadLetteredEventsGauge.set(Number(deadLetteredEventsCount[0]?.count ?? 0));
   }
 }

@@ -7,6 +7,7 @@ import {
   PostUpdatedEventPayload,
 } from '../types/post-event-publisher.types.js';
 import config from '../config/config.js';
+import { kafkaMessagesPublishedTotal, kafkaPublishFailuresTotal } from '../monitoring/kafka.metrics.js';
 
 export class PostEventPublisher {
   private readonly producerServiceName = config.serviceName;
@@ -71,7 +72,17 @@ export class PostEventPublisher {
         },
         'Published post event',
       );
+
+      kafkaMessagesPublishedTotal.inc({
+        topic: KAFKA_TOPICS.POST_EVENTS,
+        event_name: eventName,
+      });
     } catch (error) {
+      kafkaPublishFailuresTotal.inc({
+        topic: KAFKA_TOPICS.POST_EVENTS,
+        event_name: eventName,
+      });
+
       logger.error(
         {
           error,

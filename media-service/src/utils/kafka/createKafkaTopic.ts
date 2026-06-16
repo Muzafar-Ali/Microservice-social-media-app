@@ -21,6 +21,17 @@ const createKafkaTopic = async (): Promise<void> => {
             },
           ],
         },
+        {
+          topic: KAFKA_TOPICS.MEDIA_SERVICE_POST_EVENTS_DLQ,
+          numPartitions: 2,
+          replicationFactor: 3,
+          configEntries: [
+            {
+              name: 'min.insync.replicas',
+              value: '2',
+            },
+          ],
+        },
       ],
       waitForLeaders: true,
     });

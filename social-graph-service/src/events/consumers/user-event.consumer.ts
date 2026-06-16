@@ -10,6 +10,12 @@ import {
 } from '../../validations/socialGraph.validation.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { FailedMessageContext } from '../../types/social-graph-common.types.js';
+import {
+  kafkaConsumerFailuresTotal,
+  kafkaDlqMessagesTotal,
+  kafkaMessagesConsumedTotal,
+  kafkaOffsetCommitFailuresTotal,
+} from '../../monitoring/kafka.metrics.js';
 
 class UserEventConsumer {
   private readonly maxProcessingAttempts = 3;
@@ -31,6 +37,8 @@ class UserEventConsumer {
       autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         if (!message.value) {
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'empty_message' });
+
           logger.warn({ topic, partition, offset: message.offset }, 'Received empty Kafka message');
 
           await this.sendToDlq({
@@ -51,6 +59,8 @@ class UserEventConsumer {
         try {
           parsedJson = JSON.parse(rawValue) as { eventName?: string };
         } catch (error) {
+          kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_json' });
+
           logger.error(
             { error, topic, partition, offset: message.offset, rawValue },
             'Received invalid JSON Kafka message in social-graph-service',
@@ -70,9 +80,11 @@ class UserEventConsumer {
 
         switch (parsedJson.eventName) {
           case USER_EVENT_NAMES.USER_CREATED: {
+            kafkaMessagesConsumedTotal.inc({ topic, event_name: USER_EVENT_NAMES.USER_CREATED });
             const safeEvent = userCreatedEventSchema.safeParse(parsedJson);
 
             if (!safeEvent.success) {
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_user_created_schema' });
               logger.error(formatZodError(safeEvent.error));
 
               await this.sendToDlq({
@@ -100,9 +112,11 @@ class UserEventConsumer {
           }
 
           case USER_EVENT_NAMES.USER_UPDATED: {
+            kafkaMessagesConsumedTotal.inc({ topic, event_name: USER_EVENT_NAMES.USER_UPDATED });
             const safeEvent = userUpdatedEventSchema.safeParse(parsedJson);
 
             if (!safeEvent.success) {
+              kafkaConsumerFailuresTotal.inc({ topic, reason: 'invalid_user_updated_schema' });
               logger.error(formatZodError(safeEvent.error));
 
               await this.sendToDlq({
@@ -129,6 +143,8 @@ class UserEventConsumer {
           }
 
           default: {
+            kafkaMessagesConsumedTotal.inc({ topic, event_name: parsedJson.eventName ?? 'unknown' });
+
             logger.warn(
               {
                 topic,
@@ -209,6 +225,8 @@ class UserEventConsumer {
         await operation();
         return;
       } catch (error) {
+        kafkaConsumerFailuresTotal.inc({ topic: context.topic, reason: context.reason });
+
         logger.warn(
           { error, attempt, maxAttempts: this.maxProcessingAttempts, ...context },
           'User event processing attempt failed in social-graph-service',
@@ -229,13 +247,19 @@ class UserEventConsumer {
   private async commitNextOffset(topic: string, partition: number, currentOffset: string): Promise<void> {
     const nextOffset = (BigInt(currentOffset) + 1n).toString();
 
-    await this.consumer.commitOffsets([
-      {
-        topic,
-        partition,
-        offset: nextOffset,
-      },
-    ]);
+    try {
+      await this.consumer.commitOffsets([
+        {
+          topic,
+          partition,
+          offset: nextOffset,
+        },
+      ]);
+    } catch (error) {
+      kafkaOffsetCommitFailuresTotal.inc({ topic });
+      logger.error({ error, topic, partition, nextOffset }, 'Failed to commit user Kafka offset');
+      throw error;
+    }
 
     logger.info(
       {
@@ -266,6 +290,12 @@ class UserEventConsumer {
           }),
         },
       ],
+    });
+
+    kafkaDlqMessagesTotal.inc({
+      source_topic: context.topic,
+      dlq_topic: KAFKA_TOPICS.USER_EVENTS_DLQ,
+      reason: context.reason,
     });
 
     logger.error(context, 'Sent user event to DLQ from social-graph-service');

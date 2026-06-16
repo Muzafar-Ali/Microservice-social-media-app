@@ -1,16 +1,46 @@
 import { z } from 'zod';
 
+const POST_IMAGE_PUBLIC_ID_PREFIX = 'social-media-app/posts/images/';
+const POST_VIDEO_PUBLIC_ID_PREFIX = 'social-media-app/posts/videos/';
+
 export const postMediaItemSchema = z
   .object({
     type: z.enum(['image', 'video']),
     url: z.url('Media URL must be a valid URL'),
-    publicId: z.string().trim().min(1, 'Public ID cannot be empty').optional(),
+    publicId: z.string().trim().min(1, 'Public ID is required'),
     thumbnailUrl: z.url('Thumbnail URL must be a valid URL').optional(),
     duration: z.number().int().positive().optional(),
     width: z.number().int().positive().optional(),
     height: z.number().int().positive().optional(),
   })
   .superRefine((mediaItem, ctx) => {
+    if (!mediaItem.url.startsWith('https://')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['url'],
+        message: 'Media URL must use HTTPS.',
+      });
+    }
+
+    if (mediaItem.thumbnailUrl && !mediaItem.thumbnailUrl.startsWith('https://')) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['thumbnailUrl'],
+        message: 'Thumbnail URL must use HTTPS.',
+      });
+    }
+
+    const expectedPublicIdPrefix =
+      mediaItem.type === 'image' ? POST_IMAGE_PUBLIC_ID_PREFIX : POST_VIDEO_PUBLIC_ID_PREFIX;
+
+    if (!mediaItem.publicId.startsWith(expectedPublicIdPrefix)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['publicId'],
+        message: 'Media public ID is not allowed for this media type.',
+      });
+    }
+
     if (mediaItem.type === 'image' && mediaItem.duration !== undefined) {
       ctx.addIssue({
         code: 'custom',

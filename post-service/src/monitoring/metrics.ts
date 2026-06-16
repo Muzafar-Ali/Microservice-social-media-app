@@ -1,14 +1,39 @@
-// src/monitoring/metrics.ts
 import { Request, Response, NextFunction } from 'express';
 import client from 'prom-client';
+import config from '../config/config.js';
+import { registerKafkaMetrics } from './kafka.metrics.js';
+import { registerOutboxMetrics } from './outbox.metrics.js';
 
-// Registry that holds all metrics
 export const register = new client.Registry();
 
-// Collect default Node.js / process metrics
+register.setDefaultLabels({
+  service: config.serviceName || 'post-service',
+});
+
 client.collectDefaultMetrics({ register });
 
-// HTTP request duration histogram
+const normalizeRoute = (path: string): string => {
+  return path
+    .replace(/\/+/g, '/')
+    .replace(/\/[0-9a-fA-F]{24}(?=\/|$)/g, '/:id')
+    .replace(/\/[0-9a-fA-F-]{36}(?=\/|$)/g, '/:id')
+    .replace(/\/[^/]*\d[^/]*(?=\/|$)/g, '/:id');
+};
+
+const getRouteLabel = (req: Request): string => {
+  if (req.route?.path) {
+    return `${req.baseUrl}${req.route.path}` || req.path;
+  }
+
+  return normalizeRoute(req.path || 'unknown');
+};
+
+export const httpRequestsTotal = new client.Counter({
+  name: 'http_requests_total',
+  help: 'Total number of HTTP requests',
+  labelNames: ['method', 'route', 'status_code'],
+});
+
 export const httpRequestDuration = new client.Histogram({
   name: 'http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',
@@ -16,32 +41,34 @@ export const httpRequestDuration = new client.Histogram({
   buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
 });
 
-register.registerMetric(httpRequestDuration);
-
-// Optional: business metric for posts created
 export const postCreatedCounter = new client.Counter({
   name: 'post_created_total',
   help: 'Total number of posts successfully created',
 });
 
+register.registerMetric(httpRequestsTotal);
+register.registerMetric(httpRequestDuration);
 register.registerMetric(postCreatedCounter);
+registerKafkaMetrics(register);
+registerOutboxMetrics(register);
 
-// Middleware to measure every request
 export const metricsMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const end = httpRequestDuration.startTimer();
 
   res.on('finish', () => {
-    end({
+    const labels = {
       method: req.method,
-      route: (req.route && req.route.path) || req.path,
-      status_code: res.statusCode,
-    });
+      route: getRouteLabel(req),
+      status_code: String(res.statusCode),
+    };
+
+    httpRequestsTotal.inc(labels);
+    end(labels);
   });
 
   next();
 };
 
-// /metrics handler for Prometheus
 export const metricsHandler = async (_req: Request, res: Response) => {
   res.set('Content-Type', register.contentType);
   res.send(await register.metrics());

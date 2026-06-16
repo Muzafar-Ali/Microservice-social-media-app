@@ -501,7 +501,7 @@ export class PostController {
         throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
 
-      await this.postService.deletePost(req.params.postId, userId);
+      await this.postService.deletePost(safeParams.data.postId, userId);
 
       res.status(204).json({
         success: true,

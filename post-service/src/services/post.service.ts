@@ -523,8 +523,8 @@ export class PostService {
   }
 
   async deletePostComment(postId: string, commentId: string, currentUserId: string) {
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
+    const post = await this.postRepository.findPostById(postId);
+    if (!post) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
 
@@ -537,7 +537,10 @@ export class PostService {
       throw new ApiErrorHandler(400, 'Comment does not belong to this post');
     }
 
-    if (comment.authorId !== currentUserId) {
+    const isCommentAuthor = comment.authorId === currentUserId;
+    const isPostOwner = post.authorId === currentUserId;
+
+    if (!isCommentAuthor && !isPostOwner) {
       throw new ApiErrorHandler(403, 'You are not allowed to delete this comment');
     }
 

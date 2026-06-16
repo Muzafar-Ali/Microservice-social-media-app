@@ -36,6 +36,12 @@ export const userLoginSchema = z
     path: ['username'], // where to attach the error
   });
 
+export const mobileLoginSchema = userLoginSchema.extend({
+  deviceName: z.string().trim().min(1).max(100).optional(),
+  platform: z.enum(['ios', 'android']).optional(),
+  appVersion: z.string().trim().min(1).max(50).optional(),
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.preprocess(
     (val) => (typeof val === 'string' ? val.trim().toLowerCase() : val),
@@ -63,6 +69,7 @@ export const sessionIdParamSchema = z.object({
 });
 
 export type UserLoginDto = z.infer<typeof userLoginSchema>;
+export type MobileLoginDto = z.infer<typeof mobileLoginSchema>;
 export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordDto = z.infer<typeof changePasswordSchema>;

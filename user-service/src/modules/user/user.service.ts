@@ -9,7 +9,11 @@ import { userCacheKeyById, userCacheKeyByUsername } from '../../cache/cache.keys
 import { CACHE_TTL } from '../../cache/cache.ttl.js';
 import { cacheService } from '../../cache/cache.service.js';
 import { redisCacheOperationsTotal } from '../../monitoring/cache.metrics.js';
-import { userCreatedTotal, userProfileReadsTotal, userServiceOperationDurationSeconds } from '../../monitoring/user.metrics.js';
+import {
+  userCreatedTotal,
+  userProfileReadsTotal,
+  userServiceOperationDurationSeconds,
+} from '../../monitoring/user.metrics.js';
 
 export type SafeUser = Omit<User, 'password'>;
 export type LimitedPrivateUserProfile = Pick<SafeUser, 'id' | 'username' | 'name' | 'profileImage' | 'isPrivate'>;
@@ -55,7 +59,6 @@ export class UserService {
       try {
         createdUser = await this.userRepository.createUserAndQueueUserCreatedEvent({ userData });
         userCreatedTotal.inc({ result: 'success', reason: 'created' });
-
       } catch (error) {
         if (this.isUniqueConstraintError(error)) {
           userCreatedTotal.inc({ result: 'error', reason: 'duplicate_race_condition' });
@@ -159,10 +162,7 @@ export class UserService {
     }
   }
 
-  updateUserProfileImage = async (
-    dto: UpdateProfileImageDto,
-    userId: string,
-  ): Promise<SafeUser | null> => {
+  updateUserProfileImage = async (dto: UpdateProfileImageDto, userId: string): Promise<SafeUser | null> => {
     const stopTimer = userServiceOperationDurationSeconds.startTimer({
       operation: 'update_profile_image',
     });

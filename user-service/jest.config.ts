@@ -29,11 +29,7 @@ const jestConfig: JestConfigWithTsJest = {
       },
     ],
   },
-  coveragePathIgnorePatterns: [
-    '/node_modules/',
-    '<rootDir>/dist/',
-    '<rootDir>/tests/',
-  ],
+  coveragePathIgnorePatterns: ['/node_modules/', '<rootDir>/dist/', '<rootDir>/tests/'],
 };
 
 export default jestConfig;

@@ -5,6 +5,7 @@ import validateRequestBody from '../../middlewares/validaterequestBody.middlewar
 import {
   changePasswordSchema,
   forgotPasswordSchema,
+  mobileLoginSchema,
   resetPasswordSchema,
   userLoginSchema,
 } from './auth.validations.js';
@@ -13,7 +14,7 @@ const authRoutes = (authController: AuthController) => {
   const router = Router();
 
   router.route('/web/login').post(validateRequestBody(userLoginSchema), authController.webLogin);
-  router.route('/mobile/login').post(validateRequestBody(userLoginSchema), authController.mobileLogin);
+  router.route('/mobile/login').post(validateRequestBody(mobileLoginSchema), authController.mobileLogin);
   router.route('/web/logout').post(isAuthenticatedRedis, authController.webLogout);
   router.route('/mobile/logout').post(isAuthenticatedRedis, authController.mobileLogout);
   router.route('/password/forgot').post(validateRequestBody(forgotPasswordSchema), authController.requestPasswordReset);

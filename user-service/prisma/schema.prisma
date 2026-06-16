@@ -66,6 +66,8 @@ model UserSession {
   refreshTokenHash String    @unique
 
   deviceName       String?
+  platform         String?
+  appVersion       String?
   userAgent        String?
 
   createdAt        DateTime  @default(now())

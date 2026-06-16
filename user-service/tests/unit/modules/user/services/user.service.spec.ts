@@ -133,22 +133,17 @@ const createUserDto = () => ({
 
 const mockRepository = {
   findByEmailOrUsername: jest.fn<(email: string, username: string) => Promise<User | null>>(),
-  createUserAndQueueUserCreatedEvent: jest.fn<
-    (input: { userData: Prisma.UserCreateInput }) => Promise<User>
-  >(),
+  createUserAndQueueUserCreatedEvent: jest.fn<(input: { userData: Prisma.UserCreateInput }) => Promise<User>>(),
   findByUsername: jest.fn<(username: string) => Promise<User | null>>(),
   findUserById: jest.fn<(userId: string) => Promise<User | null>>(),
-  updateProfileImageByIdAndQueueUserUpdatedEvent: jest.fn<
-    (secureUrl: string, publicId: string, userId: string) => Promise<User>
-  >(),
+  updateProfileImageByIdAndQueueUserUpdatedEvent:
+    jest.fn<(secureUrl: string, publicId: string, userId: string) => Promise<User>>(),
   updateUserAndQueueUserUpdatedEvent: jest.fn<(userId: string, data: object) => Promise<User>>(),
   updateUserStatusAndQueueUserUpdatedEvent: jest.fn<(userId: string, status: Status) => Promise<User>>(),
-  applyFollowCreatedEvent: jest.fn<
-    (input: { eventId: string; followerId: string; followeeId: string }) => Promise<boolean>
-  >(),
-  applyFollowRemovedEvent: jest.fn<
-    (input: { eventId: string; followerId: string; followeeId: string }) => Promise<boolean>
-  >(),
+  applyFollowCreatedEvent:
+    jest.fn<(input: { eventId: string; followerId: string; followeeId: string }) => Promise<boolean>>(),
+  applyFollowRemovedEvent:
+    jest.fn<(input: { eventId: string; followerId: string; followeeId: string }) => Promise<boolean>>(),
 };
 
 describe('UserService', () => {
@@ -314,10 +309,7 @@ describe('UserService', () => {
       expect(redisCacheOperationsTotal.inc).toHaveBeenCalledTimes(1);
       expect(redisCacheOperationsTotal.inc).toHaveBeenCalledWith({ operation: 'write', result: 'error' });
       expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        { userId: 'user-1', error: cacheError },
-        'User cache write failed',
-      );
+      expect(mockLogger.warn).toHaveBeenCalledWith({ userId: 'user-1', error: cacheError }, 'User cache write failed');
     });
   });
 
@@ -581,16 +573,8 @@ describe('UserService', () => {
       expect(mockRepository.updateUserAndQueueUserUpdatedEvent).toHaveBeenCalledWith('user-1', {
         username: 'alice-new',
       });
-      expect(mockCache.deleteMany).toHaveBeenCalledWith([
-        userCacheKeyById('user-1'),
-        userCacheKeyByUsername('alice'),
-      ]);
-      expect(mockCache.set).toHaveBeenNthCalledWith(
-        1,
-        userCacheKeyById('user-1'),
-        safeUpdatedUser,
-        CACHE_TTL.USER,
-      );
+      expect(mockCache.deleteMany).toHaveBeenCalledWith([userCacheKeyById('user-1'), userCacheKeyByUsername('alice')]);
+      expect(mockCache.set).toHaveBeenNthCalledWith(1, userCacheKeyById('user-1'), safeUpdatedUser, CACHE_TTL.USER);
       expect(mockCache.set).toHaveBeenNthCalledWith(
         2,
         userCacheKeyByUsername('alice-new'),
@@ -600,9 +584,7 @@ describe('UserService', () => {
       expect(mockRepository.updateUserAndQueueUserUpdatedEvent.mock.invocationCallOrder[0]).toBeLessThan(
         mockCache.deleteMany.mock.invocationCallOrder[0],
       );
-      expect(mockCache.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
-        mockCache.set.mock.invocationCallOrder[0],
-      );
+      expect(mockCache.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(mockCache.set.mock.invocationCallOrder[0]);
       expect(result).toEqual(safeUpdatedUser);
     });
   });
@@ -667,14 +649,8 @@ describe('UserService', () => {
       const result = await userService.updateUserStatus('user-1', 'SUSPENDED');
 
       // Assert
-      expect(mockRepository.updateUserStatusAndQueueUserUpdatedEvent).toHaveBeenCalledWith(
-        'user-1',
-        'SUSPENDED',
-      );
-      expect(mockCache.deleteMany).toHaveBeenCalledWith([
-        userCacheKeyById('user-1'),
-        userCacheKeyByUsername('alice'),
-      ]);
+      expect(mockRepository.updateUserStatusAndQueueUserUpdatedEvent).toHaveBeenCalledWith('user-1', 'SUSPENDED');
+      expect(mockCache.deleteMany).toHaveBeenCalledWith([userCacheKeyById('user-1'), userCacheKeyByUsername('alice')]);
       expect(mockCache.set).toHaveBeenNthCalledWith(1, userCacheKeyById('user-1'), safeUpdatedUser, CACHE_TTL.USER);
       expect(mockCache.set).toHaveBeenNthCalledWith(
         2,
@@ -710,18 +686,13 @@ describe('UserService', () => {
     it('deactivates an active account through the shared status transition', async () => {
       // Arrange
       mockRepository.findUserById.mockResolvedValue(createUser({ status: 'ACTIVE' }));
-      mockRepository.updateUserStatusAndQueueUserUpdatedEvent.mockResolvedValue(
-        createUser({ status: 'DEACTIVATED' }),
-      );
+      mockRepository.updateUserStatusAndQueueUserUpdatedEvent.mockResolvedValue(createUser({ status: 'DEACTIVATED' }));
 
       // Act
       const result = await userService.deactivateMyAccount('user-1');
 
       // Assert
-      expect(mockRepository.updateUserStatusAndQueueUserUpdatedEvent).toHaveBeenCalledWith(
-        'user-1',
-        'DEACTIVATED',
-      );
+      expect(mockRepository.updateUserStatusAndQueueUserUpdatedEvent).toHaveBeenCalledWith('user-1', 'DEACTIVATED');
       expect(result.status).toBe('DEACTIVATED');
     });
 
@@ -777,10 +748,7 @@ describe('UserService', () => {
       // Assert
       expect(result).toBeUndefined();
       expect(mockRepository.updateUserStatusAndQueueUserUpdatedEvent).toHaveBeenCalledWith('user-1', 'DELETED');
-      expect(mockCache.deleteMany).toHaveBeenCalledWith([
-        userCacheKeyById('user-1'),
-        userCacheKeyByUsername('alice'),
-      ]);
+      expect(mockCache.deleteMany).toHaveBeenCalledWith([userCacheKeyById('user-1'), userCacheKeyByUsername('alice')]);
     });
   });
 
@@ -846,21 +814,13 @@ describe('UserService', () => {
       expect(mockRepository.findUserById).toHaveBeenCalledWith('follower-1');
       expect(mockRepository.findUserById).toHaveBeenCalledWith('followee-1');
       expect(mockCache.set).toHaveBeenCalledTimes(4);
-      expect(mockCache.set).toHaveBeenCalledWith(
-        userCacheKeyById('follower-1'),
-        toSafeUser(follower),
-        CACHE_TTL.USER,
-      );
+      expect(mockCache.set).toHaveBeenCalledWith(userCacheKeyById('follower-1'), toSafeUser(follower), CACHE_TTL.USER);
       expect(mockCache.set).toHaveBeenCalledWith(
         userCacheKeyByUsername('follower'),
         toSafeUser(follower),
         CACHE_TTL.USER,
       );
-      expect(mockCache.set).toHaveBeenCalledWith(
-        userCacheKeyById('followee-1'),
-        toSafeUser(followee),
-        CACHE_TTL.USER,
-      );
+      expect(mockCache.set).toHaveBeenCalledWith(userCacheKeyById('followee-1'), toSafeUser(followee), CACHE_TTL.USER);
       expect(mockCache.set).toHaveBeenCalledWith(
         userCacheKeyByUsername('followee'),
         toSafeUser(followee),

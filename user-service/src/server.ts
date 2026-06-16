@@ -58,7 +58,6 @@ const startHttpServer = async () => {
 };
 
 const startBackgroundWorkers = async () => {
-
   // Worker runtime owns Kafka consumers and outbox publishing.
   // Keeping it separate from API pods allows independent scaling.
   await createKafkaTopicsIfEnabled();
@@ -77,7 +76,6 @@ const startBackgroundWorkers = async () => {
   let isOutboxWorkerRunning = false;
 
   setInterval(async () => {
-
     // Prevent overlapping cleanup jobs during slow database operations.
     if (isOutboxWorkerRunning) return;
 
@@ -96,19 +94,22 @@ const startBackgroundWorkers = async () => {
 
   let isOutboxCleanupRunning = false;
 
-  setInterval(async () => {
-    if (isOutboxCleanupRunning) return;
+  setInterval(
+    async () => {
+      if (isOutboxCleanupRunning) return;
 
-    isOutboxCleanupRunning = true;
+      isOutboxCleanupRunning = true;
 
-    try {
-      await outboxWorker.cleanupPublishedEvents();
-    } catch (error) {
-      logger.error({ error }, 'Outbox cleanup failed');
-    } finally {
-      isOutboxCleanupRunning = false;
-    }
-  }, 24 * 60 * 60 * 1000);
+      try {
+        await outboxWorker.cleanupPublishedEvents();
+      } catch (error) {
+        logger.error({ error }, 'Outbox cleanup failed');
+      } finally {
+        isOutboxCleanupRunning = false;
+      }
+    },
+    24 * 60 * 60 * 1000,
+  );
 
   logger.info('[Outbox] Cleanup worker started');
 };

@@ -612,18 +612,37 @@ export class PostService {
   }
 
   private async mapFeedPostsWithViewerState(posts: any[], viewerUserId: string) {
-    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
-      viewerUserId,
-      posts.map((post) => post.id),
+    const postIds = posts.map((post) => post.id);
+    const authorIds = [...new Set(posts.map((post) => post.authorId))];
+
+    const [likedPostIds, cachedProfiles] = await Promise.all([
+      this.postRepository.findViewerLikedPostIds(viewerUserId, postIds),
+      this.postRepository.findUserProfileCacheByIds(authorIds),
+    ]);
+
+    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
     );
 
-    return posts.map((post) => ({
-      ...mapUserFeedPost(post),
-      viewer: {
-        userId: viewerUserId,
-        likedByMe: likedPostIds.has(post.id),
-      },
-    }));
+    return posts.map((post) => {
+      const cachedProfile = cachedProfilesByUserId.get(post.authorId);
+      const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
+
+      return {
+        ...mapUserFeedPost(post),
+        author: {
+          userId: post.authorId,
+          username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+          displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
+          avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+          status: cachedProfile?.status ?? 'unknown',
+        },
+        viewer: {
+          userId: viewerUserId,
+          likedByMe: likedPostIds.has(post.id),
+        },
+      };
+    });
   }
 
   private async requireVisiblePost(postId: string, viewerUserId: string) {

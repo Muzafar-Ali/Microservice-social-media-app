@@ -60,11 +60,8 @@ export async function initSocketServer(httpServer: HttpServer, chatService: Chat
     chatSocketConnectionsTotal.inc();
     chatSocketActiveConnections.inc();
 
-    const presenceOnline = await presenceService.markOnline(userId, socket.id);
-
-    io.emit('presence:update', presenceOnline);
-
     await socket.join(`user:${userId}`);
+    const joinedConversationIds: string[] = [];
 
     logger.info({ userId, socketId: socket.id, room: `user:${userId}` }, '👤 joined user room');
 
@@ -73,11 +70,18 @@ export async function initSocketServer(httpServer: HttpServer, chatService: Chat
 
       for (const conversation of myConversations) {
         await socket.join(`conversation:${conversation.id}`);
+        joinedConversationIds.push(conversation.id);
       }
 
       logger.info({ userId, roomsJoined: myConversations.length }, 'auto-joined conversation rooms');
     } catch (error) {
       logger.warn({ userId, error }, 'failed to auto-join conversation rooms');
+    }
+
+    const presenceOnline = await presenceService.markOnline(userId, socket.id);
+
+    for (const conversationId of joinedConversationIds) {
+      io.to(`conversation:${conversationId}`).emit('presence:update', presenceOnline);
     }
 
     registerChatSocketHandlers(io, socket as any, chatService);
@@ -91,7 +95,9 @@ export async function initSocketServer(httpServer: HttpServer, chatService: Chat
       const presenceOffline = await presenceService.markOfflineIfLastSocket(userId, socket.id);
 
       if (presenceOffline) {
-        io.emit('presence:update', presenceOffline);
+        for (const conversationId of joinedConversationIds) {
+          io.to(`conversation:${conversationId}`).emit('presence:update', presenceOffline);
+        }
       }
     });
   });

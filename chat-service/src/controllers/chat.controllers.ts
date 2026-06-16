@@ -298,6 +298,9 @@ export class ChatController {
         reaction: req.body.reaction,
       });
 
+      const io = getSocketServer();
+      io.to(`conversation:${reaction.conversationId}`).emit('chat:message:reaction:added', reaction);
+
       res.status(StatusCodes.OK).json({
         success: true,
         message: 'Reaction added successfully',
@@ -333,6 +336,11 @@ export class ChatController {
         messageId: safeParams.data.messageId,
         reaction,
       });
+
+      if (removedReaction.removed) {
+        const io = getSocketServer();
+        io.to(`conversation:${removedReaction.conversationId}`).emit('chat:message:reaction:removed', removedReaction);
+      }
 
       res.status(StatusCodes.OK).json({
         success: true,

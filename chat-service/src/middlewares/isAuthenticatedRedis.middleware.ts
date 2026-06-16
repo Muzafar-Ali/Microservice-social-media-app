@@ -7,25 +7,31 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      sessionId?: string;
     }
   }
 }
 
 /**
  * Auth middleware:
- * - reads sid cookie
- * - loads session from Redis (session:<sid>)
+ * - reads sid cookie or Authorization Bearer session id
+ * - loads session from Redis (auth:session:<sid>)
  * - attaches req.userId
  */
 const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunction) => {
   try {
-    const sessionId = req.cookies?.sid;
+    let sessionId = req.cookies?.sid;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      sessionId = authHeader.split(' ')[1];
+    }
 
     if (!sessionId) {
       return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Please login'));
     }
 
-    const sessionKey = `session:${sessionId}`;
+    const sessionKey = `auth:session:${sessionId}`;
     const sessionJson = await redis.get(sessionKey);
 
     if (!sessionJson) {
@@ -33,12 +39,13 @@ const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunc
     }
 
     const session = JSON.parse(sessionJson) as {
-      userId: number;
+      userId: string | number;
       ip?: string;
       userAgent?: string;
     };
 
     req.userId = String(session.userId);
+    req.sessionId = sessionId;
 
     return next();
   } catch (error) {

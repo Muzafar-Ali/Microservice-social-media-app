@@ -14,7 +14,7 @@ async function bootstrap() {
     const httpServer = http.createServer(app);
 
     // Socket.IO attaches to the same HTTP server.
-    initSocketServer(httpServer, chatService);
+    await initSocketServer(httpServer, chatService);
 
     httpServer.listen(config.port, () => {
       logger.info(`[chat-service] listening on http://localhost:${config.port}`);

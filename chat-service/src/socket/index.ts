@@ -1,11 +1,13 @@
 import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { PresenceService } from './presence.service.js';
 import { socketAuthMiddleware } from './auth.middleware.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
 import { ChatService } from '../services/chat.service.js';
 import { registerChatSocketHandlers } from './chat.socket.js';
+import { redis } from '../config/redisClient.js';
 import {
   chatSocketActiveConnections,
   chatSocketConnectionsTotal,
@@ -30,13 +32,19 @@ export function getSocketServer() {
  * - Auto-join conversation rooms
  * - Register chat handlers
  */
-export function initSocketServer(httpServer: HttpServer, chatService: ChatService) {
+export async function initSocketServer(httpServer: HttpServer, chatService: ChatService) {
   const io = new Server(httpServer, {
     cors: {
       origin: ['http://localhost:3000'],
       credentials: true,
     },
   });
+
+  const pubClient = redis.duplicate();
+  const subClient = redis.duplicate();
+
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  io.adapter(createAdapter(pubClient, subClient));
 
   ioInstance = io;
 

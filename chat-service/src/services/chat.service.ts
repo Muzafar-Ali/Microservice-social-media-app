@@ -613,7 +613,6 @@ export class ChatService {
 
   async leaveGroupConversation(params: { userId: string; conversationId: string }): Promise<LeaveGroupResponseDto> {
     const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
-    console.log('conversation', conversation);
 
     if (!conversation) {
       throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Conversation not found');
@@ -634,7 +633,7 @@ export class ChatService {
     if (currentParticipant.role === ParticipantRole.ADMIN) {
       const adminCount = await this.chatRepository.countConversationAdmins(params.conversationId);
 
-      if (adminCount < 1) {
+      if (adminCount <= 1) {
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Last admin cannot leave the group');
       }
     }

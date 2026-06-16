@@ -107,10 +107,20 @@ export class ChatService {
     title?: string;
     participantUserIds?: string[];
   }): Promise<BaseConversationDto> {
-    const participantUserIds = params.participantUserIds ?? [];
+    const participantUserIds = Array.from(
+      new Set(
+        (params.participantUserIds ?? [])
+          .map((participantUserId) => participantUserId.trim())
+          .filter(Boolean)
+          .filter((participantUserId) => participantUserId !== params.creatorUserId),
+      ),
+    );
 
     if (participantUserIds.length === 0) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'participantUserIds is required for GROUP chat');
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        'GROUP chat requires at least one participant other than the creator',
+      );
     }
 
     const createdConversation = await this.chatRepository.createGroupConversation({

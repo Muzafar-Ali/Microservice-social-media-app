@@ -114,7 +114,7 @@ app.use('/api/auth', createObservedProxy('/api/auth', config.userServiceUrl, 'us
 app.use('/api/media', createObservedProxy('/api/media', config.mediaServiceUrl, 'media-service'));
 
 // Route: /api/posts/* -> post-service/*
-app.use('/api/posts', createObservedProxy('/api/posts', config.postServiceLUrl, 'post-service'));
+app.use('/api/posts', createObservedProxy('/api/posts', config.postServiceUrl, 'post-service'));
 
 // Route: /api/chat/* -> chat-service/*
 app.use('/api/chat', createObservedProxy('/api/chat', config.chatServiceUrl, 'chat-service'));

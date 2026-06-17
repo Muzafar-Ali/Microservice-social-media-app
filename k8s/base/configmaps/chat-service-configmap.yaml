@@ -14,6 +14,7 @@ data:
 
   REDIS_URL: "redis://redis-cache:6379"
   KAFKA_BROKERS: "kafka-0.kafka-headless:9092"
+  CORS_ALLOWED_ORIGINS: "http://localhost:3000"
 
   SERVICE_NAME: "chat-service"
   LOG_LEVEL: "warn"

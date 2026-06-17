@@ -15,6 +15,11 @@ const postRoutes = (postController: PostController) => {
   router.route('/feed/home/before').get(isAuthenticatedRedis, postController.getHomeFeedBeforeHandler);
   router.route('/feed/home/after').get(isAuthenticatedRedis, postController.getHomeFeedAfterHandler);
 
+  // Profile browsing flow:
+  // - grid/cursor renders compact profile tiles.
+  // - feed/window opens the feed viewer anchored at the tapped grid post.
+  // - feed/after loads older posts while scrolling down from that anchor.
+  // - grid keeps an offset fallback for simple/admin pagination views.
   router
     .route('/user/:profileUserId/grid/cursor')
     .get(isAuthenticatedRedis, postController.getUserGridPostsCursorHandler);

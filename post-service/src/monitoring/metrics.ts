@@ -77,6 +77,12 @@ export const postEngagementActionsTotal = new client.Counter({
   labelNames: ['action'],
 });
 
+export const rateLimitExceededTotal = new client.Counter({
+  name: 'post_rate_limit_exceeded_total',
+  help: 'Total number of post-service requests rejected by rate limiting',
+  labelNames: ['policy'],
+});
+
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(httpRequestDuration);
 register.registerMetric(postCreatedCounter);
@@ -85,6 +91,7 @@ register.registerMetric(postMediaItemsHistogram);
 register.registerMetric(feedRequestsTotal);
 register.registerMetric(feedItemsReturnedHistogram);
 register.registerMetric(postEngagementActionsTotal);
+register.registerMetric(rateLimitExceededTotal);
 registerKafkaMetrics(register);
 registerOutboxMetrics(register);
 

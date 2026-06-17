@@ -10,24 +10,10 @@ import {
   postMediaItemSchema,
   updatePostSchema,
 } from '../../../src/validation/post.validation.js';
+import { createImagePostMediaDto, createVideoPostMediaDto } from '../../factories/post.factory.js';
 
-const imageMedia = {
-  type: 'image',
-  url: 'https://res.cloudinary.com/demo/image/upload/social-media-app/posts/images/post.jpg',
-  publicId: 'social-media-app/posts/images/post',
-  width: 1080,
-  height: 1350,
-};
-
-const videoMedia = {
-  type: 'video',
-  url: 'https://res.cloudinary.com/demo/video/upload/social-media-app/posts/videos/post.mp4',
-  publicId: 'social-media-app/posts/videos/post',
-  thumbnailUrl: 'https://res.cloudinary.com/demo/image/upload/social-media-app/posts/videos/post-thumb.jpg',
-  duration: 30,
-  width: 1280,
-  height: 720,
-};
+const imageMedia = createImagePostMediaDto();
+const videoMedia = createVideoPostMediaDto();
 
 const expectInvalid = (result: { success: boolean }) => {
   expect(result.success).toBe(false);

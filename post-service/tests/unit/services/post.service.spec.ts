@@ -28,9 +28,16 @@ import {
   postMediaItemsHistogram,
   postOperationsTotal,
 } from '../../../src/monitoring/metrics.js';
-
-const createdAt = new Date('2026-01-01T10:00:00.000Z');
-const updatedAt = new Date('2026-01-02T10:00:00.000Z');
+import {
+  createComment,
+  createCreatePostDto,
+  createFeedPost,
+  createImageMedia,
+  createProfileCache,
+  createVideoMedia,
+  testCreatedAt,
+  testUpdatedAt,
+} from '../../factories/post.factory.js';
 
 const createRepositoryMock = () => ({
   createPostAndQueuePostCreatedEvent: jest.fn(),
@@ -63,58 +70,6 @@ const createRepositoryMock = () => ({
   deleteComment: jest.fn(),
 });
 
-const createProfile = (overrides: Record<string, unknown> = {}) => ({
-  userId: 'author-1',
-  username: 'author_one',
-  displayName: 'Author One',
-  avatarUrl: 'https://cdn.example.com/avatar.jpg',
-  status: 'active',
-  isPrivate: false,
-  updatedAt,
-  ...overrides,
-});
-
-const createPost = (overrides: Record<string, unknown> = {}) => ({
-  id: 'post-1',
-  authorId: 'author-1',
-  content: 'Hello world',
-  themeKey: null,
-  isEdited: false,
-  createdAt,
-  updatedAt,
-  media: [],
-  _count: {
-    media: 0,
-    likes: 0,
-    comments: 0,
-  },
-  ...overrides,
-});
-
-const createImageMedia = (overrides: Record<string, unknown> = {}) => ({
-  id: 'media-1',
-  type: MediaType.IMAGE,
-  url: 'https://cdn.example.com/image.jpg',
-  thumbnailUrl: null,
-  duration: null,
-  width: 1080,
-  height: 1350,
-  order: 0,
-  ...overrides,
-});
-
-const createVideoMedia = (overrides: Record<string, unknown> = {}) => ({
-  id: 'media-2',
-  type: MediaType.VIDEO,
-  url: 'https://cdn.example.com/video.mp4',
-  thumbnailUrl: 'https://cdn.example.com/video-thumb.jpg',
-  duration: 30,
-  width: 1280,
-  height: 720,
-  order: 0,
-  ...overrides,
-});
-
 describe('PostService', () => {
   let repository: ReturnType<typeof createRepositoryMock>;
   let postService: PostService;
@@ -127,13 +82,12 @@ describe('PostService', () => {
 
     repository.canViewerAccessProfile.mockResolvedValue(true as never);
     repository.findViewerLikedPostIds.mockResolvedValue(new Set<string>() as never);
-    repository.findUserProfileCacheByIds.mockResolvedValue([createProfile()] as never);
+    repository.findUserProfileCacheByIds.mockResolvedValue([createProfileCache()] as never);
   });
 
   describe('createPost', () => {
     it('creates a media post through the transactional repository and records creation metrics', async () => {
-      const input = {
-        content: 'Launch post',
+      const input = createCreatePostDto({
         media: [
           {
             type: 'image',
@@ -141,8 +95,8 @@ describe('PostService', () => {
             publicId: 'social-media-app/posts/images/post',
           },
         ],
-      };
-      const createdPost = createPost({ content: 'Launch post' });
+      });
+      const createdPost = createFeedPost({ content: 'Launch post' });
 
       repository.createPostAndQueuePostCreatedEvent.mockResolvedValue(createdPost as never);
 
@@ -157,7 +111,7 @@ describe('PostService', () => {
 
     it('records zero media items for text-only posts', async () => {
       const input = { content: 'Text only' };
-      repository.createPostAndQueuePostCreatedEvent.mockResolvedValue(createPost(input) as never);
+      repository.createPostAndQueuePostCreatedEvent.mockResolvedValue(createFeedPost(input) as never);
 
       await postService.createPost(input as never, 'author-1');
 
@@ -168,7 +122,7 @@ describe('PostService', () => {
   describe('feeds and visibility', () => {
     it('returns home feed posts with author summary, viewer like state, pagination, and feed metrics', async () => {
       const posts = [
-        createPost({
+        createFeedPost({
           id: 'post-liked',
           media: [createImageMedia()],
           _count: { media: 1, likes: 3, comments: 2 },
@@ -226,7 +180,7 @@ describe('PostService', () => {
 
     it('falls back to an unknown author summary when profile cache is missing or inactive', async () => {
       repository.findHomeFeed.mockResolvedValue({
-        posts: [createPost()],
+        posts: [createFeedPost()],
         nextCursor: null,
         hasNextPage: false,
       } as never);
@@ -255,7 +209,7 @@ describe('PostService', () => {
     });
 
     it('rejects inaccessible post detail before loading rich feed payload', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'private-user' }) as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'private-user' }) as never);
       repository.canViewerAccessProfile.mockResolvedValue(false as never);
 
       await expect(postService.getPostById('post-1', 'viewer-1')).rejects.toMatchObject({
@@ -271,18 +225,18 @@ describe('PostService', () => {
     it('maps cursor grid posts into compact text, image, video, and carousel previews', async () => {
       repository.findUserGridPostsCursor.mockResolvedValue({
         posts: [
-          createPost({ id: 'text-post', content: '   themed text   ', _count: { media: 0, likes: 1, comments: 0 } }),
-          createPost({
+          createFeedPost({ id: 'text-post', content: '   themed text   ', _count: { media: 0, likes: 1, comments: 0 } }),
+          createFeedPost({
             id: 'image-post',
             media: [createImageMedia()],
             _count: { media: 1, likes: 2, comments: 1 },
           }),
-          createPost({
+          createFeedPost({
             id: 'video-post',
             media: [createVideoMedia()],
             _count: { media: 1, likes: 3, comments: 2 },
           }),
-          createPost({
+          createFeedPost({
             id: 'carousel-post',
             media: [createImageMedia(), createVideoMedia({ order: 1 })],
             _count: { media: 2, likes: 4, comments: 3 },
@@ -317,7 +271,7 @@ describe('PostService', () => {
 
     it('loads an anchored profile feed window from the selected post', async () => {
       repository.findUserFeedWindow.mockResolvedValue({
-        posts: [createPost({ id: 'selected-post' }), createPost({ id: 'older-post' })],
+        posts: [createFeedPost({ id: 'selected-post' }), createFeedPost({ id: 'older-post' })],
         anchorPostId: 'selected-post',
         nextCursor: 'older-post',
         hasNextPage: true,
@@ -343,8 +297,8 @@ describe('PostService', () => {
 
   describe('post lifecycle', () => {
     it('updates an owned post and records the update metric', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'author-1' }) as never);
-      repository.updatePostAndQueuePostUpdatedEvent.mockResolvedValue(createPost({ content: 'Updated' }) as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'author-1' }) as never);
+      repository.updatePostAndQueuePostUpdatedEvent.mockResolvedValue(createFeedPost({ content: 'Updated' }) as never);
 
       const result = await postService.updatePost({ content: 'Updated' } as never, 'post-1', 'author-1');
 
@@ -371,7 +325,7 @@ describe('PostService', () => {
     });
 
     it('does not update another user post', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'author-2' }) as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'author-2' }) as never);
 
       await expect(postService.updatePost({ content: 'Updated' } as never, 'post-1', 'author-1')).rejects.toMatchObject(
         {
@@ -384,8 +338,8 @@ describe('PostService', () => {
     });
 
     it('deletes an owned post and records the delete metric', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'author-1' }) as never);
-      repository.deletePostAndQueuePostDeletedEvent.mockResolvedValue(createPost() as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'author-1' }) as never);
+      repository.deletePostAndQueuePostDeletedEvent.mockResolvedValue(createFeedPost() as never);
 
       await expect(postService.deletePost('post-1', 'author-1')).resolves.toBeUndefined();
 
@@ -394,7 +348,7 @@ describe('PostService', () => {
     });
 
     it('surfaces delete race when the post disappears between authorization and delete', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'author-1' }) as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'author-1' }) as never);
       repository.deletePostAndQueuePostDeletedEvent.mockResolvedValue(null as never);
 
       await expect(postService.deletePost('post-1', 'author-1')).rejects.toMatchObject({
@@ -408,7 +362,7 @@ describe('PostService', () => {
 
   describe('likes and comments', () => {
     it('likes a visible post and returns the updated like count', async () => {
-      repository.findPostById.mockResolvedValue(createPost() as never);
+      repository.findPostById.mockResolvedValue(createFeedPost() as never);
       repository.countPostLikes.mockResolvedValue(7 as never);
 
       const result = await postService.likePost('post-1', 'viewer-1');
@@ -419,7 +373,7 @@ describe('PostService', () => {
     });
 
     it('does not like an inaccessible post', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'private-user' }) as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'private-user' }) as never);
       repository.canViewerAccessProfile.mockResolvedValue(false as never);
 
       await expect(postService.likePost('post-1', 'viewer-1')).rejects.toMatchObject({
@@ -431,15 +385,8 @@ describe('PostService', () => {
     });
 
     it('creates a trimmed comment and falls back to unknown author when profile cache is missing', async () => {
-      repository.findPostById.mockResolvedValue(createPost() as never);
-      repository.createPostComment.mockResolvedValue({
-        id: 'comment-1',
-        postId: 'post-1',
-        authorId: 'viewer-1',
-        content: 'Nice post',
-        createdAt,
-        updatedAt,
-      } as never);
+      repository.findPostById.mockResolvedValue(createFeedPost() as never);
+      repository.createPostComment.mockResolvedValue(createComment({ authorId: 'viewer-1' }) as never);
       repository.findUserProfileCacheByIds.mockResolvedValue([] as never);
 
       const result = await postService.createPostComment('post-1', 'viewer-1', '  Nice post  ');
@@ -456,19 +403,15 @@ describe('PostService', () => {
           status: 'unknown',
         },
         content: 'Nice post',
-        createdAt,
-        updatedAt,
+        createdAt: testCreatedAt,
+        updatedAt: testUpdatedAt,
       });
       expect(postEngagementActionsTotal.inc).toHaveBeenCalledWith({ action: 'comment_create' });
     });
 
     it('allows the comment author to delete their own comment', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'post-owner' }) as never);
-      repository.findCommentById.mockResolvedValue({
-        id: 'comment-1',
-        postId: 'post-1',
-        authorId: 'comment-author',
-      } as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'post-owner' }) as never);
+      repository.findCommentById.mockResolvedValue(createComment() as never);
 
       const result = await postService.deletePostComment('post-1', 'comment-1', 'comment-author');
 
@@ -478,12 +421,8 @@ describe('PostService', () => {
     });
 
     it('allows the post owner to moderate comments on their post', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'post-owner' }) as never);
-      repository.findCommentById.mockResolvedValue({
-        id: 'comment-1',
-        postId: 'post-1',
-        authorId: 'comment-author',
-      } as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'post-owner' }) as never);
+      repository.findCommentById.mockResolvedValue(createComment() as never);
 
       await expect(postService.deletePostComment('post-1', 'comment-1', 'post-owner')).resolves.toEqual({
         postId: 'post-1',
@@ -495,12 +434,8 @@ describe('PostService', () => {
     });
 
     it('rejects comment deletion by unrelated users', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'post-owner' }) as never);
-      repository.findCommentById.mockResolvedValue({
-        id: 'comment-1',
-        postId: 'post-1',
-        authorId: 'comment-author',
-      } as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'post-owner' }) as never);
+      repository.findCommentById.mockResolvedValue(createComment() as never);
 
       await expect(postService.deletePostComment('post-1', 'comment-1', 'viewer-1')).rejects.toMatchObject({
         statusCode: 403,
@@ -511,12 +446,8 @@ describe('PostService', () => {
     });
 
     it('rejects comment deletion when the comment belongs to another post', async () => {
-      repository.findPostById.mockResolvedValue(createPost({ authorId: 'post-owner' }) as never);
-      repository.findCommentById.mockResolvedValue({
-        id: 'comment-1',
-        postId: 'other-post',
-        authorId: 'comment-author',
-      } as never);
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'post-owner' }) as never);
+      repository.findCommentById.mockResolvedValue(createComment({ postId: 'other-post' }) as never);
 
       await expect(postService.deletePostComment('post-1', 'comment-1', 'post-owner')).rejects.toMatchObject({
         statusCode: 400,

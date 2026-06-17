@@ -1,7 +1,14 @@
 import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
-import { postCreatedCounter } from '../monitoring/metrics.js';
+import {
+  feedItemsReturnedHistogram,
+  feedRequestsTotal,
+  postCreatedCounter,
+  postEngagementActionsTotal,
+  postMediaItemsHistogram,
+  postOperationsTotal,
+} from '../monitoring/metrics.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost.js';
 import { UserProfileCacheSummary } from '../types/post.types.js';
@@ -14,17 +21,44 @@ export class PostService {
     const post = await this.postRepository.createPostAndQueuePostCreatedEvent(input, userId);
 
     postCreatedCounter.inc();
+    postOperationsTotal.inc({ operation: 'create' });
+    postMediaItemsHistogram.observe(input.media?.length ?? 0);
 
     return post;
   }
 
   async getPostById(postId: string, viewerUserId: string) {
-    return this.requireVisiblePost(postId, viewerUserId);
+    const visiblePost = await this.requireVisiblePost(postId, viewerUserId);
+    const post = await this.postRepository.findFeedPostById(visiblePost.id);
+
+    if (!post) {
+      throw new ApiErrorHandler(404, 'Post not found');
+    }
+
+    const [postWithViewerState] = await this.mapFeedPostsWithViewerState([post], viewerUserId);
+
+    return postWithViewerState;
   }
 
-  async getPostsByUserId(profileUserId: string, viewerUserId: string) {
+  async getPostsByUserId(profileUserId: string, viewerUserId: string, query: { limit?: number; cursor?: string }) {
     await this.requireProfileAccess(viewerUserId, profileUserId);
-    return this.postRepository.findPostsByUserId(profileUserId);
+    const limit = !query.limit || query.limit < 1 ? 30 : Math.min(query.limit, 50);
+    const result = await this.postRepository.findPostsByUserId(profileUserId, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    const items = await this.mapFeedPostsWithViewerState(result.posts, viewerUserId);
+    this.recordFeedPage('profile_posts', items.length);
+
+    return {
+      items,
+      pagination: {
+        limit,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
   }
 
   async getAllPosts(page: number, limit: number, skip: number) {
@@ -43,8 +77,24 @@ export class PostService {
     };
   }
 
-  async getMyPosts(userId: string) {
-    return this.postRepository.findPostsByUserId(userId);
+  async getMyPosts(userId: string, query: { limit?: number; cursor?: string }) {
+    const limit = !query.limit || query.limit < 1 ? 30 : Math.min(query.limit, 50);
+    const result = await this.postRepository.findPostsByUserId(userId, {
+      limit,
+      cursor: query.cursor,
+    });
+
+    const items = await this.mapFeedPostsWithViewerState(result.posts, userId);
+    this.recordFeedPage('my_posts', items.length);
+
+    return {
+      items,
+      pagination: {
+        limit,
+        nextCursor: result.nextCursor,
+        hasNextPage: result.hasNextPage,
+      },
+    };
   }
 
   async getHomeFeed(currentUserId: string, query: { limit?: number; cursor?: string }) {
@@ -56,32 +106,11 @@ export class PostService {
       cursor: query.cursor,
     });
 
-    const authorIds = [...new Set(result.posts.map((post: any) => post.authorId))];
-    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
-
-    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile]),
-    );
+    const items = await this.mapFeedPostsWithViewerState(result.posts, currentUserId);
+    this.recordFeedPage('home', items.length);
 
     return {
-      items: result.posts.map((post) => {
-        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
-
-        return {
-          ...mapUserFeedPost(post),
-          author: {
-            userId: post.authorId,
-            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
-            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
-            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? 'unknown',
-          },
-          viewer: {
-            userId: currentUserId,
-          },
-        };
-      }),
+      items,
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -99,32 +128,11 @@ export class PostService {
       limit,
     });
 
-    const authorIds = [...new Set(result.posts.map((post) => post.authorId))];
-    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
-
-    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile]),
-    );
+    const items = await this.mapFeedPostsWithViewerState(result.posts, currentUserId);
+    this.recordFeedPage('home_before', items.length);
 
     return {
-      items: result.posts.map((post) => {
-        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
-
-        return {
-          ...mapUserFeedPost(post),
-          author: {
-            userId: post.authorId,
-            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
-            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
-            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? 'unknown',
-          },
-          viewer: {
-            userId: currentUserId,
-          },
-        };
-      }),
+      items,
       pagination: {
         limit,
         hasNewer: result.hasNewer,
@@ -143,32 +151,11 @@ export class PostService {
       limit,
     });
 
-    const authorIds = [...new Set(result.posts.map((post) => post.authorId))];
-    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
-
-    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile]),
-    );
+    const items = await this.mapFeedPostsWithViewerState(result.posts, currentUserId);
+    this.recordFeedPage('home_after', items.length);
 
     return {
-      items: result.posts.map((post) => {
-        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
-
-        return {
-          ...mapUserFeedPost(post),
-          author: {
-            userId: post.authorId,
-            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
-            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
-            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? 'unknown',
-          },
-          viewer: {
-            userId: currentUserId,
-          },
-        };
-      }),
+      items,
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -229,6 +216,8 @@ export class PostService {
       };
     });
 
+    this.recordFeedPage('profile_grid_cursor', items.length);
+
     return {
       items,
       pagination: {
@@ -274,6 +263,8 @@ export class PostService {
       };
     });
 
+    this.recordFeedPage('profile_grid_offset', items.length);
+
     return {
       items,
       pagination: {
@@ -295,8 +286,11 @@ export class PostService {
       limit,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, viewerUserId);
+    this.recordFeedPage('profile_feed_window', items.length);
+
     return {
-      items: result.posts.map((post: any) => mapUserFeedPost(post)),
+      items,
       pagination: {
         anchorPostId: result.anchorPostId,
         nextCursor: result.nextCursor,
@@ -315,8 +309,11 @@ export class PostService {
       limit,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, viewerUserId);
+    this.recordFeedPage('profile_feed_after', items.length);
+
     return {
-      items: result.posts.map((post) => mapUserFeedPost(post)),
+      items,
       pagination: {
         nextCursor: result.nextCursor,
         hasNextPage: result.hasNextPage,
@@ -334,11 +331,15 @@ export class PostService {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    return this.postRepository.updatePostAndQueuePostUpdatedEvent(postId, {
+    const post = await this.postRepository.updatePostAndQueuePostUpdatedEvent(postId, {
       content: input.content,
       editedAt: new Date(),
       isEdited: true,
     });
+
+    postOperationsTotal.inc({ operation: 'update' });
+
+    return post;
   }
 
   async deletePost(postId: string, userId: string) {
@@ -356,6 +357,8 @@ export class PostService {
     if (!deletedPost) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
+
+    postOperationsTotal.inc({ operation: 'delete' });
   }
 
   async likePost(postId: string, currentUserId: string) {
@@ -364,6 +367,8 @@ export class PostService {
     await this.postRepository.createPostLike(postId, currentUserId);
 
     const likesCount = await this.postRepository.countPostLikes(postId);
+
+    postEngagementActionsTotal.inc({ action: 'like' });
 
     return {
       postId,
@@ -378,6 +383,8 @@ export class PostService {
     await this.postRepository.deletePostLike(postId, currentUserId);
 
     const likesCount = await this.postRepository.countPostLikes(postId);
+
+    postEngagementActionsTotal.inc({ action: 'unlike' });
 
     return {
       postId,
@@ -461,6 +468,8 @@ export class PostService {
     const cachedProfile = cachedProfiles[0];
     const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
 
+    postEngagementActionsTotal.inc({ action: 'comment_create' });
+
     return {
       id: createdComment.id,
       postId: createdComment.postId,
@@ -523,8 +532,8 @@ export class PostService {
   }
 
   async deletePostComment(postId: string, commentId: string, currentUserId: string) {
-    const postExists = await this.postRepository.findPostById(postId);
-    if (!postExists) {
+    const post = await this.postRepository.findPostById(postId);
+    if (!post) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
 
@@ -537,11 +546,16 @@ export class PostService {
       throw new ApiErrorHandler(400, 'Comment does not belong to this post');
     }
 
-    if (comment.authorId !== currentUserId) {
+    const isCommentAuthor = comment.authorId === currentUserId;
+    const isPostOwner = post.authorId === currentUserId;
+
+    if (!isCommentAuthor && !isPostOwner) {
       throw new ApiErrorHandler(403, 'You are not allowed to delete this comment');
     }
 
     await this.postRepository.deleteComment(commentId);
+
+    postEngagementActionsTotal.inc({ action: 'comment_delete' });
 
     return {
       postId,
@@ -550,12 +564,51 @@ export class PostService {
     };
   }
 
+  private recordFeedPage(feedType: string, itemCount: number): void {
+    feedRequestsTotal.inc({ feed_type: feedType });
+    feedItemsReturnedHistogram.observe({ feed_type: feedType }, itemCount);
+  }
+
   private async requireProfileAccess(viewerUserId: string, profileUserId: string): Promise<void> {
     const canAccess = await this.postRepository.canViewerAccessProfile(viewerUserId, profileUserId);
 
     if (!canAccess) {
       throw new ApiErrorHandler(404, 'Profile posts not found');
     }
+  }
+
+  private async mapFeedPostsWithViewerState(posts: any[], viewerUserId: string) {
+    const postIds = posts.map((post) => post.id);
+    const authorIds = [...new Set(posts.map((post) => post.authorId))];
+
+    const [likedPostIds, cachedProfiles] = await Promise.all([
+      this.postRepository.findViewerLikedPostIds(viewerUserId, postIds),
+      this.postRepository.findUserProfileCacheByIds(authorIds),
+    ]);
+
+    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
+      cachedProfiles.map((profile: any) => [profile.userId, profile]),
+    );
+
+    return posts.map((post) => {
+      const cachedProfile = cachedProfilesByUserId.get(post.authorId);
+      const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
+
+      return {
+        ...mapUserFeedPost(post),
+        author: {
+          userId: post.authorId,
+          username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
+          displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
+          avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
+          status: cachedProfile?.status ?? 'unknown',
+        },
+        viewer: {
+          userId: viewerUserId,
+          likedByMe: likedPostIds.has(post.id),
+        },
+      };
+    });
   }
 
   private async requireVisiblePost(postId: string, viewerUserId: string) {

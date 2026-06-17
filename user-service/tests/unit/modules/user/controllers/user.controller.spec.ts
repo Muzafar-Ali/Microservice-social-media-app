@@ -193,9 +193,7 @@ describe('UserController', () => {
       await controller.getProfileById(req, res, next as unknown as NextFunction);
 
       // Assert
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 404, message: 'user not found' }),
-      );
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 404, message: 'user not found' }));
       expectNoResponse();
     });
 
@@ -260,9 +258,7 @@ describe('UserController', () => {
 
       // Assert
       expect(service.getUserByUsername).toHaveBeenCalledWith('missing-user');
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 404, message: 'user not found' }),
-      );
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 404, message: 'user not found' }));
       expectNoResponse();
     });
 
@@ -324,9 +320,7 @@ describe('UserController', () => {
       // Assert
       expect(service.updateUserProfileImage).not.toHaveBeenCalled();
       expect(userUpdatedTotal.inc).not.toHaveBeenCalled();
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }),
-      );
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }));
       expectNoResponse();
     });
 
@@ -387,9 +381,7 @@ describe('UserController', () => {
       // Assert
       expect(service.updateMyProfile).not.toHaveBeenCalled();
       expect(userUpdatedTotal.inc).not.toHaveBeenCalled();
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }),
-      );
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }));
       expectNoResponse();
     });
 
@@ -517,9 +509,7 @@ describe('UserController', () => {
       // Assert
       expect(serviceMethod).not.toHaveBeenCalled();
       expect(userUpdatedTotal.inc).not.toHaveBeenCalled();
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }),
-      );
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }));
       expectNoResponse();
     });
 
@@ -569,9 +559,7 @@ describe('UserController', () => {
       // Assert
       expect(service.deleteMyAccount).not.toHaveBeenCalled();
       expect(userUpdatedTotal.inc).not.toHaveBeenCalled();
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }),
-      );
+      expect(next).toHaveBeenCalledWith(expect.objectContaining({ statusCode: 401, message: 'Unauthorized' }));
       expectNoResponse();
     });
 

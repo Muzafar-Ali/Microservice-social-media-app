@@ -4,7 +4,7 @@ import ApiErrorHandler from '../utils/ApiErrorHandlerClass.js';
 import { redis } from '../config/redisClient.js';
 
 type SessionPayload = {
-  userId: number;
+  userId: string | number;
   ip?: string;
   userAgent?: string;
 };
@@ -13,19 +13,25 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      sessionId?: string;
     }
   }
 }
 
 const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunction) => {
   try {
-    const sessionId = req.cookies?.sid;
+    let sessionId = req.cookies?.sid;
+
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      sessionId = authHeader.split(' ')[1];
+    }
 
     if (!sessionId) {
       return next(new ApiErrorHandler(StatusCodes.UNAUTHORIZED, 'Please login'));
     }
 
-    const sessionKey = `session:${sessionId}`;
+    const sessionKey = `auth:session:${sessionId}`;
     const sessionJson = await redis.get(sessionKey);
 
     if (!sessionJson) {
@@ -35,6 +41,7 @@ const isAuthenticatedRedis = async (req: Request, _res: Response, next: NextFunc
     const session = JSON.parse(sessionJson) as SessionPayload;
 
     req.userId = String(session.userId);
+    req.sessionId = sessionId;
     return next();
   } catch (error) {
     return next(error);

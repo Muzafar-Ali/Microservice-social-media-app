@@ -15,6 +15,7 @@ import {
   PaginatedMessagesResponseDto,
   RemoveParticipantResponseDto,
   RemoveReactionResponseDto,
+  SendMessageResultDto,
 } from '../types/chat.types.js';
 import mapConversation from '../utils/mapConversion.js';
 
@@ -77,10 +78,26 @@ export class ChatService {
       return mapConversation(existingConversation);
     }
 
-    const createdConversation = await this.chatRepository.createDirectConversation(
-      params.creatorUserId,
-      params.participantUserId,
-    );
+    let createdConversation;
+
+    try {
+      createdConversation = await this.chatRepository.createDirectConversation(
+        params.creatorUserId,
+        params.participantUserId,
+      );
+    } catch (error) {
+      if (!this.chatRepository.isDirectConversationUniqueConflict(error)) {
+        throw error;
+      }
+
+      const racedConversation = await this.chatRepository.findExistingDirectConversation(
+        params.creatorUserId,
+        params.participantUserId,
+      );
+
+      if (racedConversation) return mapConversation(racedConversation);
+      throw error;
+    }
 
     return mapConversation(createdConversation);
   }
@@ -91,10 +108,20 @@ export class ChatService {
     title?: string;
     participantUserIds?: string[];
   }): Promise<BaseConversationDto> {
-    const participantUserIds = params.participantUserIds ?? [];
+    const participantUserIds = Array.from(
+      new Set(
+        (params.participantUserIds ?? [])
+          .map((participantUserId) => participantUserId.trim())
+          .filter(Boolean)
+          .filter((participantUserId) => participantUserId !== params.creatorUserId),
+      ),
+    );
 
     if (participantUserIds.length === 0) {
-      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'participantUserIds is required for GROUP chat');
+      throw new ApiErrorHandler(
+        StatusCodes.BAD_REQUEST,
+        'GROUP chat requires at least one participant other than the creator',
+      );
     }
 
     const createdConversation = await this.chatRepository.createGroupConversation({
@@ -109,32 +136,34 @@ export class ChatService {
   async listMyConversations(userId: string): Promise<ConversationListItemDto[]> {
     const conversations = await this.chatRepository.listUserConversations(userId);
 
-    const conversationListItems = await Promise.all(
-      conversations.map(async (conversation: any) => {
-        const currentParticipant = await this.chatRepository.findParticipant(conversation.id, userId);
+    const readStates = conversations.map((conversation: any) => {
+      const currentParticipant = conversation.participants.find((participant: any) => participant.userId === userId);
 
-        const unreadCount = await this.chatRepository.countUnreadMessages({
-          conversationId: conversation.id,
-          userId,
-          lastReadAt: currentParticipant?.lastReadAt ?? null,
-        });
+      return {
+        conversationId: conversation.id,
+        lastReadAt: currentParticipant?.lastReadAt ?? null,
+      };
+    });
 
-        return {
-          ...mapConversation(conversation),
-          lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
-          unreadCount,
-          lastMessage: conversation.lastMessage
-            ? {
-                id: conversation.lastMessage.id,
-                senderId: conversation.lastMessage.senderId,
-                type: conversation.lastMessage.type,
-                body: conversation.lastMessage.body ?? null,
-                createdAt: conversation.lastMessage.createdAt.toISOString(),
-              }
-            : null,
-        };
-      }),
-    );
+    const unreadCountsByConversationId = await this.chatRepository.countUnreadMessagesForConversations({
+      userId,
+      readStates,
+    });
+
+    const conversationListItems = conversations.map((conversation: any) => ({
+      ...mapConversation(conversation),
+      lastMessageAt: conversation.lastMessageAt ? conversation.lastMessageAt.toISOString() : null,
+      unreadCount: unreadCountsByConversationId.get(conversation.id) ?? 0,
+      lastMessage: conversation.lastMessage
+        ? {
+            id: conversation.lastMessage.id,
+            senderId: conversation.lastMessage.senderId,
+            type: conversation.lastMessage.type,
+            body: conversation.lastMessage.body ?? null,
+            createdAt: conversation.lastMessage.createdAt.toISOString(),
+          }
+        : null,
+    }));
 
     return conversationListItems;
   }
@@ -159,7 +188,7 @@ export class ChatService {
       durationSec?: number | null;
       sortOrder?: number;
     }>;
-  }): Promise<MessageResponseDto> {
+  }): Promise<SendMessageResultDto> {
     const isParticipant = await this.chatRepository.isUserParticipant(params.conversationId, params.senderId);
 
     if (!isParticipant) {
@@ -176,7 +205,10 @@ export class ChatService {
     });
 
     if (existingMessage) {
-      return this.mapMessage(existingMessage);
+      return {
+        message: this.mapMessage(existingMessage),
+        created: false,
+      };
     }
 
     if (params.replyToMessageId) {
@@ -193,18 +225,43 @@ export class ChatService {
 
     const normalizedBody = typeof params.body === 'string' && params.body.trim().length > 0 ? params.body.trim() : null;
 
-    const createdMessage = await this.chatRepository.createMessage({
-      conversationId: params.conversationId,
-      senderId: params.senderId,
-      type: params.type,
-      body: normalizedBody,
-      metadata: params.metadata ?? null,
-      clientMessageId: params.clientMessageId,
-      replyToMessageId: params.replyToMessageId ?? null,
-      attachments: params.attachments ?? [],
-    });
+    let createdMessage;
 
-    return this.mapMessage(createdMessage);
+    try {
+      createdMessage = await this.chatRepository.createMessage({
+        conversationId: params.conversationId,
+        senderId: params.senderId,
+        type: params.type,
+        body: normalizedBody,
+        metadata: params.metadata ?? null,
+        clientMessageId: params.clientMessageId,
+        replyToMessageId: params.replyToMessageId ?? null,
+        attachments: params.attachments ?? [],
+      });
+    } catch (error) {
+      if (!this.chatRepository.isMessageClientIdUniqueConflict(error)) {
+        throw error;
+      }
+
+      const racedMessage = await this.chatRepository.findMessageByClientMessageId({
+        conversationId: params.conversationId,
+        clientMessageId: params.clientMessageId,
+      });
+
+      if (!racedMessage) {
+        throw error;
+      }
+
+      return {
+        message: this.mapMessage(racedMessage),
+        created: false,
+      };
+    }
+
+    return {
+      message: this.mapMessage(createdMessage),
+      created: true,
+    };
   }
 
   async getConversationMessages(params: {
@@ -225,9 +282,11 @@ export class ChatService {
       cursorMessageId: params.cursorMessageId,
     });
 
-    const items = messages.map((message: any) => this.mapMessage(message));
+    const hasNextPage = messages.length > params.limit;
+    const paginatedMessages = hasNextPage ? messages.slice(0, params.limit) : messages;
+    const items = paginatedMessages.map((message: any) => this.mapMessage(message));
 
-    const nextCursor = items.length === params.limit ? items[items.length - 1].id : null;
+    const nextCursor = hasNextPage && items.length > 0 ? items[items.length - 1].id : null;
 
     return {
       items,
@@ -353,8 +412,18 @@ export class ChatService {
 
     const conversation = await this.chatRepository.findConversationById(deletedMessage.conversationId);
 
+    let conversationUpdate: DeleteMessageResponseDto['conversationUpdate'] = null;
+
     if (conversation?.lastMessageId === deletedMessage.id) {
-      await this.chatRepository.updateConversationLastMessageFromLatest(deletedMessage.conversationId);
+      const updatedConversation = await this.chatRepository.updateConversationLastMessageFromLatest(
+        deletedMessage.conversationId,
+      );
+
+      conversationUpdate = {
+        conversationId: updatedConversation.id,
+        lastMessageId: updatedConversation.lastMessageId ?? null,
+        lastMessageAt: updatedConversation.lastMessageAt ? updatedConversation.lastMessageAt.toISOString() : null,
+      };
     }
 
     return {
@@ -363,6 +432,7 @@ export class ChatService {
       deletedBy: params.userId,
       deletedAt: deletedMessage.deletedAt!.toISOString(),
       forEveryone: true,
+      conversationUpdate,
     };
   }
 
@@ -525,6 +595,10 @@ export class ChatService {
       ),
     );
 
+    if (uniqueParticipantUserIds.length === 0) {
+      throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'participantUserIds must include at least one user to add');
+    }
+
     const activeParticipantUserIds = new Set(
       conversation.participants
         .filter((participant: any) => participant.deletedAt === null)
@@ -613,7 +687,6 @@ export class ChatService {
 
   async leaveGroupConversation(params: { userId: string; conversationId: string }): Promise<LeaveGroupResponseDto> {
     const conversation = await this.chatRepository.findConversationByIdWithParticipants(params.conversationId);
-    console.log('conversation', conversation);
 
     if (!conversation) {
       throw new ApiErrorHandler(StatusCodes.NOT_FOUND, 'Conversation not found');
@@ -634,7 +707,7 @@ export class ChatService {
     if (currentParticipant.role === ParticipantRole.ADMIN) {
       const adminCount = await this.chatRepository.countConversationAdmins(params.conversationId);
 
-      if (adminCount < 1) {
+      if (adminCount <= 1) {
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, 'Last admin cannot leave the group');
       }
     }

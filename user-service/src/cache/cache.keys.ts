@@ -10,6 +10,10 @@ export const sessionCacheKey = (sessionId: string) => {
   return `auth:session:${sessionId}`;
 };
 
+export const sessionLastUsedWriteThrottleKey = (sessionId: string) => {
+  return `auth:session:last-used-write-throttle:${sessionId}`;
+};
+
 export const passwordResetTokenCacheKey = (tokenHash: string) => {
   return `auth:password-reset:token:${tokenHash}`;
 };

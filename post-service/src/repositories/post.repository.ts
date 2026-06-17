@@ -90,6 +90,33 @@ export class PostRepository {
     });
   }
 
+  async findFeedPostById(postId: string) {
+    return this.prisma.post.findUnique({
+      where: { id: postId },
+      select: userFeedPostSelect,
+    });
+  }
+
+  async findViewerLikedPostIds(viewerUserId: string, postIds: string[]) {
+    if (postIds.length === 0) {
+      return new Set<string>();
+    }
+
+    const likes = await this.prisma.postLike.findMany({
+      where: {
+        userId: viewerUserId,
+        postId: {
+          in: postIds,
+        },
+      },
+      select: {
+        postId: true,
+      },
+    });
+
+    return new Set(likes.map((like) => like.postId));
+  }
+
   async createPostLike(postId: string, userId: string) {
     try {
       return await this.prisma.postLike.create({
@@ -99,7 +126,11 @@ export class PostRepository {
         },
       });
     } catch (error) {
-      return null;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        return null;
+      }
+
+      throw error;
     }
   }
 
@@ -114,7 +145,11 @@ export class PostRepository {
         },
       });
     } catch (error) {
-      return null;
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return null;
+      }
+
+      throw error;
     }
   }
 
@@ -124,18 +159,29 @@ export class PostRepository {
     });
   }
 
-  async findPostsByUserId(profileUserId: string) {
-    return this.prisma.post.findMany({
+  async findPostsByUserId(profileUserId: string, options: { limit: number; cursor?: string }) {
+    const posts = await this.prisma.post.findMany({
       where: { authorId: profileUserId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        media: {
-          orderBy: { order: 'asc' },
-        },
-        likes: true,
-        comments: true,
-      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: options.limit + 1,
+      ...(options.cursor
+        ? {
+            cursor: { id: options.cursor },
+            skip: 1,
+          }
+        : {}),
+      select: userFeedPostSelect,
     });
+
+    const hasNextPage = posts.length > options.limit;
+    const slicedPosts = hasNextPage ? posts.slice(0, options.limit) : posts;
+    const nextCursor = hasNextPage && slicedPosts.length > 0 ? slicedPosts[slicedPosts.length - 1].id : null;
+
+    return {
+      posts: slicedPosts,
+      nextCursor,
+      hasNextPage,
+    };
   }
 
   async findHomeFeed(options: { viewerUserId: string; limit: number; cursor?: string }): Promise<{

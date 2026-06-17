@@ -3,15 +3,15 @@ import { AuthService } from './auth.service.js';
 import {
   ChangePasswordDto,
   ForgotPasswordDto,
+  MobileLoginDto,
   ResetPasswordDto,
   sessionIdParamSchema,
   UserLoginDto,
-  userLoginSchema,
 } from './auth.validations.js';
 import ApiErrorHandler from '../../utils/apiErrorHandlerClass.js';
 import formatZodError from '../../utils/formatZodError.js';
 import { TLoginContext } from './auth.types.js';
-import { clearWebSessionCookie, setWebSessionCookie } from '../../utils/sessionHelpers.js';
+import { clearWebSessionCookie, SESSION_TTL_SECONDS, setWebSessionCookie } from '../../utils/sessionHelpers.js';
 
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -52,15 +52,9 @@ export class AuthController {
     }
   };
 
-  mobileLogin = async (req: Request, res: Response, next: NextFunction) => {
+  mobileLogin = async (req: Request<Record<string, never>, any, MobileLoginDto>, res: Response, next: NextFunction) => {
     try {
-      const safeData = userLoginSchema.safeParse(req.body);
-
-      if (!safeData.success) {
-        throw new ApiErrorHandler(400, formatZodError(safeData.error));
-      }
-
-      const dto: UserLoginDto = safeData.data;
+      const dto = req.body;
       const identifier = (dto.email ?? dto.username)!;
 
       const loginContext: TLoginContext = {
@@ -75,6 +69,9 @@ export class AuthController {
         userId: user.id,
         ip: loginContext.ip,
         userAgent: loginContext.userAgent,
+        deviceName: dto.deviceName,
+        platform: dto.platform,
+        appVersion: dto.appVersion,
       });
 
       res.status(200).json({
@@ -82,9 +79,13 @@ export class AuthController {
         message: 'logged in successfully',
         data: {
           sessionId,
-          userId: user.id,
-          username: user.username,
-          email: user.email,
+          tokenType: 'Bearer',
+          expiresIn: SESSION_TTL_SECONDS,
+          user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+          },
         },
       });
     } catch (error) {

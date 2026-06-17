@@ -1,11 +1,13 @@
 import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { PresenceService } from './presence.service.js';
 import { socketAuthMiddleware } from './auth.middleware.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
 import { ChatService } from '../services/chat.service.js';
 import { registerChatSocketHandlers } from './chat.socket.js';
+import { redis } from '../config/redisClient.js';
 import {
   chatSocketActiveConnections,
   chatSocketConnectionsTotal,
@@ -30,13 +32,19 @@ export function getSocketServer() {
  * - Auto-join conversation rooms
  * - Register chat handlers
  */
-export function initSocketServer(httpServer: HttpServer, chatService: ChatService) {
+export async function initSocketServer(httpServer: HttpServer, chatService: ChatService) {
   const io = new Server(httpServer, {
     cors: {
-      origin: ['http://localhost:3000'],
+      origin: config.corsAllowedOrigins,
       credentials: true,
     },
   });
+
+  const pubClient = redis.duplicate();
+  const subClient = redis.duplicate();
+
+  await Promise.all([pubClient.connect(), subClient.connect()]);
+  io.adapter(createAdapter(pubClient, subClient));
 
   ioInstance = io;
 
@@ -52,26 +60,29 @@ export function initSocketServer(httpServer: HttpServer, chatService: ChatServic
     chatSocketConnectionsTotal.inc();
     chatSocketActiveConnections.inc();
 
-    const presenceOnline = await presenceService.markOnline(userId, socket.id);
-
-    io.emit('presence:update', presenceOnline);
-
     await socket.join(`user:${userId}`);
+    const joinedConversationIds: string[] = [];
 
     logger.info({ userId, socketId: socket.id, room: `user:${userId}` }, '👤 joined user room');
 
-    // try {
-    //   const myConversations = await chatService.listMyConversations(userId);
+    try {
+      const myConversations = await chatService.listMyConversations(userId);
 
-    //   for (const conversation of myConversations) {
-    //     await socket.join(`conversation:${conversation.id}`);
-    //   }
+      for (const conversation of myConversations) {
+        await socket.join(`conversation:${conversation.id}`);
+        joinedConversationIds.push(conversation.id);
+      }
 
-    //   logger.info({ userId, roomsJoined: myConversations.length }, "🏠 auto-joined conversation rooms");
+      logger.info({ userId, roomsJoined: myConversations.length }, 'auto-joined conversation rooms');
+    } catch (error) {
+      logger.warn({ userId, error }, 'failed to auto-join conversation rooms');
+    }
 
-    // } catch (error) {
-    //   logger.warn({ userId, error }, "⚠️ failed to auto-join conversation rooms");
-    // }
+    const presenceOnline = await presenceService.markOnline(userId, socket.id);
+
+    for (const conversationId of joinedConversationIds) {
+      io.to(`conversation:${conversationId}`).emit('presence:update', presenceOnline);
+    }
 
     registerChatSocketHandlers(io, socket as any, chatService);
 
@@ -84,7 +95,9 @@ export function initSocketServer(httpServer: HttpServer, chatService: ChatServic
       const presenceOffline = await presenceService.markOfflineIfLastSocket(userId, socket.id);
 
       if (presenceOffline) {
-        io.emit('presence:update', presenceOffline);
+        for (const conversationId of joinedConversationIds) {
+          io.to(`conversation:${conversationId}`).emit('presence:update', presenceOffline);
+        }
       }
     });
   });

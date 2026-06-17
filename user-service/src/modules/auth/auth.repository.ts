@@ -49,6 +49,8 @@ export class AuthRepository {
     userId: string;
     refreshTokenHash: string;
     deviceName?: string;
+    platform?: string;
+    appVersion?: string;
     userAgent?: string;
     expiresAt: Date;
   }) => {
@@ -66,6 +68,8 @@ export class AuthRepository {
       select: {
         id: true,
         deviceName: true,
+        platform: true,
+        appVersion: true,
         userAgent: true,
         createdAt: true,
         lastUsedAt: true,

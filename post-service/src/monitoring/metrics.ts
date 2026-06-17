@@ -46,9 +46,52 @@ export const postCreatedCounter = new client.Counter({
   help: 'Total number of posts successfully created',
 });
 
+export const postOperationsTotal = new client.Counter({
+  name: 'post_operations_total',
+  help: 'Total number of successful post lifecycle operations',
+  labelNames: ['operation'],
+});
+
+export const postMediaItemsHistogram = new client.Histogram({
+  name: 'post_media_items_per_post',
+  help: 'Number of media items attached to successfully created posts',
+  buckets: [0, 1, 2, 3, 5, 10],
+});
+
+export const feedRequestsTotal = new client.Counter({
+  name: 'post_feed_requests_total',
+  help: 'Total number of successful feed page reads',
+  labelNames: ['feed_type'],
+});
+
+export const feedItemsReturnedHistogram = new client.Histogram({
+  name: 'post_feed_items_returned',
+  help: 'Number of items returned by feed page reads',
+  labelNames: ['feed_type'],
+  buckets: [0, 1, 5, 10, 20, 30, 50],
+});
+
+export const postEngagementActionsTotal = new client.Counter({
+  name: 'post_engagement_actions_total',
+  help: 'Total number of successful post engagement write actions',
+  labelNames: ['action'],
+});
+
+export const rateLimitExceededTotal = new client.Counter({
+  name: 'post_rate_limit_exceeded_total',
+  help: 'Total number of post-service requests rejected by rate limiting',
+  labelNames: ['policy'],
+});
+
 register.registerMetric(httpRequestsTotal);
 register.registerMetric(httpRequestDuration);
 register.registerMetric(postCreatedCounter);
+register.registerMetric(postOperationsTotal);
+register.registerMetric(postMediaItemsHistogram);
+register.registerMetric(feedRequestsTotal);
+register.registerMetric(feedItemsReturnedHistogram);
+register.registerMetric(postEngagementActionsTotal);
+register.registerMetric(rateLimitExceededTotal);
 registerKafkaMetrics(register);
 registerOutboxMetrics(register);
 

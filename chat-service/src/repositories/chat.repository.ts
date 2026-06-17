@@ -11,6 +11,10 @@ import { CreateMessageInput } from '../types/chat.types.js';
 export class ChatRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
+  private buildDirectConversationKey(userA: string, userB: string) {
+    return [userA, userB].sort().join(':');
+  }
+
   async findConversationById(conversationId: string) {
     return this.prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -26,13 +30,20 @@ export class ChatRepository {
   }
 
   async findExistingDirectConversation(userA: string, userB: string) {
+    const directKey = this.buildDirectConversationKey(userA, userB);
+
     return this.prisma.conversation.findFirst({
       where: {
         type: ConversationType.DIRECT,
-        AND: [
-          { participants: { some: { userId: userA } } },
-          { participants: { some: { userId: userB } } },
-          { participants: { none: { userId: { notIn: [userA, userB] } } } },
+        OR: [
+          { directKey },
+          {
+            AND: [
+              { participants: { some: { userId: userA } } },
+              { participants: { some: { userId: userB } } },
+              { participants: { none: { userId: { notIn: [userA, userB] } } } },
+            ],
+          },
         ],
       },
       include: {
@@ -43,9 +54,12 @@ export class ChatRepository {
   }
 
   async createDirectConversation(creatorUserId: string, otherUserId: string) {
+    const directKey = this.buildDirectConversationKey(creatorUserId, otherUserId);
+
     return this.prisma.conversation.create({
       data: {
         type: ConversationType.DIRECT,
+        directKey,
         participants: {
           createMany: {
             data: [
@@ -66,6 +80,10 @@ export class ChatRepository {
         lastMessage: true,
       },
     });
+  }
+
+  isDirectConversationUniqueConflict(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
   }
 
   async createGroupConversation(params: { creatorUserId: string; title?: string; participantUserIds: string[] }) {
@@ -179,6 +197,10 @@ export class ChatRepository {
     });
   }
 
+  isMessageClientIdUniqueConflict(error: unknown) {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+  }
+
   async createMessage(params: CreateMessageInput) {
     return this.prisma.$transaction(async (transactionClient: any) => {
       const createdMessage = await transactionClient.message.create({
@@ -245,7 +267,7 @@ export class ChatRepository {
         },
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: params.limit,
+      take: params.limit + 1,
       ...(params.cursorMessageId
         ? {
             cursor: {
@@ -294,6 +316,40 @@ export class ChatRepository {
           : {}),
       },
     });
+  }
+
+  async countUnreadMessagesForConversations(params: {
+    userId: string;
+    readStates: Array<{ conversationId: string; lastReadAt?: Date | null }>;
+  }) {
+    if (params.readStates.length === 0) {
+      return new Map<string, number>();
+    }
+
+    const unreadRows = await this.prisma.message.groupBy({
+      by: ['conversationId'],
+      where: {
+        deletedAt: null,
+        senderId: {
+          not: params.userId,
+        },
+        OR: params.readStates.map((readState) => ({
+          conversationId: readState.conversationId,
+          ...(readState.lastReadAt
+            ? {
+                createdAt: {
+                  gt: readState.lastReadAt,
+                },
+              }
+            : {}),
+        })),
+      },
+      _count: {
+        _all: true,
+      },
+    });
+
+    return new Map(unreadRows.map((row) => [row.conversationId, row._count._all]));
   }
 
   async getLastMessage(conversationId: string) {
@@ -519,31 +575,60 @@ export class ChatRepository {
       },
       select: {
         userId: true,
+        deletedAt: true,
       },
     });
 
     const existingUserIds = new Set(existingParticipants.map((participant: any) => participant.userId));
+    const softDeletedUserIds = existingParticipants
+      .filter((participant: any) => participant.deletedAt !== null)
+      .map((participant: any) => participant.userId);
 
     const newUserIds = params.participantUserIds.filter((userId) => !existingUserIds.has(userId));
+    const affectedUserIds = [...new Set([...newUserIds, ...softDeletedUserIds])];
 
-    if (newUserIds.length === 0) {
+    if (affectedUserIds.length === 0) {
       return [];
     }
 
-    await this.prisma.participant.createMany({
-      data: newUserIds.map((userId) => ({
-        conversationId: params.conversationId,
-        userId,
-        role: ParticipantRole.MEMBER,
-      })),
-      skipDuplicates: true,
+    await this.prisma.$transaction(async (transactionClient) => {
+      if (softDeletedUserIds.length > 0) {
+        await transactionClient.participant.updateMany({
+          where: {
+            conversationId: params.conversationId,
+            userId: {
+              in: softDeletedUserIds,
+            },
+          },
+          data: {
+            role: ParticipantRole.MEMBER,
+            joinedAt: new Date(),
+            lastReadAt: null,
+            lastReadMessageId: null,
+            mutedUntil: null,
+            archivedAt: null,
+            deletedAt: null,
+          },
+        });
+      }
+
+      if (newUserIds.length > 0) {
+        await transactionClient.participant.createMany({
+          data: newUserIds.map((userId) => ({
+            conversationId: params.conversationId,
+            userId,
+            role: ParticipantRole.MEMBER,
+          })),
+          skipDuplicates: true,
+        });
+      }
     });
 
     return this.prisma.participant.findMany({
       where: {
         conversationId: params.conversationId,
         userId: {
-          in: newUserIds,
+          in: affectedUserIds,
         },
         deletedAt: null,
       },

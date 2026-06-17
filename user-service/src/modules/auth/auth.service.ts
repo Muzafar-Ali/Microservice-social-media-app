@@ -74,7 +74,14 @@ export class AuthService {
     return user;
   };
 
-  createSession = async (input: { userId: string; ip?: string; userAgent?: string; deviceName?: string }) => {
+  createSession = async (input: {
+    userId: string;
+    ip?: string;
+    userAgent?: string;
+    deviceName?: string;
+    platform?: string;
+    appVersion?: string;
+  }) => {
     const sessionId = generateSessionId();
     const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000);
 
@@ -100,6 +107,8 @@ export class AuthService {
       userId: input.userId,
       refreshTokenHash: hashToken(sessionId),
       deviceName: input.deviceName,
+      platform: input.platform,
+      appVersion: input.appVersion,
       userAgent: input.userAgent,
       expiresAt,
     });

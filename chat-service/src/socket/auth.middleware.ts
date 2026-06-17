@@ -12,19 +12,23 @@ type SocketSessionPayload = {
 export async function socketAuthMiddleware(socket: Socket, next: (err?: Error) => void) {
   try {
     const cookieHeader = socket.handshake.headers.cookie;
+    let sessionId: string | undefined;
 
-    if (!cookieHeader) {
-      return next(new Error('Unauthorized: missing cookies'));
+    if (cookieHeader) {
+      const cookies = cookie.parse(cookieHeader);
+      sessionId = cookies.sid;
     }
 
-    const cookies = cookie.parse(cookieHeader);
-    const sessionId = cookies.sid;
+    const authHeader = socket.handshake.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      sessionId = authHeader.split(' ')[1];
+    }
 
     if (!sessionId) {
-      return next(new Error('Unauthorized: missing sid cookie'));
+      return next(new Error('Unauthorized: missing session'));
     }
 
-    const sessionKey = `session:${sessionId}`;
+    const sessionKey = `auth:session:${sessionId}`;
     const sessionJson = await redis.get(sessionKey);
 
     if (!sessionJson) {

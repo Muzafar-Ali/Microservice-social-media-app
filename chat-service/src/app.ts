@@ -10,6 +10,7 @@ import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
 import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
 import globalErrorHandler from './middlewares/globalErrorHandler.middleware.js';
 import prisma from './config/prismaClient.js';
+import config from './config/config.js';
 
 export const createApp = () => {
   const chatRepository = new ChatRepository(prisma);
@@ -18,11 +19,9 @@ export const createApp = () => {
 
   const app = express();
 
-  const allowedOrigins = ['http://localhost:3000'];
-
   app.use(
     cors({
-      origin: allowedOrigins,
+      origin: config.corsAllowedOrigins,
       credentials: true,
     }),
   );

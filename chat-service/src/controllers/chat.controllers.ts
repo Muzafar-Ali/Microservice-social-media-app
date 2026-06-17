@@ -172,7 +172,7 @@ export class ChatController {
         throw new ApiErrorHandler(StatusCodes.BAD_REQUEST, errorMessages);
       }
 
-      const createdMessage = await this.chatService.sendMessage({
+      const sendMessageResult = await this.chatService.sendMessage({
         senderId: userId,
         conversationId: safeParams.data.conversationId,
         type,
@@ -185,18 +185,20 @@ export class ChatController {
 
       const io = getSocketServer();
 
-      io.to(`conversation:${safeParams.data.conversationId}`).emit('chat:message:new', createdMessage);
+      if (sendMessageResult.created) {
+        io.to(`conversation:${safeParams.data.conversationId}`).emit('chat:message:new', sendMessageResult.message);
 
-      io.to(`conversation:${safeParams.data.conversationId}`).emit('conversation:update', {
-        conversationId: safeParams.data.conversationId,
-        lastMessageId: createdMessage.id,
-        lastMessageAt: createdMessage.createdAt,
-      });
+        io.to(`conversation:${safeParams.data.conversationId}`).emit('conversation:update', {
+          conversationId: safeParams.data.conversationId,
+          lastMessageId: sendMessageResult.message.id,
+          lastMessageAt: sendMessageResult.message.createdAt,
+        });
+      }
 
-      res.status(StatusCodes.CREATED).json({
+      res.status(sendMessageResult.created ? StatusCodes.CREATED : StatusCodes.OK).json({
         success: true,
-        message: 'Message sent successfully',
-        data: createdMessage,
+        message: sendMessageResult.created ? 'Message sent successfully' : 'Message already sent',
+        data: sendMessageResult.message,
       });
     } catch (error) {
       next(error);
@@ -230,7 +232,7 @@ export class ChatController {
 
       const io = getSocketServer();
       io.to(`conversation:${safeParams.data.conversationId}`).emit('chat:message:read:update', readState);
-      io.emit('chat:message:read:ack', readState);
+      io.to(`user:${userId}`).emit('chat:message:read:ack', readState);
 
       res.status(StatusCodes.OK).json({
         success: true,
@@ -264,6 +266,16 @@ export class ChatController {
         forEveryone,
       });
 
+      const io = getSocketServer();
+      io.to(`conversation:${deletedMessage.conversationId}`).emit('chat:message:deleted', deletedMessage);
+
+      if (deletedMessage.conversationUpdate) {
+        io.to(`conversation:${deletedMessage.conversationId}`).emit(
+          'conversation:update',
+          deletedMessage.conversationUpdate,
+        );
+      }
+
       res.status(StatusCodes.OK).json({
         success: true,
         message: 'Message deleted successfully',
@@ -294,6 +306,9 @@ export class ChatController {
         messageId: safeParams.data.messageId,
         reaction: req.body.reaction,
       });
+
+      const io = getSocketServer();
+      io.to(`conversation:${reaction.conversationId}`).emit('chat:message:reaction:added', reaction);
 
       res.status(StatusCodes.OK).json({
         success: true,
@@ -330,6 +345,11 @@ export class ChatController {
         messageId: safeParams.data.messageId,
         reaction,
       });
+
+      if (removedReaction.removed) {
+        const io = getSocketServer();
+        io.to(`conversation:${removedReaction.conversationId}`).emit('chat:message:reaction:removed', removedReaction);
+      }
 
       res.status(StatusCodes.OK).json({
         success: true,

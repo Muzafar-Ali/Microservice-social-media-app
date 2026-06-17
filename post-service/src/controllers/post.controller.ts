@@ -261,11 +261,20 @@ export class PostController {
         throw new ApiErrorHandler(400, erroMessages);
       }
 
-      const posts = await this.postService.getPostsByUserId(safeParams.data.profileUserId, req.userId);
+      const safeQuery = gridCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getPostsByUserId(safeParams.data.profileUserId, req.userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
 
       res.status(200).json({
         success: true,
-        data: posts,
+        data: result,
       });
     } catch (error) {
       logger.error(error, 'Error in getPostByUserIdHandler');
@@ -286,11 +295,20 @@ export class PostController {
         throw new ApiErrorHandler(401, 'Unauthorized');
       }
 
-      const posts = await this.postService.getMyPosts(userId);
+      const safeQuery = gridCursorPaginationSchema.safeParse(req.query);
+      if (!safeQuery.success) {
+        const errorMessages = formatZodError(safeQuery.error);
+        throw new ApiErrorHandler(400, errorMessages);
+      }
+
+      const result = await this.postService.getMyPosts(userId, {
+        limit: safeQuery.data.limit,
+        cursor: safeQuery.data.cursor,
+      });
 
       res.status(200).json({
         success: true,
-        data: posts,
+        data: result,
       });
     } catch (error) {
       logger.error(error, 'Error in getMyPostsHandler');
@@ -299,9 +317,14 @@ export class PostController {
   };
 
   /**
-   * @desc    Get profile user post grid (cursor pagination for infinite scrolling)
-   * @route   GET /api/posts/users/:profileUserId/grid?limit=50&cursor=<postId>
-   * @access  Public
+   * @desc    Render the profile post grid for a user.
+   *
+   *          Product flow:
+   *          - The client shows compact post tiles from this endpoint.
+   *          - When a tile is tapped, the client opens /feed/window with that postId.
+   *
+   * @route   GET /api/posts/user/:profileUserId/grid/cursor?limit=50&cursor=<postId>
+   * @access  Private (Authenticated users only)
    */
   getUserGridPostsCursorHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
@@ -337,9 +360,9 @@ export class PostController {
   };
 
   /**
-   * @desc    Get profile user grid posts (offset pagination)
-   * @route   GET /api/posts/users/:profileUserId/grid?page=1&limit=50
-   * @access  Public
+   * @desc    Get profile user grid posts with offset pagination for simple/admin views.
+   * @route   GET /api/posts/user/:profileUserId/grid?page=1&limit=50
+   * @access  Private (Authenticated users only)
    */
   getUserGridPostsOffsetHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
@@ -375,9 +398,15 @@ export class PostController {
   };
 
   /**
-   * @desc    Open profile user feed from a clicked post
-   * @route   GET /api/posts/users/:profileUserId/feed/window?postId=<postId>&limit=10
-   * @access  Public
+   * @desc    Open the profile feed viewer anchored at a selected grid post.
+   *
+   *          Product flow:
+   *          - Used when a user taps a post in the profile grid.
+   *          - Response starts with the selected post, then includes older posts below it.
+   *          - Client keeps this window in memory so scrolling back shows previously viewed posts.
+   *
+   * @route   GET /api/posts/user/:profileUserId/feed/window?postId=<postId>&limit=10
+   * @access  Private (Authenticated users only)
    */
   getUserFeedWindowHandler = async (req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) => {
     try {
@@ -413,9 +442,14 @@ export class PostController {
   };
 
   /**
-   * @desc    Load older profile user feed posts after current bottom cursor
+   * @desc    Load older profile feed posts after the current bottom cursor.
+   *
+   *          Product flow:
+   *          - Used by the anchored profile feed viewer as the user scrolls down.
+   *          - Cursor is the last visible post ID from the current feed window.
+   *
    * @route   GET /api/posts/user/:profileUserId/feed/after?cursor=<postId>&limit=10
-   * @access  Public
+   * @access  Private (Authenticated users only)
    */
   async getUserFeedAfterHandler(req: Request<ProfileUserParamsIdDto>, res: Response, next: NextFunction) {
     try {
@@ -501,7 +535,7 @@ export class PostController {
         throw new ApiErrorHandler(400, formatZodError(safeParams.error));
       }
 
-      await this.postService.deletePost(req.params.postId, userId);
+      await this.postService.deletePost(safeParams.data.postId, userId);
 
       res.status(204).json({
         success: true,

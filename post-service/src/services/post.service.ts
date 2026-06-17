@@ -91,37 +91,8 @@ export class PostService {
       cursor: query.cursor,
     });
 
-    const authorIds = [...new Set(result.posts.map((post: any) => post.authorId))];
-    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
-
-    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile]),
-    );
-    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
-      currentUserId,
-      result.posts.map((post) => post.id),
-    );
-
     return {
-      items: result.posts.map((post) => {
-        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
-
-        return {
-          ...mapUserFeedPost(post),
-          author: {
-            userId: post.authorId,
-            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
-            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
-            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? 'unknown',
-          },
-          viewer: {
-            userId: currentUserId,
-            likedByMe: likedPostIds.has(post.id),
-          },
-        };
-      }),
+      items: await this.mapFeedPostsWithViewerState(result.posts, currentUserId),
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -139,37 +110,8 @@ export class PostService {
       limit,
     });
 
-    const authorIds = [...new Set(result.posts.map((post) => post.authorId))];
-    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
-
-    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile]),
-    );
-    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
-      currentUserId,
-      result.posts.map((post) => post.id),
-    );
-
     return {
-      items: result.posts.map((post) => {
-        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
-
-        return {
-          ...mapUserFeedPost(post),
-          author: {
-            userId: post.authorId,
-            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
-            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
-            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? 'unknown',
-          },
-          viewer: {
-            userId: currentUserId,
-            likedByMe: likedPostIds.has(post.id),
-          },
-        };
-      }),
+      items: await this.mapFeedPostsWithViewerState(result.posts, currentUserId),
       pagination: {
         limit,
         hasNewer: result.hasNewer,
@@ -188,37 +130,8 @@ export class PostService {
       limit,
     });
 
-    const authorIds = [...new Set(result.posts.map((post) => post.authorId))];
-    const cachedProfiles = await this.postRepository.findUserProfileCacheByIds(authorIds);
-
-    const cachedProfilesByUserId = new Map<string, UserProfileCacheSummary>(
-      cachedProfiles.map((profile: any) => [profile.userId, profile]),
-    );
-    const likedPostIds = await this.postRepository.findViewerLikedPostIds(
-      currentUserId,
-      result.posts.map((post) => post.id),
-    );
-
     return {
-      items: result.posts.map((post) => {
-        const cachedProfile = cachedProfilesByUserId.get(post.authorId);
-        const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
-
-        return {
-          ...mapUserFeedPost(post),
-          author: {
-            userId: post.authorId,
-            username: isUnknownUser ? 'unknown_user' : cachedProfile.username,
-            displayName: isUnknownUser ? 'Unknown User' : (cachedProfile.displayName ?? null),
-            avatarUrl: isUnknownUser ? null : (cachedProfile.avatarUrl ?? null),
-            status: cachedProfile?.status ?? 'unknown',
-          },
-          viewer: {
-            userId: currentUserId,
-            likedByMe: likedPostIds.has(post.id),
-          },
-        };
-      }),
+      items: await this.mapFeedPostsWithViewerState(result.posts, currentUserId),
       pagination: {
         limit,
         nextCursor: result.nextCursor,

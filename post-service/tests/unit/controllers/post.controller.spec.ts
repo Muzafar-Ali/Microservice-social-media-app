@@ -11,6 +11,8 @@ jest.mock('../../../src/utils/logger.js', () => ({
 
 const postId = '550e8400-e29b-41d4-a716-446655440000';
 const commentId = '660e8400-e29b-41d4-a716-446655440000';
+const viewerUserId = 'viewer-1';
+const profileUserId = 'profile-1';
 
 const createPostServiceMock = () => ({
   createPost: jest.fn(),
@@ -178,6 +180,179 @@ describe('PostController', () => {
       expect(postService.getHomeFeedAfter).not.toHaveBeenCalled();
       expectNextError(next, 400);
     });
+
+    it('rejects unauthenticated home feed requests', async () => {
+      await postController.getHomeFeedHandler({ query: {} } as never, res as never, next as never);
+
+      expect(postService.getHomeFeed).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('loads newer home feed posts before the top cursor', async () => {
+      const feed = { items: [{ id: postId }], pagination: { limit: 10, nextCursor: null, hasNextPage: false } };
+      postService.getHomeFeedBefore.mockResolvedValue(feed as never);
+
+      await postController.getHomeFeedBeforeHandler(
+        { userId: viewerUserId, query: { cursor: postId, limit: '10' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getHomeFeedBefore).toHaveBeenCalledWith(viewerUserId, { limit: 10, cursor: postId });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: feed });
+    });
+
+    it('rejects home feed before requests without cursor', async () => {
+      await postController.getHomeFeedBeforeHandler(
+        { userId: viewerUserId, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getHomeFeedBefore).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated home feed before requests', async () => {
+      await postController.getHomeFeedBeforeHandler(
+        { query: { cursor: postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getHomeFeedBefore).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('loads older home feed posts after the bottom cursor', async () => {
+      const feed = { items: [{ id: postId }], pagination: { limit: 15, nextCursor: null, hasNextPage: false } };
+      postService.getHomeFeedAfter.mockResolvedValue(feed as never);
+
+      await postController.getHomeFeedAfterHandler(
+        { userId: viewerUserId, query: { cursor: postId, limit: '15' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getHomeFeedAfter).toHaveBeenCalledWith(viewerUserId, { limit: 15, cursor: postId });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: feed });
+    });
+
+    it('rejects unauthenticated home feed after requests', async () => {
+      await postController.getHomeFeedAfterHandler(
+        { query: { cursor: postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getHomeFeedAfter).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+  });
+
+  describe('public and user post listing handlers', () => {
+    it('loads all posts with offset pagination and computed skip', async () => {
+      const posts = [{ id: postId }];
+      const meta = { page: 2, limit: 25, total: 1 };
+      postService.getAllPosts.mockResolvedValue({ posts, meta } as never);
+
+      await postController.getAllPostsHandler({ query: { page: '2', limit: '25' } } as never, res as never, next as never);
+
+      expect(postService.getAllPosts).toHaveBeenCalledWith(2, 25, 25);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: posts, meta });
+    });
+
+    it('rejects invalid all-post pagination before service call', async () => {
+      await postController.getAllPostsHandler({ query: { page: '0' } } as never, res as never, next as never);
+
+      expect(postService.getAllPosts).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('loads posts for a profile user with cursor pagination', async () => {
+      const result = { items: [{ id: postId }], pagination: { nextCursor: null, hasNextPage: false } };
+      postService.getPostsByUserId.mockResolvedValue(result as never);
+
+      await postController.getPostsByUserIdHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: { limit: '20', cursor: postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostsByUserId).toHaveBeenCalledWith(profileUserId, viewerUserId, {
+        limit: 20,
+        cursor: postId,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('rejects unauthenticated profile post listing', async () => {
+      await postController.getPostsByUserIdHandler(
+        { params: { profileUserId }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostsByUserId).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects invalid profile post listing params', async () => {
+      await postController.getPostsByUserIdHandler(
+        { userId: viewerUserId, params: { profileUserId: '' }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostsByUserId).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects invalid profile post listing pagination', async () => {
+      await postController.getPostsByUserIdHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: { limit: '51' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostsByUserId).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('loads current user posts', async () => {
+      const result = { items: [{ id: postId }], pagination: { nextCursor: null, hasNextPage: false } };
+      postService.getMyPosts.mockResolvedValue(result as never);
+
+      await postController.getMyPostsHandler(
+        { userId: viewerUserId, query: { limit: '10' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getMyPosts).toHaveBeenCalledWith(viewerUserId, { limit: 10, cursor: undefined });
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('rejects invalid current user posts pagination', async () => {
+      await postController.getMyPostsHandler(
+        { userId: viewerUserId, query: { limit: '51' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getMyPosts).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated current user posts', async () => {
+      await postController.getMyPostsHandler({ query: {} } as never, res as never, next as never);
+
+      expect(postService.getMyPosts).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
   });
 
   describe('profile browsing handlers', () => {
@@ -241,6 +416,161 @@ describe('PostController', () => {
       expect(postService.getUserFeedWindow).not.toHaveBeenCalled();
       expectNextError(next, 400);
     });
+
+    it('rejects unauthenticated profile grid cursor requests', async () => {
+      await postController.getUserGridPostsCursorHandler(
+        { params: { profileUserId }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsCursor).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects invalid profile grid cursor params', async () => {
+      await postController.getUserGridPostsCursorHandler(
+        { userId: viewerUserId, params: { profileUserId: '' }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsCursor).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects invalid profile grid cursor pagination', async () => {
+      await postController.getUserGridPostsCursorHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: { limit: '51' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsCursor).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated profile grid offset requests', async () => {
+      await postController.getUserGridPostsOffsetHandler(
+        { params: { profileUserId }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsOffset).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects invalid profile grid offset params', async () => {
+      await postController.getUserGridPostsOffsetHandler(
+        { userId: viewerUserId, params: { profileUserId: '' }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsOffset).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('loads profile grid posts with offset pagination', async () => {
+      const result = { items: [{ id: postId }], pagination: { page: 2, limit: 20 } };
+      postService.getUserGridPostsOffset.mockResolvedValue(result as never);
+
+      await postController.getUserGridPostsOffsetHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: { page: '2', limit: '20' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsOffset).toHaveBeenCalledWith(profileUserId, viewerUserId, {
+        page: 2,
+        limit: 20,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('rejects invalid profile grid offset pagination', async () => {
+      await postController.getUserGridPostsOffsetHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: { limit: '101' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserGridPostsOffset).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated profile feed window requests', async () => {
+      await postController.getUserFeedWindowHandler(
+        { params: { profileUserId }, query: { postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserFeedWindow).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects invalid profile feed window params', async () => {
+      await postController.getUserFeedWindowHandler(
+        { userId: viewerUserId, params: { profileUserId: '' }, query: { postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserFeedWindow).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('loads older profile feed posts after cursor', async () => {
+      const result = { items: [{ id: postId }], pagination: { nextCursor: null, hasNextPage: false } };
+      postService.getUserFeedAfter.mockResolvedValue(result as never);
+
+      await postController.getUserFeedAfterHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: { cursor: postId, limit: '10' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserFeedAfter).toHaveBeenCalledWith(profileUserId, viewerUserId, {
+        cursor: postId,
+        limit: 10,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('rejects profile feed after requests without cursor', async () => {
+      await postController.getUserFeedAfterHandler(
+        { userId: viewerUserId, params: { profileUserId }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserFeedAfter).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated profile feed after requests', async () => {
+      await postController.getUserFeedAfterHandler(
+        { params: { profileUserId }, query: { cursor: postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserFeedAfter).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects invalid profile feed after params', async () => {
+      await postController.getUserFeedAfterHandler(
+        { userId: viewerUserId, params: { profileUserId: '' }, query: { cursor: postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getUserFeedAfter).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
   });
 
   describe('post lifecycle handlers', () => {
@@ -286,6 +616,35 @@ describe('PostController', () => {
         message: 'post deleted successfuly',
       });
     });
+
+    it('rejects unauthenticated updates after validating the post id', async () => {
+      await postController.updatePostHandler(
+        { params: { postId }, body: { content: 'updated' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.updatePost).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects unauthenticated deletes before calling the service', async () => {
+      await postController.deletePostHandler({ params: { postId } } as never, res as never, next as never);
+
+      expect(postService.deletePost).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects delete when post id param is invalid', async () => {
+      await postController.deletePostHandler(
+        { userId: 'author-1', params: { postId: 'bad-id' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.deletePost).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
   });
 
   describe('like handlers', () => {
@@ -330,6 +689,75 @@ describe('PostController', () => {
         limit: 25,
       });
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it('rejects unauthenticated like requests after validating params', async () => {
+      await postController.likePostHandler({ params: { postId } } as never, res as never, next as never);
+
+      expect(postService.likePost).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('unlikes a post for an authenticated user', async () => {
+      const unlikeResult = { postId, liked: false, likesCount: 0 };
+      postService.unlikePost.mockResolvedValue(unlikeResult as never);
+
+      await postController.unlikePostHandler(
+        { userId: viewerUserId, params: { postId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.unlikePost).toHaveBeenCalledWith(postId, viewerUserId);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: unlikeResult });
+    });
+
+    it('rejects unlike with invalid post id', async () => {
+      await postController.unlikePostHandler(
+        { userId: viewerUserId, params: { postId: 'bad-id' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.unlikePost).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated unlike requests after validating params', async () => {
+      await postController.unlikePostHandler({ params: { postId } } as never, res as never, next as never);
+
+      expect(postService.unlikePost).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects unauthenticated post like listing', async () => {
+      await postController.getPostLikesHandler({ params: { postId }, query: {} } as never, res as never, next as never);
+
+      expect(postService.getPostLikes).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects post like listing with invalid post id', async () => {
+      await postController.getPostLikesHandler(
+        { userId: viewerUserId, params: { postId: 'bad-id' }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostLikes).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects post like listing with invalid pagination', async () => {
+      await postController.getPostLikesHandler(
+        { userId: viewerUserId, params: { postId }, query: { limit: '51' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostLikes).not.toHaveBeenCalled();
+      expectNextError(next, 400);
     });
   });
 
@@ -377,6 +805,90 @@ describe('PostController', () => {
         message: 'Comment deleted successfully',
         data: deleteResult,
       });
+    });
+
+    it('rejects unauthenticated comment creation before validation-dependent service call', async () => {
+      await postController.createPostCommentHandler(
+        { params: { postId }, body: { content: 'nice' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.createPostComment).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('lists comments with cursor pagination', async () => {
+      const comments = { items: [{ id: commentId }], pagination: { nextCursor: null, hasNextPage: false } };
+      postService.getPostComments.mockResolvedValue(comments as never);
+
+      await postController.getPostCommentsHandler(
+        { userId: viewerUserId, params: { postId }, query: { cursor: commentId, limit: '20' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostComments).toHaveBeenCalledWith(postId, viewerUserId, {
+        cursor: commentId,
+        limit: 20,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: comments });
+    });
+
+    it('rejects unauthenticated comment listing', async () => {
+      await postController.getPostCommentsHandler(
+        { params: { postId }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostComments).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
+    });
+
+    it('rejects comment listing with invalid post id', async () => {
+      await postController.getPostCommentsHandler(
+        { userId: viewerUserId, params: { postId: 'bad-id' }, query: {} } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostComments).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects comment listing with invalid pagination', async () => {
+      await postController.getPostCommentsHandler(
+        { userId: viewerUserId, params: { postId }, query: { limit: '51' } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.getPostComments).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects comment delete with invalid params', async () => {
+      await postController.deletePostCommentHandler(
+        { userId: viewerUserId, params: { postId: 'bad-id', commentId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.deletePostComment).not.toHaveBeenCalled();
+      expectNextError(next, 400);
+    });
+
+    it('rejects unauthenticated comment delete after validating params', async () => {
+      await postController.deletePostCommentHandler(
+        { params: { postId, commentId } } as never,
+        res as never,
+        next as never,
+      );
+
+      expect(postService.deletePostComment).not.toHaveBeenCalled();
+      expectNextError(next, 401, 'Unauthorized');
     });
   });
 });

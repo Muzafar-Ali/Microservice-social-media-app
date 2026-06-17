@@ -668,12 +668,7 @@ export class PostController {
         throw new ApiErrorHandler(400, errorMessages);
       }
 
-      const { userId } = req;
-      if (!userId) {
-        throw new ApiErrorHandler(401, 'Unauthorized');
-      }
-
-      const result = await this.postService.createPostComment(safeParams.data.postId, userId, content);
+      const result = await this.postService.createPostComment(safeParams.data.postId, req.userId, content);
 
       res.status(201).json({
         success: true,

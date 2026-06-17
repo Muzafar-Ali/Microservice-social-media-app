@@ -4,7 +4,7 @@ const jestConfig: JestConfigWithTsJest = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   clearMocks: true,
-  collectCoverage: false,
+  collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageThreshold: {
     global: {

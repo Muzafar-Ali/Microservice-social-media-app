@@ -219,6 +219,190 @@ describe('PostService', () => {
 
       expect(repository.findFeedPostById).not.toHaveBeenCalled();
     });
+
+    it('returns rich post detail with video media, author summary, and viewer like state', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost({ id: 'post-video' }) as never);
+      repository.findFeedPostById.mockResolvedValue(
+        createFeedPost({
+          id: 'post-video',
+          media: [createVideoMedia()],
+          _count: { media: 1, likes: 9, comments: 4 },
+        }) as never,
+      );
+      repository.findViewerLikedPostIds.mockResolvedValue(new Set(['post-video']) as never);
+
+      const result = await postService.getPostById('post-video', 'viewer-1');
+
+      expect(repository.findPostById).toHaveBeenCalledWith('post-video');
+      expect(repository.findFeedPostById).toHaveBeenCalledWith('post-video');
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 'post-video',
+          mediaCount: 1,
+          likesCount: 9,
+          commentsCount: 4,
+          media: [
+            expect.objectContaining({
+              type: 'video',
+              thumbnailUrl: 'https://cdn.example.com/video-thumb.jpg',
+              duration: 30,
+            }),
+          ],
+          viewer: {
+            userId: 'viewer-1',
+            likedByMe: true,
+          },
+        }),
+      );
+    });
+
+    it('throws 404 when rich post detail disappears after visibility check', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost({ id: 'post-1' }) as never);
+      repository.findFeedPostById.mockResolvedValue(null as never);
+
+      await expect(postService.getPostById('post-1', 'viewer-1')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Post not found',
+      });
+    });
+
+    it('returns profile posts for an accessible profile with normalized limit and metrics', async () => {
+      repository.findPostsByUserId.mockResolvedValue({
+        posts: [createFeedPost({ id: 'profile-post' })],
+        nextCursor: 'next-profile-post',
+        hasNextPage: true,
+      } as never);
+
+      const result = await postService.getPostsByUserId('profile-1', 'viewer-1', {
+        limit: 999,
+        cursor: 'cursor-1',
+      });
+
+      expect(repository.findPostsByUserId).toHaveBeenCalledWith('profile-1', {
+        limit: 50,
+        cursor: 'cursor-1',
+      });
+      expect(result.pagination).toEqual({
+        limit: 50,
+        nextCursor: 'next-profile-post',
+        hasNextPage: true,
+      });
+      expect(result.items[0]).toEqual(expect.objectContaining({ id: 'profile-post' }));
+      expect(feedRequestsTotal.inc).toHaveBeenCalledWith({ feed_type: 'profile_posts' });
+    });
+
+    it('returns current user posts with default limit and viewer state', async () => {
+      repository.findPostsByUserId.mockResolvedValue({
+        posts: [createFeedPost({ id: 'my-post' })],
+        nextCursor: null,
+        hasNextPage: false,
+      } as never);
+
+      const result = await postService.getMyPosts('user-1', {});
+
+      expect(repository.findPostsByUserId).toHaveBeenCalledWith('user-1', {
+        limit: 30,
+        cursor: undefined,
+      });
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({
+          id: 'my-post',
+          viewer: {
+            userId: 'user-1',
+            likedByMe: false,
+          },
+        }),
+      );
+      expect(feedRequestsTotal.inc).toHaveBeenCalledWith({ feed_type: 'my_posts' });
+    });
+
+    it('returns paginated all-posts metadata for admin/simple listing flows', async () => {
+      repository.findAllPaginated.mockResolvedValue({
+        posts: [createFeedPost({ id: 'post-1' }), createFeedPost({ id: 'post-2' })],
+        total: 5,
+      } as never);
+
+      const result = await postService.getAllPosts(2, 2, 2);
+
+      expect(repository.findAllPaginated).toHaveBeenCalledWith(2, 2);
+      expect(result).toEqual({
+        posts: [expect.objectContaining({ id: 'post-1' }), expect.objectContaining({ id: 'post-2' })],
+        meta: {
+          page: 2,
+          limit: 2,
+          total: 5,
+          totalPages: 3,
+          hasNextPage: true,
+          hasPrevious: true,
+        },
+      });
+    });
+
+    it('returns newer home feed posts before the current top cursor', async () => {
+      repository.findHomeFeedBefore.mockResolvedValue({
+        posts: [createFeedPost({ id: 'newer-post' })],
+        hasNewer: true,
+      } as never);
+
+      const result = await postService.getHomeFeedBefore('viewer-1', {
+        cursor: 'current-top',
+        limit: 0,
+      });
+
+      expect(repository.findHomeFeedBefore).toHaveBeenCalledWith({
+        viewerUserId: 'viewer-1',
+        cursor: 'current-top',
+        limit: 20,
+      });
+      expect(result.pagination).toEqual({
+        limit: 20,
+        hasNewer: true,
+        fetchedCount: 1,
+        topCursor: 'newer-post',
+      });
+      expect(feedRequestsTotal.inc).toHaveBeenCalledWith({ feed_type: 'home_before' });
+    });
+
+    it('keeps the existing top cursor when no newer home feed posts are returned', async () => {
+      repository.findHomeFeedBefore.mockResolvedValue({
+        posts: [],
+        hasNewer: false,
+      } as never);
+
+      const result = await postService.getHomeFeedBefore('viewer-1', {
+        cursor: 'current-top',
+        limit: 20,
+      });
+
+      expect(result.pagination.topCursor).toBe('current-top');
+      expect(result.pagination.fetchedCount).toBe(0);
+    });
+
+    it('returns older home feed posts after the bottom cursor', async () => {
+      repository.findHomeFeedAfter.mockResolvedValue({
+        posts: [createFeedPost({ id: 'older-post' })],
+        nextCursor: 'older-post',
+        hasNextPage: true,
+      } as never);
+
+      const result = await postService.getHomeFeedAfter('viewer-1', {
+        cursor: 'bottom-post',
+        limit: 60,
+      });
+
+      expect(repository.findHomeFeedAfter).toHaveBeenCalledWith({
+        viewerUserId: 'viewer-1',
+        cursor: 'bottom-post',
+        limit: 50,
+      });
+      expect(result.pagination).toEqual({
+        limit: 50,
+        nextCursor: 'older-post',
+        hasNextPage: true,
+        fetchedCount: 1,
+      });
+      expect(feedRequestsTotal.inc).toHaveBeenCalledWith({ feed_type: 'home_after' });
+    });
   });
 
   describe('profile grid and anchored feed flow', () => {
@@ -293,6 +477,71 @@ describe('PostService', () => {
         hasNextPage: true,
       });
     });
+
+    it('maps offset grid posts for fallback/simple pagination views', async () => {
+      repository.findUserGridPostsOffset.mockResolvedValue({
+        posts: [
+          createFeedPost({
+            id: 'offset-post',
+            content: '  text with image  ',
+            media: [createImageMedia()],
+            _count: { media: 1, likes: 0, comments: 0 },
+          }),
+        ],
+        total: 3,
+      } as never);
+
+      const result = await postService.getUserGridPostsOffset('profile-1', 'viewer-1', {
+        page: 0,
+        limit: 500,
+      });
+
+      expect(repository.findUserGridPostsOffset).toHaveBeenCalledWith('profile-1', {
+        page: 1,
+        limit: 50,
+      });
+      expect(result.items[0]).toEqual(
+        expect.objectContaining({
+          id: 'offset-post',
+          hasContent: true,
+          mediaCount: 1,
+          primaryMedia: expect.objectContaining({
+            type: 'image',
+          }),
+        }),
+      );
+      expect(result.pagination).toEqual({
+        page: 1,
+        limit: 50,
+        total: 3,
+        hasNextPage: false,
+      });
+      expect(feedRequestsTotal.inc).toHaveBeenCalledWith({ feed_type: 'profile_grid_offset' });
+    });
+
+    it('loads older profile feed posts after the current profile feed cursor', async () => {
+      repository.findUserFeedAfter.mockResolvedValue({
+        posts: [createFeedPost({ id: 'older-profile-post' })],
+        nextCursor: 'older-profile-post',
+        hasNextPage: false,
+      } as never);
+
+      const result = await postService.getUserFeedAfter('profile-1', 'viewer-1', {
+        cursor: 'current-bottom',
+        limit: 100,
+      });
+
+      expect(repository.findUserFeedAfter).toHaveBeenCalledWith('profile-1', {
+        cursor: 'current-bottom',
+        limit: 20,
+      });
+      expect(result.items[0]).toEqual(expect.objectContaining({ id: 'older-profile-post' }));
+      expect(result.pagination).toEqual({
+        nextCursor: 'older-profile-post',
+        hasNextPage: false,
+      });
+      expect(feedRequestsTotal.inc).toHaveBeenCalledWith({ feed_type: 'profile_feed_after' });
+    });
   });
 
   describe('post lifecycle', () => {
@@ -358,6 +607,28 @@ describe('PostService', () => {
 
       expect(postOperationsTotal.inc).not.toHaveBeenCalledWith({ operation: 'delete' });
     });
+
+    it('does not delete a missing post', async () => {
+      repository.findPostById.mockResolvedValue(null as never);
+
+      await expect(postService.deletePost('post-1', 'author-1')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Post not found',
+      });
+
+      expect(repository.deletePostAndQueuePostDeletedEvent).not.toHaveBeenCalled();
+    });
+
+    it('does not delete another user post', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'author-2' }) as never);
+
+      await expect(postService.deletePost('post-1', 'author-1')).rejects.toMatchObject({
+        statusCode: 403,
+        message: 'Forbidden',
+      });
+
+      expect(repository.deletePostAndQueuePostDeletedEvent).not.toHaveBeenCalled();
+    });
   });
 
   describe('likes and comments', () => {
@@ -384,6 +655,29 @@ describe('PostService', () => {
       expect(repository.createPostLike).not.toHaveBeenCalled();
     });
 
+    it('does not like a missing post', async () => {
+      repository.findPostById.mockResolvedValue(null as never);
+
+      await expect(postService.likePost('post-1', 'viewer-1')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Post not found',
+      });
+
+      expect(repository.canViewerAccessProfile).not.toHaveBeenCalled();
+      expect(repository.createPostLike).not.toHaveBeenCalled();
+    });
+
+    it('unlikes a visible post and returns the updated like count', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost() as never);
+      repository.countPostLikes.mockResolvedValue(2 as never);
+
+      const result = await postService.unlikePost('post-1', 'viewer-1');
+
+      expect(repository.deletePostLike).toHaveBeenCalledWith('post-1', 'viewer-1');
+      expect(result).toEqual({ postId: 'post-1', liked: false, likesCount: 2 });
+      expect(postEngagementActionsTotal.inc).toHaveBeenCalledWith({ action: 'unlike' });
+    });
+
     it('creates a trimmed comment and falls back to unknown author when profile cache is missing', async () => {
       repository.findPostById.mockResolvedValue(createFeedPost() as never);
       repository.createPostComment.mockResolvedValue(createComment({ authorId: 'viewer-1' }) as never);
@@ -407,6 +701,138 @@ describe('PostService', () => {
         updatedAt: testUpdatedAt,
       });
       expect(postEngagementActionsTotal.inc).toHaveBeenCalledWith({ action: 'comment_create' });
+    });
+
+    it('lists post likes with profile summaries and unknown-user fallback', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost() as never);
+      repository.findPostLikes.mockResolvedValue({
+        likes: [
+          { userId: 'active-user', createdAt: testCreatedAt },
+          { userId: 'missing-user', createdAt: testUpdatedAt },
+        ],
+        nextCursor: 'missing-user',
+        hasNextPage: true,
+      } as never);
+      repository.findUserProfileCacheByIds.mockResolvedValue([
+        createProfileCache({
+          userId: 'active-user',
+          username: 'active_user',
+          displayName: null,
+          avatarUrl: null,
+          status: 'active',
+        }),
+      ] as never);
+
+      const result = await postService.getPostLikes('post-1', 'viewer-1', {
+        limit: 999,
+        cursor: 'cursor-user',
+      });
+
+      expect(repository.findPostLikes).toHaveBeenCalledWith('post-1', {
+        cursor: 'cursor-user',
+        limit: 50,
+      });
+      expect(repository.findUserProfileCacheByIds).toHaveBeenCalledWith(['active-user', 'missing-user']);
+      expect(result).toEqual({
+        items: [
+          {
+            userId: 'active-user',
+            username: 'active_user',
+            displayName: null,
+            avatarUrl: null,
+            status: 'active',
+            likedAt: testCreatedAt,
+          },
+          {
+            userId: 'missing-user',
+            username: 'unknown_user',
+            displayName: 'Unknown User',
+            avatarUrl: null,
+            status: undefined,
+            likedAt: testUpdatedAt,
+          },
+        ],
+        pagination: {
+          nextCursor: 'missing-user',
+          hasNextPage: true,
+        },
+      });
+    });
+
+    it('lists post comments with author summaries and unknown-user fallback', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost() as never);
+      repository.findPostComments.mockResolvedValue({
+        comments: [
+          createComment({ id: 'comment-1', authorId: 'active-user', content: 'first' }),
+          createComment({ id: 'comment-2', authorId: 'missing-user', content: 'second' }),
+        ],
+        nextCursor: 'comment-2',
+        hasNextPage: true,
+      } as never);
+      repository.findUserProfileCacheByIds.mockResolvedValue([
+        createProfileCache({ userId: 'active-user', username: 'active_user' }),
+      ] as never);
+
+      const result = await postService.getPostComments('post-1', 'viewer-1', {
+        limit: 0,
+        cursor: 'comment-cursor',
+      });
+
+      expect(repository.findPostComments).toHaveBeenCalledWith('post-1', {
+        cursor: 'comment-cursor',
+        limit: 20,
+      });
+      expect(result.items).toEqual([
+        expect.objectContaining({
+          id: 'comment-1',
+          author: expect.objectContaining({ userId: 'active-user', username: 'active_user' }),
+          content: 'first',
+        }),
+        expect.objectContaining({
+          id: 'comment-2',
+          author: {
+            userId: 'missing-user',
+            username: 'unknown_user',
+            displayName: 'Unknown User',
+            avatarUrl: null,
+            status: 'unknown',
+          },
+          content: 'second',
+        }),
+      ]);
+      expect(result.pagination).toEqual({
+        nextCursor: 'comment-2',
+        hasNextPage: true,
+      });
+    });
+
+    it('lists post detail media with nullable metadata defaults', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost({ id: 'post-null-media' }) as never);
+      repository.findFeedPostById.mockResolvedValue(
+        createFeedPost({
+          id: 'post-null-media',
+          media: [
+            createVideoMedia({
+              thumbnailUrl: undefined,
+              duration: undefined,
+              width: undefined,
+              height: undefined,
+            }),
+          ],
+          _count: { media: 1, likes: 0, comments: 0 },
+        }) as never,
+      );
+
+      const result = await postService.getPostById('post-null-media', 'viewer-1');
+
+      expect(result.media[0]).toEqual(
+        expect.objectContaining({
+          thumbnailUrl: null,
+          duration: null,
+          width: null,
+          height: null,
+        }),
+      );
     });
 
     it('allows the comment author to delete their own comment', async () => {
@@ -455,6 +881,73 @@ describe('PostService', () => {
       });
 
       expect(repository.deleteComment).not.toHaveBeenCalled();
+    });
+
+    it('rejects comment deletion when the post does not exist', async () => {
+      repository.findPostById.mockResolvedValue(null as never);
+
+      await expect(postService.deletePostComment('post-1', 'comment-1', 'viewer-1')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Post not found',
+      });
+
+      expect(repository.findCommentById).not.toHaveBeenCalled();
+      expect(repository.deleteComment).not.toHaveBeenCalled();
+    });
+
+    it('rejects comment deletion when the comment does not exist', async () => {
+      repository.findPostById.mockResolvedValue(createFeedPost({ authorId: 'post-owner' }) as never);
+      repository.findCommentById.mockResolvedValue(null as never);
+
+      await expect(postService.deletePostComment('post-1', 'comment-1', 'post-owner')).rejects.toMatchObject({
+        statusCode: 404,
+        message: 'Comment not found',
+      });
+
+      expect(repository.deleteComment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('event and profile cache application', () => {
+    it('delegates user profile cache upserts to the repository', async () => {
+      const input = {
+        userId: 'user-1',
+        username: 'user_one',
+        displayName: 'User One',
+        avatarUrl: null,
+        status: 'ACTIVE',
+        isPrivate: false,
+      };
+      repository.upsertUserProfileCache.mockResolvedValue(createProfileCache(input) as never);
+
+      const result = await postService.upsertUserProfileCache(input);
+
+      expect(repository.upsertUserProfileCache).toHaveBeenCalledWith(input);
+      expect(result).toEqual(expect.objectContaining({ userId: 'user-1' }));
+    });
+
+    it('delegates idempotent user profile events to the repository', async () => {
+      const input = {
+        eventId: 'event-1',
+        userId: 'user-1',
+        username: 'user_one',
+        displayName: null,
+        avatarUrl: null,
+        status: 'ACTIVE',
+        isPrivate: false,
+      };
+      repository.applyUserProfileEvent.mockResolvedValue(true as never);
+
+      await expect(postService.applyUserProfileEvent(input)).resolves.toBe(true);
+      expect(repository.applyUserProfileEvent).toHaveBeenCalledWith(input);
+    });
+
+    it('delegates active follow events to the repository', async () => {
+      const input = { eventId: 'event-2', followerId: 'viewer-1', followeeId: 'author-1', isActive: true };
+      repository.applyActiveFollowEvent.mockResolvedValue(false as never);
+
+      await expect(postService.applyActiveFollowEvent(input as never)).resolves.toBe(false);
+      expect(repository.applyActiveFollowEvent).toHaveBeenCalledWith(input);
     });
   });
 });

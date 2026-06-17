@@ -3,6 +3,10 @@ import path from 'path';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
+const parseCsvEnv = (value: string | undefined, fallback: string[]): string[] => {
+  return value?.split(',').map((item) => item.trim()).filter(Boolean) ?? fallback;
+};
+
 const config = {
   environment: process.env.NODE_ENV || 'development',
   port: process.env.PORT || 4003,
@@ -13,6 +17,7 @@ const config = {
   kafkaBrokers: ['kafka-1:9092', 'kafka-2:9092', 'kafka-3:9092'],
   jwtSecret: process.env.JWT_SECRET,
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  corsAllowedOrigins: parseCsvEnv(process.env.CORS_ALLOWED_ORIGINS, ['http://localhost:3000']),
 };
 
 export default config;

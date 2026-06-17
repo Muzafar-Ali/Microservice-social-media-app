@@ -4,12 +4,13 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import globalErrorHandler from './middlewares/globalErrorHandler.middleware.js';
 import notFoundHandler from './middlewares/notFoundHandler.middleware.js';
-import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js'; // Monitoring needs to be added later
+import { metricsHandler, metricsMiddleware } from './monitoring/metrics.js';
 import postRoutes from './routes/post.routes.js';
 import { PostRepository } from './repositories/post.repository.js';
 import { PostService } from './services/post.service.js';
 import { PostController } from './controllers/post.controller.js';
 import prisma from './config/prismaClient.js';
+import config from './config/config.js';
 
 export async function createApp() {
   const postRepository = new PostRepository(prisma);
@@ -18,13 +19,18 @@ export async function createApp() {
 
   const app = express();
 
-  const allowedOrigins = ['http://localhost:3000']; // This should come from config
-
   app.use(helmet());
   app.use(
     cors({
-      origin: allowedOrigins,
       credentials: true,
+      origin(origin, callback) {
+        if (!origin || config.corsAllowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error('Not allowed by CORS'));
+      },
     }),
   );
 

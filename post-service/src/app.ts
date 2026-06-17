@@ -41,7 +41,23 @@ export async function createApp() {
   app.use(metricsMiddleware);
 
   app.get('/health', (_req, res) => {
-    res.send('Health is ok');
+    res.status(200).json({
+      status: 'ok',
+      service: config.serviceName,
+    });
+  });
+
+  app.get('/ready', async (_req, res, next) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+
+      res.status(200).json({
+        status: 'ready',
+        service: config.serviceName,
+      });
+    } catch (error) {
+      next(error);
+    }
   });
 
   app.get('/metrics', metricsHandler);

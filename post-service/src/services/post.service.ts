@@ -1,7 +1,14 @@
 import { PostRepository } from '../repositories/post.repository.js';
 import { CreatePostDto, UpdatePostDto } from '../validation/post.validation.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
-import { postCreatedCounter } from '../monitoring/metrics.js';
+import {
+  feedItemsReturnedHistogram,
+  feedRequestsTotal,
+  postCreatedCounter,
+  postEngagementActionsTotal,
+  postMediaItemsHistogram,
+  postOperationsTotal,
+} from '../monitoring/metrics.js';
 import { MediaType } from '../generated/prisma/enums.js';
 import mapUserFeedPost from '../utils/mapUserFeedPost.js';
 import { UserProfileCacheSummary } from '../types/post.types.js';
@@ -14,6 +21,8 @@ export class PostService {
     const post = await this.postRepository.createPostAndQueuePostCreatedEvent(input, userId);
 
     postCreatedCounter.inc();
+    postOperationsTotal.inc({ operation: 'create' });
+    postMediaItemsHistogram.observe(input.media?.length ?? 0);
 
     return post;
   }
@@ -39,8 +48,11 @@ export class PostService {
       cursor: query.cursor,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, viewerUserId);
+    this.recordFeedPage('profile_posts', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, viewerUserId),
+      items,
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -72,8 +84,11 @@ export class PostService {
       cursor: query.cursor,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, userId);
+    this.recordFeedPage('my_posts', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, userId),
+      items,
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -91,8 +106,11 @@ export class PostService {
       cursor: query.cursor,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, currentUserId);
+    this.recordFeedPage('home', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, currentUserId),
+      items,
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -110,8 +128,11 @@ export class PostService {
       limit,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, currentUserId);
+    this.recordFeedPage('home_before', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, currentUserId),
+      items,
       pagination: {
         limit,
         hasNewer: result.hasNewer,
@@ -130,8 +151,11 @@ export class PostService {
       limit,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, currentUserId);
+    this.recordFeedPage('home_after', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, currentUserId),
+      items,
       pagination: {
         limit,
         nextCursor: result.nextCursor,
@@ -192,6 +216,8 @@ export class PostService {
       };
     });
 
+    this.recordFeedPage('profile_grid_cursor', items.length);
+
     return {
       items,
       pagination: {
@@ -237,6 +263,8 @@ export class PostService {
       };
     });
 
+    this.recordFeedPage('profile_grid_offset', items.length);
+
     return {
       items,
       pagination: {
@@ -258,8 +286,11 @@ export class PostService {
       limit,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, viewerUserId);
+    this.recordFeedPage('profile_feed_window', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, viewerUserId),
+      items,
       pagination: {
         anchorPostId: result.anchorPostId,
         nextCursor: result.nextCursor,
@@ -278,8 +309,11 @@ export class PostService {
       limit,
     });
 
+    const items = await this.mapFeedPostsWithViewerState(result.posts, viewerUserId);
+    this.recordFeedPage('profile_feed_after', items.length);
+
     return {
-      items: await this.mapFeedPostsWithViewerState(result.posts, viewerUserId),
+      items,
       pagination: {
         nextCursor: result.nextCursor,
         hasNextPage: result.hasNextPage,
@@ -297,11 +331,15 @@ export class PostService {
       throw new ApiErrorHandler(403, 'Forbidden');
     }
 
-    return this.postRepository.updatePostAndQueuePostUpdatedEvent(postId, {
+    const post = await this.postRepository.updatePostAndQueuePostUpdatedEvent(postId, {
       content: input.content,
       editedAt: new Date(),
       isEdited: true,
     });
+
+    postOperationsTotal.inc({ operation: 'update' });
+
+    return post;
   }
 
   async deletePost(postId: string, userId: string) {
@@ -319,6 +357,8 @@ export class PostService {
     if (!deletedPost) {
       throw new ApiErrorHandler(404, 'Post not found');
     }
+
+    postOperationsTotal.inc({ operation: 'delete' });
   }
 
   async likePost(postId: string, currentUserId: string) {
@@ -327,6 +367,8 @@ export class PostService {
     await this.postRepository.createPostLike(postId, currentUserId);
 
     const likesCount = await this.postRepository.countPostLikes(postId);
+
+    postEngagementActionsTotal.inc({ action: 'like' });
 
     return {
       postId,
@@ -341,6 +383,8 @@ export class PostService {
     await this.postRepository.deletePostLike(postId, currentUserId);
 
     const likesCount = await this.postRepository.countPostLikes(postId);
+
+    postEngagementActionsTotal.inc({ action: 'unlike' });
 
     return {
       postId,
@@ -423,6 +467,8 @@ export class PostService {
     const cachedProfiles = await this.postRepository.findUserProfileCacheByIds([currentUserId]);
     const cachedProfile = cachedProfiles[0];
     const isUnknownUser = !cachedProfile || cachedProfile.status.toLowerCase() !== 'active';
+
+    postEngagementActionsTotal.inc({ action: 'comment_create' });
 
     return {
       id: createdComment.id,
@@ -509,11 +555,18 @@ export class PostService {
 
     await this.postRepository.deleteComment(commentId);
 
+    postEngagementActionsTotal.inc({ action: 'comment_delete' });
+
     return {
       postId,
       commentId,
       deleted: true,
     };
+  }
+
+  private recordFeedPage(feedType: string, itemCount: number): void {
+    feedRequestsTotal.inc({ feed_type: feedType });
+    feedItemsReturnedHistogram.observe({ feed_type: feedType }, itemCount);
   }
 
   private async requireProfileAccess(viewerUserId: string, profileUserId: string): Promise<void> {

@@ -84,7 +84,7 @@ spec:
                   key: DATABASE_URL
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: http
             initialDelaySeconds: 15
             periodSeconds: 10

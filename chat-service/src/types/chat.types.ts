@@ -1,4 +1,5 @@
-import { Prisma, MessageType, AttachmentType } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
+import type { MessageType, AttachmentType } from '../generated/prisma/enums.js';
 
 export type MessageEntity = {
   id: string;

@@ -1,7 +1,8 @@
 import { StatusCodes } from 'http-status-codes';
-import { AttachmentType, MessageType, Prisma, ParticipantRole } from '../generated/prisma/client.js';
+import type { Prisma } from '../generated/prisma/client.js';
+import { AttachmentType, MessageType, ParticipantRole } from '../generated/prisma/enums.js';
 import ApiErrorHandler from '../utils/apiErrorHandlerClass.js';
-import { ChatRepository } from '../repositories/chat.repository.js';
+import type { ChatRepository } from '../repositories/chat.repository.js';
 import {
   AddParticipantsResponseDto,
   AddReactionResponseDto,

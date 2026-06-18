@@ -2,24 +2,22 @@ import { jest } from '@jest/globals';
 import { ChatController } from '../../../src/controllers/chat.controllers.js';
 import ApiErrorHandler from '../../../src/utils/apiErrorHandlerClass.js';
 import { MessageType } from '../../../src/generated/prisma/enums.js';
+import { getSocketServer } from '../../../src/socket/index.js';
+import removeUserFromConversationRoom from '../../../src/utils/removeUserFromConversationRoom.js';
 
 const mockEmit = jest.fn();
 const mockTo = jest.fn(() => ({ emit: mockEmit }));
 const mockSocketsJoin = jest.fn();
 const mockIn = jest.fn(() => ({ socketsJoin: mockSocketsJoin }));
-const mockRemoveUserFromConversationRoom = jest.fn();
 
 jest.mock('../../../src/socket/index.js', () => ({
   __esModule: true,
-  getSocketServer: jest.fn(() => ({
-    to: mockTo,
-    in: mockIn,
-  })),
+  getSocketServer: jest.fn(),
 }));
 
 jest.mock('../../../src/utils/removeUserFromConversationRoom.js', () => ({
   __esModule: true,
-  default: mockRemoveUserFromConversationRoom,
+  default: jest.fn(),
 }));
 
 const conversationId = 'conversation-1';
@@ -66,9 +64,14 @@ describe('ChatController', () => {
   let chatController: ChatController;
   let res: ReturnType<typeof createResponse>;
   let next: jest.Mock;
+  const mockGetSocketServer = getSocketServer as jest.MockedFunction<typeof getSocketServer>;
+  const mockRemoveUserFromConversationRoom = removeUserFromConversationRoom as jest.MockedFunction<
+    typeof removeUserFromConversationRoom
+  >;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetSocketServer.mockReturnValue({ to: mockTo, in: mockIn } as never);
     chatService = createChatServiceMock();
     chatController = new ChatController(chatService as never);
     res = createResponse();
@@ -136,6 +139,17 @@ describe('ChatController', () => {
     expect(res.status).toHaveBeenCalledWith(201);
   });
 
+  it('rejects unauthenticated group conversation creation', async () => {
+    await chatController.createGroupConversation(
+      { body: { title: 'Team', participantUserIds: ['user-2'] } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.createGroupConversation).not.toHaveBeenCalled();
+    expectNextError(next, 401, 'Unauthorized');
+  });
+
   it('lists conversations for the authenticated user', async () => {
     const conversations = [{ id: conversationId }];
     chatService.listMyConversations.mockResolvedValue(conversations as never);
@@ -145,6 +159,13 @@ describe('ChatController', () => {
     expect(chatService.listMyConversations).toHaveBeenCalledWith(userId);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: conversations });
+  });
+
+  it('rejects unauthenticated conversation listing', async () => {
+    await chatController.listMyConversations({} as never, res as never, next as never);
+
+    expect(chatService.listMyConversations).not.toHaveBeenCalled();
+    expectNextError(next, 401, 'Unauthorized');
   });
 
   it('loads paginated conversation messages with validated params and query', async () => {
@@ -169,6 +190,28 @@ describe('ChatController', () => {
   it('rejects invalid message pagination before calling the service', async () => {
     await chatController.getConversationMessages(
       { userId, params: { conversationId }, query: { limit: '51' } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.getConversationMessages).not.toHaveBeenCalled();
+    expectNextError(next, 400);
+  });
+
+  it('rejects unauthenticated conversation message reads', async () => {
+    await chatController.getConversationMessages(
+      { params: { conversationId }, query: {} } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.getConversationMessages).not.toHaveBeenCalled();
+    expectNextError(next, 401, 'Unauthorized');
+  });
+
+  it('rejects invalid conversation id for message reads', async () => {
+    await chatController.getConversationMessages(
+      { userId, params: { conversationId: '' }, query: {} } as never,
       res as never,
       next as never,
     );
@@ -234,6 +277,28 @@ describe('ChatController', () => {
     });
   });
 
+  it('rejects unauthenticated message sends', async () => {
+    await chatController.sendMessage(
+      { params: { conversationId }, body: { type: MessageType.TEXT, body: 'Hello', clientMessageId: 'client-1' } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.sendMessage).not.toHaveBeenCalled();
+    expectNextError(next, 401, 'Unauthorized');
+  });
+
+  it('rejects invalid conversation id for message sends', async () => {
+    await chatController.sendMessage(
+      { userId, params: { conversationId: '' }, body: { type: MessageType.TEXT, body: 'Hello', clientMessageId: 'client-1' } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.sendMessage).not.toHaveBeenCalled();
+    expectNextError(next, 400);
+  });
+
   it('marks a conversation read and emits read update plus ack events', async () => {
     const readState = { conversationId, userId, lastReadMessageId: messageId };
     chatService.markConversationRead.mockResolvedValue(readState as never);
@@ -248,6 +313,17 @@ describe('ChatController', () => {
     expect(mockEmit).toHaveBeenCalledWith('chat:message:read:update', readState);
     expect(mockEmit).toHaveBeenCalledWith('chat:message:read:ack', readState);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('rejects invalid conversation id when marking read', async () => {
+    await chatController.markConversationRead(
+      { userId, params: { conversationId: '' }, body: { lastReadMessageId: messageId } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.markConversationRead).not.toHaveBeenCalled();
+    expectNextError(next, 400);
   });
 
   it('deletes a message and emits deletion plus conversation update when present', async () => {
@@ -270,6 +346,39 @@ describe('ChatController', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
+  it('deletes a message without emitting conversation update when no update is returned', async () => {
+    const deletedMessage = { conversationId, messageId, conversationUpdate: null };
+    chatService.deleteMessage.mockResolvedValue(deletedMessage as never);
+
+    await chatController.deleteMessage(
+      { userId, params: { messageId }, body: { forEveryone: true } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(mockEmit).toHaveBeenCalledWith('chat:message:deleted', deletedMessage);
+    expect(mockEmit).not.toHaveBeenCalledWith('conversation:update', expect.anything());
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('rejects unauthenticated message deletion', async () => {
+    await chatController.deleteMessage({ params: { messageId }, body: { forEveryone: true } } as never, res as never, next as never);
+
+    expect(chatService.deleteMessage).not.toHaveBeenCalled();
+    expectNextError(next, 401, 'Unauthorized');
+  });
+
+  it('rejects invalid message id for deletion', async () => {
+    await chatController.deleteMessage(
+      { userId, params: { messageId: '' }, body: { forEveryone: true } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.deleteMessage).not.toHaveBeenCalled();
+    expectNextError(next, 400);
+  });
+
   it('adds a reaction and emits the reaction event', async () => {
     const reaction = { conversationId, messageId, userId, reaction: 'heart' };
     chatService.addReaction.mockResolvedValue(reaction as never);
@@ -285,6 +394,17 @@ describe('ChatController', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
+  it('rejects invalid message id when adding a reaction', async () => {
+    await chatController.addReaction(
+      { userId, params: { messageId: '' }, body: { reaction: 'heart' } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.addReaction).not.toHaveBeenCalled();
+    expectNextError(next, 400);
+  });
+
   it('removes a reaction and emits only when a row was removed', async () => {
     const removedReaction = { conversationId, messageId, userId, reaction: 'heart', removed: true };
     chatService.removeReaction.mockResolvedValue(removedReaction as never);
@@ -298,6 +418,27 @@ describe('ChatController', () => {
     expect(chatService.removeReaction).toHaveBeenCalledWith({ userId, messageId, reaction: 'heart' });
     expect(mockEmit).toHaveBeenCalledWith('chat:message:reaction:removed', removedReaction);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('does not emit reaction removal event when nothing was removed', async () => {
+    const removedReaction = { conversationId, messageId, userId, reaction: 'heart', removed: false };
+    chatService.removeReaction.mockResolvedValue(removedReaction as never);
+
+    await chatController.removeReaction(
+      { userId, params: { messageId }, body: { reaction: 'heart' } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(mockEmit).not.toHaveBeenCalledWith('chat:message:reaction:removed', removedReaction);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('rejects unauthenticated reaction removal', async () => {
+    await chatController.removeReaction({ params: { messageId }, body: { reaction: 'heart' } } as never, res as never, next as never);
+
+    expect(chatService.removeReaction).not.toHaveBeenCalled();
+    expectNextError(next, 401, 'Unauthorized');
   });
 
   it('updates a group conversation and emits update event', async () => {
@@ -331,6 +472,17 @@ describe('ChatController', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
+  it('rejects invalid conversation id when adding participants', async () => {
+    await chatController.addParticipants(
+      { userId, params: { conversationId: '' }, body: { participantUserIds: ['user-2'] } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.addParticipants).not.toHaveBeenCalled();
+    expectNextError(next, 400);
+  });
+
   it('removes a group participant, removes sockets from the room, and emits events', async () => {
     const result = { conversationId, participantUserId: 'user-2' };
     chatService.removeParticipant.mockResolvedValue(result as never);
@@ -345,6 +497,17 @@ describe('ChatController', () => {
     expect(mockRemoveUserFromConversationRoom).toHaveBeenCalledWith({ userId: 'user-2', conversationId });
     expect(mockEmit).toHaveBeenCalledWith('chat:group:participant:removed', result);
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('rejects invalid participant removal params', async () => {
+    await chatController.removeParticipant(
+      { userId, params: { conversationId, participantUserId: '' } } as never,
+      res as never,
+      next as never,
+    );
+
+    expect(chatService.removeParticipant).not.toHaveBeenCalled();
+    expectNextError(next, 400);
   });
 
   it('leaves a group, removes sockets from the room, and emits events', async () => {
